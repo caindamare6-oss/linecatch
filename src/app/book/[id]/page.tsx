@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -14,6 +14,14 @@ type Service = {
 };
 
 export default function BookingPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-16 min-h-screen"><div className="w-5 h-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" /></div>}>
+      <BookingContent />
+    </Suspense>
+  );
+}
+
+function BookingContent() {
   const params = useParams();
   const bookingSearchParams = useSearchParams();
   const barberId = params.id as string;

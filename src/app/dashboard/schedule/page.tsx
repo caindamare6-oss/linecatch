@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Clock, User, Scissors, X, Check, Gift, ChevronLeft, ChevronRight } from "lucide-react";
@@ -61,6 +61,14 @@ function formatPhone(phone: string) {
 }
 
 export default function SchedulePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-16"><div className="w-5 h-5 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" /></div>}>
+      <ScheduleContent />
+    </Suspense>
+  );
+}
+
+function ScheduleContent() {
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight");
 
