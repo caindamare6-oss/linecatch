@@ -1,0 +1,1 @@
+export const CONSENT_TEXT = "By checking this box, I consent to receive SMS messages from this business, including appointment reminders, confirmations, and offers. Message and data rates may apply. I can reply STOP to opt out or HELP for assistance at any time.";
