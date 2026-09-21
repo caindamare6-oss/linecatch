@@ -67,7 +67,7 @@ export async function GET(request: Request) {
       .single();
 
     const clientName = vip?.first_name || "your client";
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.com";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.linecatch.app";
     const link = `${appUrl}/dashboard/schedule?highlight=${booking.id}`;
 
     const msg = `Done with ${clientName}? Tap to complete: ${link}`;
