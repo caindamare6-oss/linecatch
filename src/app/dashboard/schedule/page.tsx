@@ -62,7 +62,7 @@ function formatPhone(phone: string) {
 
 export default function SchedulePage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center py-16"><div className="w-5 h-5 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center py-16"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} /></div>}>
       <ScheduleContent />
     </Suspense>
   );
@@ -309,7 +309,7 @@ function ScheduleContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
       </div>
     );
   }
@@ -334,7 +334,7 @@ function ScheduleContent() {
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-white/60">{weekMonth}</span>
           {!weekDates.some((d) => toDateStr(d) === todayStr) && (
-            <button onClick={goToday} className="text-xs px-2 py-0.5 rounded-full bg-[#00F5A0]/10 text-[#00F5A0] hover:bg-[#00F5A0]/20 transition-colors">
+            <button onClick={goToday} className="text-xs px-2 py-0.5 rounded-full text-[var(--accent-color)] transition-colors" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-color) 20%, transparent)'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-color) 10%, transparent)'; }}>
               Today
             </button>
           )}
@@ -360,22 +360,23 @@ function ScheduleContent() {
               disabled={!isWorking}
               className={`flex flex-col items-center py-2 rounded-xl transition-all ${
                 isSelected
-                  ? "bg-[#00F5A0]/15 border border-[#00F5A0]/30"
+                  ? "border"
                   : isWorking
                     ? "bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.06]"
                     : "opacity-25 border border-transparent cursor-not-allowed"
               }`}
+              style={isSelected ? { backgroundColor: 'color-mix(in srgb, var(--accent-color) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)' } : undefined}
             >
-              <span className={`text-[10px] uppercase tracking-wider ${isSelected ? "text-[#00F5A0]" : "text-white/30"}`}>
+              <span className={`text-[10px] uppercase tracking-wider ${isSelected ? "text-[var(--accent-color)]" : "text-white/30"}`}>
                 {DAY_LABELS[date.getDay()]}
               </span>
               <span className={`text-sm font-semibold mt-0.5 ${
-                isSelected ? "text-[#00F5A0]" : isToday ? "text-white" : "text-white/50"
+                isSelected ? "text-[var(--accent-color)]" : isToday ? "text-white" : "text-white/50"
               }`}>
                 {date.getDate()}
               </span>
               {isToday && (
-                <div className={`w-1 h-1 rounded-full mt-0.5 ${isSelected ? "bg-[#00F5A0]" : "bg-[#00F5A0]/50"}`} />
+                <div className={`w-1 h-1 rounded-full mt-0.5 ${isSelected ? "bg-[var(--accent-color)]" : ""}`} style={!isSelected ? { backgroundColor: 'color-mix(in srgb, var(--accent-color) 50%, transparent)' } : undefined} />
               )}
             </button>
           );
@@ -429,20 +430,23 @@ function ScheduleContent() {
                 {booking ? (
                   <div
                     id={`booking-${booking.id}`}
-                    className={`flex-1 bg-[#00F5A0]/[0.06] border border-[#00F5A0]/20 rounded-xl p-3 my-0.5 transition-all ${
-                      highlightId === booking.id ? "ring-1 ring-[#00F5A0]/40 bg-[#00F5A0]/[0.1]" : ""
-                    }`}
-                    style={slotCount > 1 ? { minHeight: `${slotCount * 52}px` } : undefined}
+                    className="flex-1 border rounded-xl p-3 my-0.5 transition-all"
+                    style={{
+                      ...(slotCount > 1 ? { minHeight: `${slotCount * 52}px` } : {}),
+                      backgroundColor: highlightId === booking.id ? 'color-mix(in srgb, var(--accent-color) 10%, transparent)' : 'color-mix(in srgb, var(--accent-color) 6%, transparent)',
+                      borderColor: 'color-mix(in srgb, var(--accent-color) 20%, transparent)',
+                      ...(highlightId === booking.id ? { boxShadow: `0 0 0 1px color-mix(in srgb, var(--accent-color) 40%, transparent)` } : {}),
+                    }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <User className="w-3.5 h-3.5 text-[#00F5A0]/60 flex-shrink-0" />
+                          <User className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'color-mix(in srgb, var(--accent-color) 60%, transparent)' }} />
                           <span className="text-sm font-medium text-white/80 truncate">
                             {booking.first_name || booking.contact_name || formatPhone(booking.customer_phone)}
                           </span>
                           {booking.is_new_vip && (
-                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#00F5A0]/10 text-[#00F5A0] flex-shrink-0">
+                            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full text-[var(--accent-color)] flex-shrink-0" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' }}>
                               NEW
                             </span>
                           )}
@@ -455,7 +459,7 @@ function ScheduleContent() {
                               {booking.service.duration_minutes !== slotDuration && ` · ${booking.service.duration_minutes}min`}
                             </span>
                             {booking.service.price > 0 && (
-                              <span className="text-xs text-[#00F5A0]/50">${booking.service.price}</span>
+                              <span className="text-xs" style={{ color: 'color-mix(in srgb, var(--accent-color) 50%, transparent)' }}>${booking.service.price}</span>
                             )}
                           </div>
                         )}
@@ -470,7 +474,7 @@ function ScheduleContent() {
                         <button
                           onClick={() => completeBooking(booking.id)}
                           disabled={actionId === booking.id}
-                          className="p-1 rounded-lg text-white/10 hover:text-[#00F5A0] hover:bg-[#00F5A0]/10 transition-colors disabled:opacity-50"
+                          className="p-1 rounded-lg text-white/10 hover:text-[var(--accent-color)] hover:bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)] transition-colors disabled:opacity-50"
                           title="Complete"
                         >
                           <Check className="w-3.5 h-3.5" />

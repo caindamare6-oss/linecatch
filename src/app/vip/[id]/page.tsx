@@ -79,7 +79,7 @@ export default function VIPOptIn() {
   if (pageLoading) {
     return (
       <div className="min-h-screen bg-[#111111] flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
       </div>
     );
   }
@@ -89,7 +89,7 @@ export default function VIPOptIn() {
       <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
           <div className="text-3xl font-bold mb-4 text-white">
-            Line<span className="text-[#00F5A0]">Catch</span>
+            Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
           <p className="text-gray-400 mb-2">
             {displayName} is currently offline.
@@ -109,29 +109,29 @@ export default function VIPOptIn() {
           <div className="bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a]">
             <div className="text-center mb-8">
               <div className="text-3xl font-bold mb-2 text-white">
-                Line<span className="text-[#00F5A0]">Catch</span> VIP
+                Line<span className="text-[var(--accent-color)]">Catch</span> VIP
               </div>
               <p className="text-gray-400">
                 Join {displayName}&apos;s text list for exclusive perks
               </p>
             </div>
 
-            <div className="bg-[#00F5A0]/10 rounded-lg p-4 mb-6 border border-[#00F5A0]/20">
+            <div className="rounded-lg p-4 mb-6" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'color-mix(in srgb, var(--accent-color) 20%, transparent)' }}>
               <div className="space-y-2 text-sm">
                 <div className="flex items-start gap-2">
-                  <span className="text-[#00F5A0] mt-0.5">&#10003;</span>
+                  <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
                   <span className="text-gray-300">
                     Appointment reminders &amp; confirmations
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-[#00F5A0] mt-0.5">&#10003;</span>
+                  <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
                   <span className="text-gray-300">
                     Exclusive member-only offers
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="text-[#00F5A0] mt-0.5">&#10003;</span>
+                  <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
                   <span className="text-gray-300">
                     Quick booking &amp; rescheduling
                   </span>
@@ -154,7 +154,7 @@ export default function VIPOptIn() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#00F5A0] disabled:opacity-50"
+                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50"
                 />
               </div>
 
@@ -172,7 +172,7 @@ export default function VIPOptIn() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#00F5A0] disabled:opacity-50"
+                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50"
                 />
               </div>
 
@@ -188,7 +188,7 @@ export default function VIPOptIn() {
                   id="consent"
                   type="checkbox"
                   required
-                  className="mt-1 w-4 h-4 accent-[#00F5A0] cursor-pointer flex-shrink-0"
+                  className="mt-1 w-4 h-4 accent-[var(--accent-color)] cursor-pointer flex-shrink-0"
                 />
                 <label
                   htmlFor="consent"
@@ -206,7 +206,7 @@ export default function VIPOptIn() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#00F5A0] hover:bg-[#00D98A] text-black font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[var(--accent-color)] hover:brightness-90 text-black font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Joining..." : "Join VIP List"}
               </button>
@@ -214,18 +214,18 @@ export default function VIPOptIn() {
 
             <p className="text-xs text-gray-500 text-center mt-6">
               By joining, you agree to our{" "}
-              <a href="/privacy" className="text-[#00F5A0] hover:underline">
+              <a href="/privacy" className="text-[var(--accent-color)] hover:underline">
                 Privacy Policy
               </a>{" "}
               and{" "}
-              <a href="/terms" className="text-[#00F5A0] hover:underline">
+              <a href="/terms" className="text-[var(--accent-color)] hover:underline">
                 Terms of Service
               </a>
             </p>
           </div>
         ) : (
           <div className="bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
-            <CheckCircle2 className="w-16 h-16 text-[#00F5A0] mx-auto mb-4" />
+            <CheckCircle2 className="w-16 h-16 text-[var(--accent-color)] mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">
               You&apos;re In!
             </h2>

@@ -136,7 +136,7 @@ export default function ServicesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
       </div>
     );
   }
@@ -153,7 +153,7 @@ export default function ServicesPage() {
         <button
           onClick={seedPresets}
           disabled={saving}
-          className="bg-[#00F5A0] text-[#0d0d0d] font-semibold px-6 py-3 rounded-xl hover:bg-[#00D98A] disabled:opacity-50 transition text-sm"
+          className="bg-[var(--accent-color)] text-[#0d0d0d] font-semibold px-6 py-3 rounded-xl hover:brightness-90 disabled:opacity-50 transition text-sm"
         >
           {saving ? "Setting up..." : "Load preset services"}
         </button>
@@ -169,7 +169,7 @@ export default function ServicesPage() {
         </h3>
         <button
           onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-1 text-xs text-[#00F5A0] hover:text-[#00D98A] transition"
+          className="flex items-center gap-1 text-xs text-[var(--accent-color)] hover:brightness-90 transition"
         >
           <Plus className="w-3.5 h-3.5" />
           Add
@@ -177,13 +177,13 @@ export default function ServicesPage() {
       </div>
 
       {showAdd && (
-        <div className="bg-white/[0.04] border border-[#00F5A0]/20 rounded-2xl p-4 space-y-3">
+        <div className="bg-white/[0.04] border rounded-2xl p-4 space-y-3" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 20%, transparent)' }}>
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Service name"
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30"
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
           />
           <div className="flex gap-2">
             <div className="flex-1">
@@ -193,7 +193,7 @@ export default function ServicesPage() {
                 value={newPrice}
                 onChange={(e) => setNewPrice(e.target.value)}
                 placeholder="0"
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
               />
             </div>
             <div className="flex-1">
@@ -203,7 +203,7 @@ export default function ServicesPage() {
                 value={newDuration}
                 onChange={(e) => setNewDuration(e.target.value)}
                 placeholder="30"
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
               />
             </div>
           </div>
@@ -211,7 +211,7 @@ export default function ServicesPage() {
             <button
               onClick={addService}
               disabled={!newName.trim() || saving}
-              className="flex-1 bg-[#00F5A0] text-[#0d0d0d] font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 transition"
+              className="flex-1 bg-[var(--accent-color)] text-[#0d0d0d] font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 transition"
             >
               {saving ? "Adding..." : "Add Service"}
             </button>
@@ -242,7 +242,7 @@ export default function ServicesPage() {
                   onChange={(e) =>
                     updateService(service.id, "name", e.target.value)
                   }
-                  className="bg-transparent text-white/80 text-sm font-medium focus:outline-none border-b border-transparent focus:border-[#00F5A0]/30 w-full mr-2"
+                  className="bg-transparent text-white/80 text-sm font-medium focus:outline-none border-b border-transparent focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)] w-full mr-2"
                 />
                 <button
                   onClick={() => deleteService(service.id)}
@@ -260,7 +260,7 @@ export default function ServicesPage() {
                     onChange={(e) =>
                       updateService(service.id, "price", e.target.value)
                     }
-                    className="w-16 bg-white/[0.03] border border-white/[0.08] rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-[#00F5A0]/30"
+                    className="w-16 bg-white/[0.03] border border-white/[0.08] rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
                   />
                 </div>
                 <div className="flex items-center gap-1">
@@ -274,7 +274,7 @@ export default function ServicesPage() {
                         parseInt(e.target.value) || 30
                       )
                     }
-                    className="w-14 bg-white/[0.03] border border-white/[0.08] rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-[#00F5A0]/30"
+                    className="w-14 bg-white/[0.03] border border-white/[0.08] rounded-lg px-2 py-1.5 text-xs text-white/70 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
                   />
                   <span className="text-white/20 text-xs">min</span>
                 </div>
@@ -284,9 +284,10 @@ export default function ServicesPage() {
                   }
                   className={`ml-auto text-[10px] font-medium px-2.5 py-1 rounded-full transition ${
                     service.is_active
-                      ? "bg-[#00F5A0]/10 text-[#00F5A0]"
+                      ? "text-[var(--accent-color)]"
                       : "bg-white/[0.04] text-white/20"
                   }`}
+                  style={service.is_active ? { backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' } : undefined}
                 >
                   {service.is_active ? "Active" : "Off"}
                 </button>

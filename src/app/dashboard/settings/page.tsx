@@ -246,7 +246,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
       </div>
     );
   }
@@ -264,7 +264,7 @@ export default function SettingsPage() {
           value={forwardingNumber}
           onChange={(e) => setForwardingNumber(e.target.value)}
           placeholder="+12125559876"
-          className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+          className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)] transition-colors"
         />
       </div>
 
@@ -283,7 +283,7 @@ export default function SettingsPage() {
               setLinkError("");
             }}
             placeholder={BOOKING_PLACEHOLDERS[placeholderIndex]}
-            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30 transition-colors pr-16"
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)] transition-colors pr-16"
           />
           {bookingLink && (
             <button
@@ -296,7 +296,7 @@ export default function SettingsPage() {
           )}
         </div>
         {linkStatus === "valid" && (
-          <p className="text-[11px] text-[#00F5A0] mt-2 flex items-center gap-1">
+          <p className="text-[11px] text-[var(--accent-color)] mt-2 flex items-center gap-1">
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
             Link is working
           </p>
@@ -335,7 +335,10 @@ export default function SettingsPage() {
                   setLinkCopied("vip");
                   setTimeout(() => setLinkCopied(false), 2000);
                 }}
-                className="shrink-0 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors bg-[#00F5A0]/10 text-[#00F5A0] hover:bg-[#00F5A0]/20"
+                className="shrink-0 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-[var(--accent-color)]"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-color) 20%, transparent)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-color) 10%, transparent)'}
               >
                 {linkCopied === "vip" ? "Copied!" : "Copy"}
               </button>
@@ -363,7 +366,10 @@ export default function SettingsPage() {
                   setLinkCopied("book");
                   setTimeout(() => setLinkCopied(false), 2000);
                 }}
-                className="shrink-0 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors bg-[#00F5A0]/10 text-[#00F5A0] hover:bg-[#00F5A0]/20"
+                className="shrink-0 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-[var(--accent-color)]"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-color) 20%, transparent)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-color) 10%, transparent)'}
               >
                 {linkCopied === "book" ? "Copied!" : "Copy"}
               </button>
@@ -392,9 +398,10 @@ export default function SettingsPage() {
                 }}
                 className={`w-full text-left p-3 rounded-xl border transition-all duration-200 ${
                   isSelected
-                    ? "bg-[#00F5A0]/[0.08] border-[#00F5A0]/30"
+                    ? "border-[var(--accent-color)]"
                     : "bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08]"
                 }`}
+                style={isSelected ? { backgroundColor: 'color-mix(in srgb, var(--accent-color) 8%, transparent)' } : undefined}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -402,7 +409,7 @@ export default function SettingsPage() {
                     <span className="text-[11px] text-white/20 ml-2">{template.description}</span>
                   </div>
                   <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
-                    isSelected ? "border-[#00F5A0] bg-[#00F5A0]" : "border-white/15"
+                    isSelected ? "border-[var(--accent-color)] bg-[var(--accent-color)]" : "border-white/15"
                   }`}>
                     {isSelected && (
                       <svg className="w-2 h-2 text-[#0d0d0d]" fill="currentColor" viewBox="0 0 20 20">
@@ -422,11 +429,11 @@ export default function SettingsPage() {
               value={customMessage}
               onChange={(e) => setCustomMessage(e.target.value)}
               rows={3}
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[#00F5A0]/30 transition-colors mb-2"
+              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[var(--accent-color)] transition-colors mb-2"
               placeholder="Hey! Sorry I missed your call. Book here: {link}"
             />
             <p className="text-[11px] text-white/20 mb-4">
-              Use <code className="bg-white/[0.06] px-1 rounded text-[#00F5A0]/60">{"{link}"}</code> where
+              Use <code className="bg-white/[0.06] px-1 rounded" style={{ color: 'color-mix(in srgb, var(--accent-color) 60%, transparent)' }}>{"{link}"}</code> where
               you want the booking link inserted
             </p>
           </>
@@ -434,7 +441,7 @@ export default function SettingsPage() {
 
         <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4">
           <p className="text-[11px] text-white/25 mb-2">Preview</p>
-          <div className="bg-[#00F5A0]/10 border border-[#00F5A0]/20 rounded-lg rounded-tl-none px-3 py-2 inline-block max-w-[280px]">
+          <div className="border rounded-lg rounded-tl-none px-3 py-2 inline-block max-w-[280px]" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-color) 20%, transparent)' }}>
             <p className="text-sm text-white/70 whitespace-pre-line">
               {getPreviewMessage()}
             </p>
@@ -468,7 +475,7 @@ export default function SettingsPage() {
                 value={afterHoursMessage}
                 onChange={(e) => setAfterHoursMessage(e.target.value)}
                 rows={2}
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[var(--accent-color)] transition-colors"
                 placeholder="Hey! We're closed right now but I'd love to get you booked. Schedule here: {link}"
               />
             </div>
@@ -482,7 +489,7 @@ export default function SettingsPage() {
                 value={returningMessage}
                 onChange={(e) => setReturningMessage(e.target.value)}
                 rows={2}
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[var(--accent-color)] transition-colors"
                 placeholder="Hey again! Sorry I missed you. Book your next appointment here: {link}"
               />
             </div>
@@ -496,7 +503,7 @@ export default function SettingsPage() {
                 value={followupMessage}
                 onChange={(e) => setFollowupMessage(e.target.value)}
                 rows={2}
-                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[var(--accent-color)] transition-colors"
                 placeholder="Just following up — did you still want to book an appointment? {link}"
               />
             </div>
@@ -519,7 +526,7 @@ export default function SettingsPage() {
             type="number"
             value={avgBookingValue}
             onChange={(e) => setAvgBookingValue(e.target.value)}
-            className="w-24 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+            className="w-24 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 focus:outline-none focus:border-[var(--accent-color)] transition-colors"
           />
         </div>
         <p className="text-[11px] text-white/20 mt-2">
@@ -537,7 +544,7 @@ export default function SettingsPage() {
           value={googleReviewUrl}
           onChange={(e) => setGoogleReviewUrl(e.target.value)}
           placeholder="https://g.page/r/your-business/review"
-          className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+          className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)] transition-colors"
         />
         <p className="text-[11px] text-white/20 mt-2">
           After a client&apos;s 2nd visit, we&apos;ll text them asking for a Google review. Leave blank to skip.
@@ -559,7 +566,7 @@ export default function SettingsPage() {
                 onClick={() => toggleDay(day)}
                 className={`w-5 h-5 rounded shrink-0 flex items-center justify-center text-xs transition-colors ${
                   businessHours[day]
-                    ? "bg-[#00F5A0] text-[#0d0d0d]"
+                    ? "bg-[var(--accent-color)] text-[#0d0d0d]"
                     : "border border-white/10 text-transparent"
                 }`}
               >
@@ -574,14 +581,14 @@ export default function SettingsPage() {
                     type="time"
                     value={businessHours[day]!.open}
                     onChange={(e) => updateHours(day, "open", e.target.value)}
-                    className="text-xs bg-white/[0.03] border border-white/[0.08] rounded-lg px-2.5 py-2 text-white/60 min-w-[6.5rem] focus:outline-none focus:border-[#00F5A0]/30"
+                    className="text-xs bg-white/[0.03] border border-white/[0.08] rounded-lg px-2.5 py-2 text-white/60 min-w-[6.5rem] focus:outline-none focus:border-[var(--accent-color)]"
                   />
                   <span className="text-white/15 text-xs shrink-0">to</span>
                   <input
                     type="time"
                     value={businessHours[day]!.close}
                     onChange={(e) => updateHours(day, "close", e.target.value)}
-                    className="text-xs bg-white/[0.03] border border-white/[0.08] rounded-lg px-2.5 py-2 text-white/60 min-w-[6.5rem] focus:outline-none focus:border-[#00F5A0]/30"
+                    className="text-xs bg-white/[0.03] border border-white/[0.08] rounded-lg px-2.5 py-2 text-white/60 min-w-[6.5rem] focus:outline-none focus:border-[var(--accent-color)]"
                   />
                 </div>
               ) : (
@@ -596,7 +603,7 @@ export default function SettingsPage() {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full bg-[#00F5A0] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:bg-[#00D68A] disabled:opacity-30 transition-all duration-200 text-sm"
+        className="w-full bg-[var(--accent-color)] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:brightness-90 disabled:opacity-30 transition-all duration-200 text-sm"
       >
         {saving ? "Saving..." : saved ? "Saved!" : "Save settings"}
       </button>

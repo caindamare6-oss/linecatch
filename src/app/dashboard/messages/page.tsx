@@ -132,16 +132,16 @@ export default function MessagesPage() {
 
   function getLabelColor(label: string): string {
     switch (label) {
-      case "Auto-text": return "text-[#00F5A0] bg-[#00F5A0]/10";
+      case "Auto-text": return "text-[var(--accent-color)] bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)]";
       case "Loyalty": return "text-yellow-400 bg-yellow-400/10";
       case "Review request": return "text-blue-400 bg-blue-400/10";
       case "Reminder": return "text-purple-400 bg-purple-400/10";
-      case "Booking confirmed": return "text-[#00F5A0] bg-[#00F5A0]/10";
+      case "Booking confirmed": return "text-[var(--accent-color)] bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)]";
       case "Reschedule": return "text-orange-400 bg-orange-400/10";
       case "Cancellation": return "text-red-400 bg-red-400/10";
       case "Late notice": return "text-orange-400 bg-orange-400/10";
       case "Opt-out": return "text-red-400 bg-red-400/10";
-      case "Re-subscribe": return "text-[#00F5A0] bg-[#00F5A0]/10";
+      case "Re-subscribe": return "text-[var(--accent-color)] bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)]";
       case "Late broadcast": return "text-orange-400 bg-orange-400/10";
       case "Language change": return "text-blue-400 bg-blue-400/10";
       case "Client reply": return "text-white/50 bg-white/[0.06]";
@@ -210,7 +210,7 @@ export default function MessagesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
       </div>
     );
   }
@@ -223,7 +223,7 @@ export default function MessagesPage() {
           onClick={() => { setView("conversations"); setSelectedPhone(null); }}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
             view === "conversations"
-              ? "bg-[#00F5A0] text-[#0d0d0d]"
+              ? "bg-[var(--accent-color)] text-[#0d0d0d]"
               : "bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
           }`}
         >
@@ -234,7 +234,7 @@ export default function MessagesPage() {
           onClick={() => { setView("broadcast"); setSelectedPhone(null); }}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
             view === "broadcast"
-              ? "bg-[#00F5A0] text-[#0d0d0d]"
+              ? "bg-[var(--accent-color)] text-[#0d0d0d]"
               : "bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
           }`}
         >
@@ -340,17 +340,18 @@ export default function MessagesPage() {
                     key={msg.sid}
                     className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
                   >
-                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                      isOutbound
-                        ? "bg-[#00F5A0]/10 border border-[#00F5A0]/20"
-                        : "bg-white/[0.06] border border-white/[0.08]"
-                    }`}>
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 border ${
+                        isOutbound ? "" : "bg-white/[0.06] border-white/[0.08]"
+                      }`}
+                      style={isOutbound ? { backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-color) 20%, transparent)' } : undefined}
+                    >
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getLabelColor(label)}`}>
                           {label}
                         </span>
                         {msg.status === "delivered" && (
-                          <span className="text-[9px] text-[#00F5A0]/50">✓ Delivered</span>
+                          <span className="text-[9px]" style={{ color: 'color-mix(in srgb, var(--accent-color) 50%, transparent)' }}>✓ Delivered</span>
                         )}
                         {msg.status === "failed" && (
                           <span className="text-[9px] text-red-400/70">✗ Failed</span>
@@ -392,7 +393,7 @@ export default function MessagesPage() {
               placeholder="e.g. Hey! I have openings this Saturday. Book now: ..."
               rows={4}
               maxLength={320}
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[var(--accent-color)] transition-colors"
             />
 
             <div className="flex items-center justify-between mt-3">
@@ -402,7 +403,7 @@ export default function MessagesPage() {
               <button
                 onClick={handleBroadcast}
                 disabled={!broadcastMessage.trim() || broadcastSending || recipientCount === 0}
-                className="bg-[#00F5A0] text-[#0d0d0d] text-sm font-semibold px-4 py-2 rounded-lg hover:bg-[#00D68A] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+                className="bg-[var(--accent-color)] text-[#0d0d0d] text-sm font-semibold px-4 py-2 rounded-lg hover:brightness-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
               >
                 {broadcastSending ? "Sending..." : broadcastSent ? "Sent!" : "Send to all"}
               </button>

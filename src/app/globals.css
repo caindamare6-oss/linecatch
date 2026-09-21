@@ -46,7 +46,7 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --color-mint: #00F5A0;
+  --color-mint: var(--accent-color, #00F5A0);
   --color-mint-dim: #00D68A;
   --color-obsidian: #111111;
   --color-obsidian-light: #1a1a1a;
@@ -54,13 +54,14 @@
 }
 
 :root {
+  --accent-color: #00F5A0;
   --background: #111111;
   --foreground: #ffffff;
   --card: #1e1e1e;
   --card-foreground: #ffffff;
   --popover: #1e1e1e;
   --popover-foreground: #ffffff;
-  --primary: #00F5A0;
+  --primary: var(--accent-color, #00F5A0);
   --primary-foreground: #000000;
   --secondary: #1e1e1e;
   --secondary-foreground: #ffffff;
@@ -71,8 +72,8 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.1);
-  --ring: #00F5A0;
-  --chart-1: #00F5A0;
+  --ring: var(--accent-color, #00F5A0);
+  --chart-1: var(--accent-color, #00F5A0);
   --chart-2: #00D68A;
   --chart-3: #00B874;
   --chart-4: #009A5E;
@@ -80,12 +81,12 @@
   --radius: 0.75rem;
   --sidebar: #1a1a1a;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #00F5A0;
+  --sidebar-primary: var(--accent-color, #00F5A0);
   --sidebar-primary-foreground: #000000;
   --sidebar-accent: #2a2a2a;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #00F5A0;
+  --sidebar-ring: var(--accent-color, #00F5A0);
 }
 
 @layer base {

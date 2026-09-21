@@ -56,6 +56,8 @@ function BookingContent() {
       if (barberRes.ok) {
         const data = await barberRes.json();
         if (data.businessName) setBusinessName(data.businessName);
+        const color = data.accentColor || "#00F5A0";
+        document.documentElement.style.setProperty("--accent-color", color);
       }
       setLoading(false);
     }
@@ -196,7 +198,7 @@ function BookingContent() {
                   isPast
                     ? "text-white/10 cursor-default"
                     : isSelected
-                      ? "bg-[#00F5A0] text-[#0d0d0d] font-semibold"
+                      ? "bg-[var(--accent-color)] text-[#0d0d0d] font-semibold"
                       : "text-white/60 hover:bg-white/[0.06]"
                 }`}
               >
@@ -214,7 +216,7 @@ function BookingContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#111111] flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" />
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
       </div>
     );
   }
@@ -224,7 +226,7 @@ function BookingContent() {
     return (
       <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl p-8 border border-[#2a2a2a] text-center">
-          <CheckCircle2 className="w-16 h-16 text-[#00F5A0] mx-auto mb-4" />
+          <CheckCircle2 className="w-16 h-16 text-[var(--accent-color)] mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white mb-2">Booked!</h2>
           <p className="text-gray-400 mb-2">
             {selectedService?.name} with {displayName}
@@ -236,7 +238,7 @@ function BookingContent() {
               day: "numeric",
             })}
           </p>
-          <p className="text-[#00F5A0] font-semibold text-lg mb-6">
+          <p className="text-[var(--accent-color)] font-semibold text-lg mb-6">
             {formatTime(selectedTime)}
           </p>
           <p className="text-sm text-gray-500">
@@ -254,7 +256,7 @@ function BookingContent() {
         {/* Header */}
         <div className="text-center mb-6">
           <div className="text-2xl font-bold text-white mb-1">
-            Line<span className="text-[#00F5A0]">Catch</span>
+            Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
           <p className="text-gray-400 text-sm">{displayName}</p>
         </div>
@@ -268,12 +270,12 @@ function BookingContent() {
               <div key={label} className="flex-1">
                 <div
                   className={`h-1 rounded-full transition-colors ${
-                    i <= stepIndex ? "bg-[#00F5A0]" : "bg-white/[0.06]"
+                    i <= stepIndex ? "bg-[var(--accent-color)]" : "bg-white/[0.06]"
                   }`}
                 />
                 <p
                   className={`text-[10px] mt-1 ${
-                    i <= stepIndex ? "text-[#00F5A0]" : "text-white/20"
+                    i <= stepIndex ? "text-[var(--accent-color)]" : "text-white/20"
                   }`}
                 >
                   {label}
@@ -311,7 +313,7 @@ function BookingContent() {
                       </p>
                     </div>
                     {s.price > 0 && (
-                      <span className="text-[#00F5A0] font-semibold">
+                      <span className="text-[var(--accent-color)] font-semibold">
                         ${s.price}
                       </span>
                     )}
@@ -343,7 +345,7 @@ function BookingContent() {
                   {selectedService?.name}
                 </span>
                 {selectedService && selectedService.price > 0 && (
-                  <span className="text-[#00F5A0] text-sm font-medium">
+                  <span className="text-[var(--accent-color)] text-sm font-medium">
                     ${selectedService.price}
                   </span>
                 )}
@@ -359,7 +361,7 @@ function BookingContent() {
                 <p className="text-xs text-white/30 mb-3">Available times</p>
                 {slotsLoading ? (
                   <div className="flex justify-center py-4">
-                    <div className="w-4 h-4 border-2 border-[#00F5A0]/30 border-t-[#00F5A0] rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
                   </div>
                 ) : slots.length === 0 ? (
                   <p className="text-white/20 text-sm text-center py-4">
@@ -374,7 +376,7 @@ function BookingContent() {
                           onClick={() => setSelectedTime(t)}
                           className={`py-2 px-1 rounded-lg text-sm transition-all ${
                             selectedTime === t
-                              ? "bg-[#00F5A0] text-[#0d0d0d] font-semibold"
+                              ? "bg-[var(--accent-color)] text-[#0d0d0d] font-semibold"
                               : "bg-white/[0.04] text-white/50 hover:bg-white/[0.08]"
                           }`}
                         >
@@ -385,7 +387,7 @@ function BookingContent() {
                     {selectedTime && (
                       <button
                         onClick={() => setStep("phone")}
-                        className="w-full mt-4 bg-[#00F5A0] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:bg-[#00D98A] transition"
+                        className="w-full mt-4 bg-[var(--accent-color)] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:brightness-90 transition"
                       >
                         Continue
                       </button>
@@ -417,7 +419,7 @@ function BookingContent() {
                 {selectedService && selectedService.price > 0 && (
                   <div className="flex justify-between">
                     <span className="text-white/50">Price</span>
-                    <span className="text-[#00F5A0]">
+                    <span className="text-[var(--accent-color)]">
                       ${selectedService.price}
                     </span>
                   </div>
@@ -449,7 +451,7 @@ function BookingContent() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Your first name"
-                className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#00F5A0] mb-4"
+                className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] mb-4"
               />
 
               <label className="text-xs text-white/30 block mb-2">
@@ -460,7 +462,7 @@ function BookingContent() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="(555) 123-4567"
-                className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#00F5A0] mb-4"
+                className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] mb-4"
               />
 
               {/* Consent checkbox */}
@@ -470,7 +472,7 @@ function BookingContent() {
                   type="checkbox"
                   checked={consentChecked}
                   onChange={(e) => setConsentChecked(e.target.checked)}
-                  className="mt-1 w-4 h-4 accent-[#00F5A0] cursor-pointer flex-shrink-0"
+                  className="mt-1 w-4 h-4 accent-[var(--accent-color)] cursor-pointer flex-shrink-0"
                 />
                 <label
                   htmlFor="booking-consent"
@@ -483,9 +485,9 @@ function BookingContent() {
                   <strong className="text-gray-200">HELP</strong> for assistance
                   at any time.
                   {" "}
-                  <a href="/privacy" className="text-[#00F5A0] hover:underline">Privacy Policy</a>
+                  <a href="/privacy" className="text-[var(--accent-color)] hover:underline">Privacy Policy</a>
                   {" & "}
-                  <a href="/terms" className="text-[#00F5A0] hover:underline">Terms</a>
+                  <a href="/terms" className="text-[var(--accent-color)] hover:underline">Terms</a>
                 </label>
               </div>
 
@@ -498,7 +500,7 @@ function BookingContent() {
               <button
                 onClick={handleBook}
                 disabled={!phone.trim() || !consentChecked || submitting}
-                className="w-full bg-[#00F5A0] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:bg-[#00D98A] disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="w-full bg-[var(--accent-color)] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:brightness-90 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {submitting ? "Booking..." : "Confirm Booking"}
               </button>

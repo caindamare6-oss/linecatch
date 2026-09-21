@@ -93,7 +93,7 @@ export default function PrivacyPolicy() {
             <h2 className="text-base font-semibold text-white/80 mb-2">8. Contact Us</h2>
             <p>
               If you have any questions about this Privacy Policy, contact us at{" "}
-              <a href="mailto:caindamare6@gmail.com" className="text-[#00F5A0] hover:underline">
+              <a href="mailto:caindamare6@gmail.com" className="text-[var(--accent-color)] hover:underline">
                 caindamare6@gmail.com
               </a>.
             </p>

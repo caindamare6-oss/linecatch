@@ -120,7 +120,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">
             <span className="text-white">Line</span>
-            <span className="text-[#00F5A0]">Catch</span>
+            <span className="text-[var(--accent-color)]">Catch</span>
           </h1>
           <p className="text-gray-400 mt-2">
             Never lose a customer to a missed call
@@ -157,7 +157,7 @@ export default function LoginPage() {
                   onClick={() => { setMethod("email"); setError(""); setMessage(""); }}
                   className={`flex-1 py-2 text-sm font-medium transition-colors ${
                     method === "email"
-                      ? "bg-[#00F5A0] text-black"
+                      ? "bg-[var(--accent-color)] text-black"
                       : "bg-[#111111] text-gray-400 hover:text-white"
                   }`}
                 >
@@ -168,7 +168,7 @@ export default function LoginPage() {
                   onClick={() => { setMethod("phone"); setError(""); setMessage(""); }}
                   className={`flex-1 py-2 text-sm font-medium transition-colors ${
                     method === "phone"
-                      ? "bg-[#00F5A0] text-black"
+                      ? "bg-[var(--accent-color)] text-black"
                       : "bg-[#111111] text-gray-400 hover:text-white"
                   }`}
                 >
@@ -196,13 +196,13 @@ export default function LoginPage() {
                     </p>
                   </div>
 
-                  {message && <p className="text-[#00F5A0] text-sm">{message}</p>}
+                  {message && <p className="text-[var(--accent-color)] text-sm">{message}</p>}
                   {error && <p className="text-red-400 text-sm">{error}</p>}
 
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#00F5A0] text-black font-semibold hover:bg-[#00D68A] disabled:opacity-50"
+                    className="w-full bg-[var(--accent-color)] text-black font-semibold hover:brightness-90 disabled:opacity-50"
                   >
                     {loading ? "Sending..." : "Send sign-in link"}
                   </Button>
@@ -232,7 +232,7 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#00F5A0] text-black font-semibold hover:bg-[#00D68A] disabled:opacity-50"
+                    className="w-full bg-[var(--accent-color)] text-black font-semibold hover:brightness-90 disabled:opacity-50"
                   >
                     {loading ? "Sending..." : "Send verification code"}
                   </Button>
@@ -266,7 +266,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading || otp.length < 6}
-                className="w-full bg-[#00F5A0] text-black font-semibold hover:bg-[#00D68A] disabled:opacity-50"
+                className="w-full bg-[var(--accent-color)] text-black font-semibold hover:brightness-90 disabled:opacity-50"
               >
                 {loading ? "Verifying..." : "Verify & sign in"}
               </Button>

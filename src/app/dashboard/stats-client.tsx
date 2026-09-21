@@ -35,12 +35,12 @@ type FeedEvent = {
 };
 
 const EVENT_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
-  qr_scan: { icon: "qr", color: "#00F5A0", label: "VIP Sign-up" },
-  booking_created: { icon: "calendar", color: "#00F5A0", label: "New Booking" },
-  booking_completed: { icon: "check", color: "#00F5A0", label: "Cut Completed" },
+  qr_scan: { icon: "qr", color: "var(--accent-color)", label: "VIP Sign-up" },
+  booking_created: { icon: "calendar", color: "var(--accent-color)", label: "New Booking" },
+  booking_completed: { icon: "check", color: "var(--accent-color)", label: "Cut Completed" },
   loyalty_claimed: { icon: "gift", color: "#FBBF24", label: "Loyalty Reward" },
   review_sent: { icon: "star", color: "#FBBF24", label: "Review Request" },
-  missed_call_caught: { icon: "phone", color: "#00F5A0", label: "Call Caught" },
+  missed_call_caught: { icon: "phone", color: "var(--accent-color)", label: "Call Caught" },
   cron_reengagement: { icon: "bolt", color: "#FBBF24", label: "Re-engagement" },
 };
 
@@ -221,7 +221,7 @@ export function StatsClient({
     return (
       <div
         className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-        style={{ backgroundColor: `${color}15` }}
+        style={{ backgroundColor: `color-mix(in srgb, ${color} 8%, transparent)` }}
       >
         {icon === "qr" && (
           <svg className="w-4 h-4" style={{ color }} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -280,7 +280,7 @@ export function StatsClient({
           <div className="space-y-3">
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
               <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium mb-1">Monthly Breakdown</h3>
-              <p className="text-3xl font-bold text-[#00F5A0] tracking-tight">${monthlyRevenue.toFixed(0)}</p>
+              <p className="text-3xl font-bold text-[var(--accent-color)] tracking-tight">${monthlyRevenue.toFixed(0)}</p>
               <p className="text-xs text-white/25 mt-0.5">{monthlyCompleted} completed cut{monthlyCompleted !== 1 ? "s" : ""} &times; ${avgBookingValue}/avg</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -313,7 +313,7 @@ export function StatsClient({
                 </h3>
                 <button
                   onClick={() => setShowAddClient(!showAddClient)}
-                  className="flex items-center gap-1 text-[11px] text-[#00F5A0] hover:text-[#00D68A] transition-colors"
+                  className="flex items-center gap-1 text-[11px] text-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -330,21 +330,21 @@ export function StatsClient({
                     onChange={(e) => setNewClientPhone(e.target.value)}
                     placeholder="Phone number..."
                     autoFocus
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)] transition-colors"
                   />
                   <input
                     type="text"
                     value={newClientName}
                     onChange={(e) => setNewClientName(e.target.value)}
                     placeholder="Name (optional)..."
-                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+                    className="w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)] transition-colors"
                     onKeyDown={(e) => { if (e.key === "Enter") addClient(); }}
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={addClient}
                       disabled={addingClient || newClientPhone.replace(/\D/g, "").length < 10}
-                      className="flex-1 bg-[#00F5A0] text-[#0d0d0d] text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[#00D68A] disabled:opacity-30 transition-colors"
+                      className="flex-1 bg-[var(--accent-color)] text-[#0d0d0d] text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[var(--accent-color)] disabled:opacity-30 transition-colors"
                     >
                       {addingClient ? "Adding..." : "Add"}
                     </button>
@@ -381,11 +381,14 @@ export function StatsClient({
                         }}
                         className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/[0.03] transition-colors text-left"
                       >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                          name ? "bg-[#00F5A0]/10" : "bg-white/[0.04]"
-                        }`}>
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            name ? "" : "bg-white/[0.04]"
+                          }`}
+                          style={name ? { backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' } : undefined}
+                        >
                           {name ? (
-                            <span className="text-xs font-bold text-[#00F5A0]/70">{name.charAt(0).toUpperCase()}</span>
+                            <span className="text-xs font-bold" style={{ color: 'color-mix(in srgb, var(--accent-color) 70%, transparent)' }}>{name.charAt(0).toUpperCase()}</span>
                           ) : (
                             <PhoneIcon className="w-3.5 h-3.5 text-white/20" />
                           )}
@@ -396,7 +399,7 @@ export function StatsClient({
                               {name || formatPhone(phone)}
                             </p>
                             {isNew && (
-                              <span className="text-[9px] text-[#00F5A0] bg-[#00F5A0]/10 px-1.5 py-0.5 rounded-full shrink-0">NEW</span>
+                              <span className="text-[9px] text-[var(--accent-color)] px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' }}>NEW</span>
                             )}
                           </div>
                           <p className="text-[11px] text-white/20">
@@ -414,7 +417,7 @@ export function StatsClient({
                             onChange={(e) => setEditName(e.target.value)}
                             placeholder="Client name..."
                             autoFocus
-                            className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[#00F5A0]/30 transition-colors"
+                            className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)] transition-colors"
                             onKeyDown={(e) => {
                               if (e.key === "Enter") saveContactName(phone);
                               if (e.key === "Escape") { setEditingPhone(null); setEditName(""); }
@@ -423,7 +426,7 @@ export function StatsClient({
                           <button
                             onClick={() => saveContactName(phone)}
                             disabled={savingName}
-                            className="bg-[#00F5A0] text-[#0d0d0d] text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[#00D68A] disabled:opacity-30 transition-colors shrink-0"
+                            className="bg-[var(--accent-color)] text-[#0d0d0d] text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[var(--accent-color)] disabled:opacity-30 transition-colors shrink-0"
                           >
                             {savingName ? "..." : "Save"}
                           </button>
@@ -455,7 +458,7 @@ export function StatsClient({
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
           </svg>
         </div>
-        <p className="text-4xl font-bold text-[#00F5A0] tracking-tight mt-1">
+        <p className="text-4xl font-bold text-[var(--accent-color)] tracking-tight mt-1">
           ${monthlyRevenue.toFixed(0)}
         </p>
         <p className="text-xs text-white/30 mt-1">
@@ -469,7 +472,7 @@ export function StatsClient({
             <span className="text-xs text-white/40">{midWeekCutsFilled} Mid-Week Cut{midWeekCutsFilled !== 1 ? "s" : ""} Filled</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5 text-[#00F5A0]/60" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="w-3.5 h-3.5" style={{ color: 'color-mix(in srgb, var(--accent-color) 60%, transparent)' }} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
             </svg>
             <span className="text-xs text-white/40">{loyaltyClaims} Loyalty Claim{loyaltyClaims !== 1 ? "s" : ""}</span>
@@ -503,7 +506,7 @@ export function StatsClient({
           className="text-left bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 group"
         >
           <div className="flex items-center gap-2 mb-2">
-            <svg className="w-4 h-4 text-[#00F5A0]/60" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg className="w-4 h-4" style={{ color: 'color-mix(in srgb, var(--accent-color) 60%, transparent)' }} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M7.848 8.25l1.536.887M7.848 8.25a3 3 0 11-5.196-3 3 3 0 015.196 3zm1.536.887a2.165 2.165 0 011.083 1.839c.005.351.054.695.14 1.024M9.384 9.137l2.077 1.199M7.848 15.75l1.536-.887m-1.536.887a3 3 0 11-5.196 3 3 3 0 015.196-3zm1.536-.887a2.165 2.165 0 001.083-1.838c.005-.352.054-.696.14-1.025m-1.223 2.863l2.077-1.199m0-3.328a4.323 4.323 0 012.068-1.379l5.325-1.628a4.5 4.5 0 012.48-.044l.803.215-7.794 4.5m-2.882-1.664A4.331 4.331 0 0010.607 12m3.736 0l7.794 4.5-.803.215a4.5 4.5 0 01-2.48-.043l-5.326-1.629a4.324 4.324 0 01-2.068-1.379M14.343 12l-2.882 1.664" />
             </svg>
             <span className="text-[11px] text-white/30 uppercase tracking-wider">VIPs</span>
@@ -517,7 +520,7 @@ export function StatsClient({
         {/* Missed Call Auto-Respond */}
         <div className="text-left bg-white/[0.04] border border-white/[0.06] rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <PhoneIcon className="text-[#00F5A0]/60" />
+            <PhoneIcon className="" style={{ color: 'color-mix(in srgb, var(--accent-color) 60%, transparent)' }} />
             <span className="text-[11px] text-white/30 uppercase tracking-wider">Auto-text</span>
           </div>
           <p className="text-2xl font-bold text-white">{callsSavedThisWeek}</p>
@@ -535,7 +538,7 @@ export function StatsClient({
               </svg>
               <span className="text-[11px] text-white/30 uppercase tracking-wider">Reviews</span>
             </div>
-            <p className="text-sm font-semibold text-[#00F5A0] mt-1">Active</p>
+            <p className="text-sm font-semibold text-[var(--accent-color)] mt-1">Active</p>
             <p className="text-[11px] text-white/25 mt-0.5">
               Sent at 2nd visit
             </p>
@@ -552,7 +555,7 @@ export function StatsClient({
               <span className="text-[11px] text-white/30 uppercase tracking-wider">Reviews</span>
             </div>
             <p className="text-sm font-semibold text-white/40 mt-1">Not set up</p>
-            <p className="text-[11px] text-[#00F5A0]/60 mt-0.5 group-hover:text-[#00F5A0]">
+            <p className="text-[11px] text-[color-mix(in_srgb,var(--accent-color)_60%,transparent)] mt-0.5 group-hover:text-[var(--accent-color)]">
               Set up Google Reviews &rarr;
             </p>
           </button>
@@ -621,7 +624,7 @@ export function StatsClient({
                       className="text-[10px] font-medium px-1.5 py-0.5 rounded-full shrink-0 mt-0.5"
                       style={{
                         color: config.color,
-                        backgroundColor: `${config.color}15`,
+                        backgroundColor: `color-mix(in srgb, ${config.color} 8%, transparent)`,
                       }}
                     >
                       {config.label}

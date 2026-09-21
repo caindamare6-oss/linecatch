@@ -100,7 +100,7 @@ export default function TermsOfService() {
             <h2 className="text-base font-semibold text-white/80 mb-2">9. Contact</h2>
             <p>
               Questions about these Terms? Contact us at{" "}
-              <a href="mailto:caindamare6@gmail.com" className="text-[#00F5A0] hover:underline">
+              <a href="mailto:caindamare6@gmail.com" className="text-[var(--accent-color)] hover:underline">
                 caindamare6@gmail.com
               </a>.
             </p>
