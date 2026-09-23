@@ -14,6 +14,7 @@ export default function VIPOptIn() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [consented, setConsented] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [isLockedOut, setIsLockedOut] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -52,7 +53,8 @@ export default function VIPOptIn() {
           phone: phone.trim(),
           barberId,
           firstName: firstName.trim() || undefined,
-          consentText: CONSENT_TEXT,
+          consentText: consented ? CONSENT_TEXT : null,
+          consented,
           optInSource: "vip_form",
         }),
       });
@@ -187,7 +189,8 @@ export default function VIPOptIn() {
                 <input
                   id="consent"
                   type="checkbox"
-                  required
+                  checked={consented}
+                  onChange={(e) => setConsented(e.target.checked)}
                   className="mt-1 w-4 h-4 accent-[var(--accent-color)] cursor-pointer flex-shrink-0"
                 />
                 <label

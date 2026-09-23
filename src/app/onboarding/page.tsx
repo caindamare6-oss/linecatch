@@ -224,7 +224,8 @@ export default function OnboardingPage() {
     return () => { running = false; };
   }, [step, confettiDone, accentColor]);
 
-  const progress = (step / TOTAL_STEPS) * 100;
+  const STEP_PERCENT = [0, 0, 20, 40, 60, 80, 100];
+  const progress = STEP_PERCENT[step];
 
   if (!loaded) {
     return (
@@ -257,7 +258,7 @@ export default function OnboardingPage() {
                 <span style={{ color: accentColor }}>Catch</span>
               </span>
             </div>
-            <span className="text-[11px] text-white/30">{step} of {TOTAL_STEPS}</span>
+            {step > 1 && <span className="text-[11px] text-white/30">{progress}%</span>}
           </div>
           <div className="h-1 bg-white/[0.06] rounded-full overflow-hidden">
             <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: accentColor, transition: "width 500ms ease-out" }} />

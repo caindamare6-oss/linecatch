@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { phone, barberId, firstName, consentText, optInSource } = body;
+  const { phone, barberId, firstName, consentText, consented, optInSource } = body;
 
   if (!phone || !barberId) {
     return NextResponse.json(
@@ -34,12 +34,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!consentText) {
-    return NextResponse.json(
-      { error: "Consent text is required" },
-      { status: 400 }
-    );
-  }
+  const didConsent = consented === true;
 
   const supabase = createAdminClient();
 
@@ -84,16 +79,15 @@ export async function POST(request: Request) {
     if (existing.is_opted_in) {
       return NextResponse.json({ success: true, message: "Already opted in" });
     }
-    // Row exists but not opted in — update with consent
     await supabase
       .from("vip_clients")
       .update({
-        is_opted_in: true,
-        opted_in_at: new Date().toISOString(),
+        is_opted_in: didConsent,
+        opted_in_at: didConsent ? new Date().toISOString() : null,
         opt_in_source: source,
         opt_in_ip: ip,
         opt_in_user_agent: userAgent,
-        consent_text: consentText,
+        consent_text: didConsent ? consentText : null,
         first_name: firstName || null,
       })
       .eq("id", existing.id);
@@ -113,12 +107,12 @@ export async function POST(request: Request) {
   const { error } = await supabase.from("vip_clients").insert({
     user_id: barberId,
     phone_number: normalized,
-    opted_in_at: new Date().toISOString(),
-    is_opted_in: true,
+    opted_in_at: didConsent ? new Date().toISOString() : null,
+    is_opted_in: didConsent,
     opt_in_source: source,
     opt_in_ip: ip,
     opt_in_user_agent: userAgent,
-    consent_text: consentText,
+    consent_text: didConsent ? consentText : null,
     first_name: firstName || null,
   });
 
