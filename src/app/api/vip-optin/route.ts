@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     if (existing.is_opted_in) {
       return NextResponse.json({ success: true, message: "Already opted in" });
     }
-    await supabase
+    const { error: updateError } = await supabase
       .from("vip_clients")
       .update({
         is_opted_in: didConsent,
@@ -91,6 +91,14 @@ export async function POST(request: Request) {
         first_name: firstName || null,
       })
       .eq("id", existing.id);
+
+    if (updateError) {
+      console.error("VIP opt-in update error:", updateError);
+      return NextResponse.json(
+        { error: `Failed to update opt-in: ${updateError.message}` },
+        { status: 500 }
+      );
+    }
 
     await supabase.from("activity_feed").insert({
       user_id: barberId,
@@ -117,9 +125,9 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    console.error("VIP opt-in error:", error);
+    console.error("VIP opt-in insert error:", error);
     return NextResponse.json(
-      { error: "Failed to save opt-in" },
+      { error: `Failed to save opt-in: ${error.message}` },
       { status: 500 }
     );
   }

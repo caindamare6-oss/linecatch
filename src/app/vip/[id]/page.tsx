@@ -239,17 +239,31 @@ export default function VIPOptIn() {
         ) : (
           <div className="bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
             <CheckCircle2 className="w-16 h-16 text-[var(--accent-color)] mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">
-              You&apos;re In!
-            </h2>
-            <p className="text-gray-400 mb-6">
-              You&apos;ve been added to {displayName}&apos;s VIP text list.
-              You&apos;ll receive appointment reminders and exclusive offers.
-            </p>
-            <p className="text-sm text-gray-500">
-              Reply <strong className="text-gray-300">STOP</strong> to any
-              message to unsubscribe.
-            </p>
+            {consented ? (
+              <>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  You&apos;re In!
+                </h2>
+                <p className="text-gray-400 mb-6">
+                  You&apos;ve been added to {displayName}&apos;s VIP text list.
+                  You&apos;ll receive appointment reminders and exclusive offers.
+                </p>
+                <p className="text-sm text-gray-500">
+                  Reply <strong className="text-gray-300">STOP</strong> to any
+                  message to unsubscribe.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  Thanks, you&apos;re on the list!
+                </h2>
+                <p className="text-gray-400 mb-6">
+                  You won&apos;t receive text messages. Check the consent box
+                  next time to unlock your $5 off and booking reminders.
+                </p>
+              </>
+            )}
           </div>
         )}
 
