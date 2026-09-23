@@ -177,14 +177,20 @@ export default function SettingsPage() {
       ? msg
       : msg + "\n\nReply STOP to opt out.";
 
-    await supabase
+    // Only include enabled days (filter out null/closed entries)
+    const cleanedHours: BusinessHours = {};
+    for (const [day, val] of Object.entries(businessHours)) {
+      if (val) cleanedHours[day] = val;
+    }
+
+    const { error } = await supabase
       .from("users")
       .update({
         booking_link: bookingLink || null,
         custom_message: finalMsg,
         forwarding_number: forwardingNumber || null,
-        business_hours: Object.keys(businessHours).length
-          ? businessHours
+        business_hours: Object.keys(cleanedHours).length
+          ? cleanedHours
           : null,
         avg_booking_value: parseFloat(avgBookingValue) || 35,
         after_hours_message: afterHoursMessage || null,
@@ -195,6 +201,13 @@ export default function SettingsPage() {
       .eq("user_id", user.id);
 
     setSaving(false);
+
+    if (error) {
+      console.error("Settings save failed:", error);
+      alert("Failed to save settings. Please try again.");
+      return;
+    }
+
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
@@ -224,7 +237,7 @@ export default function SettingsPage() {
     setBusinessHours((prev) => {
       const copy = { ...prev };
       if (copy[day]) {
-        copy[day] = null;
+        delete copy[day];
       } else {
         copy[day] = { open: "09:00", close: "17:00" };
       }

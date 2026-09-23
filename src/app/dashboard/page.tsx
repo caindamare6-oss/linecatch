@@ -35,13 +35,14 @@ export default async function DashboardPage() {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("avg_booking_value, timezone, google_review_url")
+    .select("first_name, business_name, avg_booking_value, timezone, google_review_url")
     .eq("user_id", user.id)
     .single();
 
   const avgBookingValue = barber?.avg_booking_value || 35;
   const barberTimezone = barber?.timezone || "America/New_York";
   const googleReviewUrl: string | null = barber?.google_review_url || null;
+  const barberFirstName: string = barber?.first_name || "";
 
   // Fetch all-time caller phones to determine new vs repeat
   const { data: allTimeCalls } = await supabase
@@ -151,6 +152,33 @@ export default async function DashboardPage() {
 
   const monthlyRevenue = (monthlyCompletedCount || 0) * avgBookingValue;
 
+  // Last month's revenue for comparison
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+  const { count: lastMonthCount } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("status", "completed")
+    .gte("booking_time", lastMonthStart)
+    .lte("booking_time", lastMonthEnd);
+  const lastMonthRevenue = (lastMonthCount || 0) * avgBookingValue;
+
+  // Weekly breakdown for sparkline (4 weeks of current month)
+  const weeklyRevenue: number[] = [];
+  for (let w = 0; w < 4; w++) {
+    const wStart = new Date(now.getFullYear(), now.getMonth(), 1 + w * 7);
+    const wEnd = new Date(now.getFullYear(), now.getMonth(), Math.min(1 + (w + 1) * 7, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() + 1));
+    const { count: wCount } = await supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("status", "completed")
+      .gte("booking_time", wStart.toISOString())
+      .lt("booking_time", wEnd.toISOString());
+    weeklyRevenue.push((wCount || 0) * avgBookingValue);
+  }
+
   // Mid-week cuts filled: completed bookings from cron_reengagement this month
   const { count: midWeekCutsCount } = await supabase
     .from("bookings")
@@ -185,8 +213,19 @@ export default async function DashboardPage() {
     .order("received_at", { ascending: false })
     .limit(10);
 
+  // Completed bookings count (all time, for the grid)
+  const { count: totalCompletedCount } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("status", "completed");
+
   return (
     <StatsClient
+      barberFirstName={barberFirstName}
+      weeklyRevenue={weeklyRevenue}
+      lastMonthRevenue={lastMonthRevenue}
+      totalCompleted={totalCompletedCount || 0}
       calls={(weekCalls || []).map((c) => ({
         call_id: c.call_id,
         caller_phone: c.caller_phone,

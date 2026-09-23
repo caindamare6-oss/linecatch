@@ -60,6 +60,10 @@ function timeAgo(dateStr: string): string {
 }
 
 export function StatsClient({
+  barberFirstName,
+  weeklyRevenue,
+  lastMonthRevenue,
+  totalCompleted,
   calls,
   clicks,
   avgBookingValue,
@@ -80,6 +84,10 @@ export function StatsClient({
   loyaltyClaims,
   activityFeed: initialFeed,
 }: {
+  barberFirstName: string;
+  weeklyRevenue: number[];
+  lastMonthRevenue: number;
+  totalCompleted: number;
   calls: Call[];
   clicks: Click[];
   avgBookingValue: number;
@@ -457,35 +465,55 @@ export function StatsClient({
 
   return (
     <div className="space-y-4">
-      {/* Monthly Revenue Hero */}
+      {/* Monthly Revenue Ring */}
       <button
         onClick={() => setDrillDown("roi")}
-        className="w-full text-left bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5 hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 group"
+        className="w-full bg-white/[0.04] border border-white/[0.06] rounded-2xl p-6 hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-200 group"
       >
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-white/40 uppercase tracking-wider font-medium">Recovered Revenue &middot; {monthName}</p>
-          <svg className="w-4 h-4 text-white/10 group-hover:text-white/30 transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-          </svg>
+        <p className="text-xs text-white/40 uppercase tracking-wider font-medium text-center mb-4">
+          {monthName} Revenue
+        </p>
+
+        {/* Ring */}
+        <div className="flex justify-center mb-4">
+          <div className="relative w-36 h-36">
+            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+              <circle cx="60" cy="60" r="52" fill="none" strokeWidth="6" stroke="rgba(255,255,255,0.04)" />
+              <circle
+                cx="60" cy="60" r="52" fill="none" strokeWidth="6"
+                stroke="var(--accent-color)"
+                strokeLinecap="round"
+                strokeDasharray={`${Math.min(monthlyCompleted, 30) / 30 * 327} 327`}
+                style={{ transition: 'stroke-dasharray 1s ease-out' }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-bold text-[var(--accent-color)] tracking-tight">
+                ${monthlyRevenue >= 1000 ? `${(monthlyRevenue / 1000).toFixed(1)}k` : monthlyRevenue.toFixed(0)}
+              </span>
+              <span className="text-[11px] text-white/30 mt-0.5">
+                {monthlyCompleted} cut{monthlyCompleted !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
         </div>
-        <p className="text-4xl font-bold text-[var(--accent-color)] tracking-tight mt-1">
-          ${monthlyRevenue.toFixed(0)}
-        </p>
-        <p className="text-xs text-white/30 mt-1">
-          {monthlyCompleted} completed &middot; ${avgBookingValue}/avg
-        </p>
-        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/[0.06]">
-          <div className="flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5 text-yellow-400/60" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+
+        {/* Stat pills */}
+        <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04]">
+            <svg className="w-3 h-3 text-yellow-400/60" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
             </svg>
-            <span className="text-xs text-white/40">{midWeekCutsFilled} Mid-Week Cut{midWeekCutsFilled !== 1 ? "s" : ""} Filled</span>
+            <span className="text-[11px] text-white/50">{midWeekCutsFilled} fills</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5" style={{ color: 'color-mix(in srgb, var(--accent-color) 60%, transparent)' }} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04]">
+            <svg className="w-3 h-3" style={{ color: 'color-mix(in srgb, var(--accent-color) 60%, transparent)' }} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21" />
             </svg>
-            <span className="text-xs text-white/40">{loyaltyClaims} Loyalty Claim{loyaltyClaims !== 1 ? "s" : ""}</span>
+            <span className="text-[11px] text-white/50">{loyaltyClaims} rewards</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04]">
+            <span className="text-[11px] text-white/30">${avgBookingValue}/cut</span>
           </div>
         </div>
       </button>
