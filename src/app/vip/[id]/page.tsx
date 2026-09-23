@@ -15,6 +15,7 @@ export default function VIPOptIn() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [consented, setConsented] = useState(false);
+  const [modal, setModal] = useState<0 | 1 | 2>(0);
   const [businessName, setBusinessName] = useState("");
   const [isLockedOut, setIsLockedOut] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -34,16 +35,7 @@ export default function VIPOptIn() {
     loadBarber();
   }, [barberId]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
-    if (!phone.trim() || !phoneRegex.test(phone)) {
-      setError("Please enter a valid phone number");
-      return;
-    }
-
+  async function submitForm(didConsent: boolean) {
     setLoading(true);
     try {
       const response = await fetch("/api/vip-optin", {
@@ -53,8 +45,8 @@ export default function VIPOptIn() {
           phone: phone.trim(),
           barberId,
           firstName: firstName.trim() || undefined,
-          consentText: consented ? CONSENT_TEXT : null,
-          consented,
+          consentText: didConsent ? CONSENT_TEXT : null,
+          consented: didConsent,
           optInSource: "vip_form",
         }),
       });
@@ -74,6 +66,24 @@ export default function VIPOptIn() {
     } finally {
       setLoading(false);
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
+    if (!phone.trim() || !phoneRegex.test(phone)) {
+      setError("Please enter a valid phone number");
+      return;
+    }
+
+    if (!consented) {
+      setModal(1);
+      return;
+    }
+
+    submitForm(true);
   };
 
   const displayName = businessName || "your barber";
@@ -240,6 +250,57 @@ export default function VIPOptIn() {
               Reply <strong className="text-gray-300">STOP</strong> to any
               message to unsubscribe.
             </p>
+          </div>
+        )}
+
+        {/* Modal 1: Nudge to check the box */}
+        {modal === 1 && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+            <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-6 max-w-sm w-full space-y-4 text-center">
+              <p className="text-white text-base font-medium leading-relaxed">
+                Check the box to get your $5 off and more VIP perks like booking reminders and rewards!
+              </p>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setModal(0)}
+                  className="w-full bg-[var(--accent-color)] text-black font-semibold py-3 rounded-lg hover:brightness-90 transition"
+                >
+                  Go Back &amp; Check the Box
+                </button>
+                <button
+                  onClick={() => setModal(2)}
+                  className="w-full bg-white/[0.06] text-white/50 font-medium py-3 rounded-lg hover:bg-white/[0.1] transition text-sm"
+                >
+                  Continue Without Perks
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal 2: Final confirmation */}
+        {modal === 2 && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
+            <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-6 max-w-sm w-full space-y-4 text-center">
+              <p className="text-white text-base font-medium leading-relaxed">
+                Are you sure? You&apos;ll miss out on your $5 off, booking reminders, and rewards.
+              </p>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setModal(0)}
+                  className="w-full bg-[var(--accent-color)] text-black font-semibold py-3 rounded-lg hover:brightness-90 transition"
+                >
+                  Go Back &amp; Check the Box
+                </button>
+                <button
+                  onClick={() => { setModal(0); submitForm(false); }}
+                  disabled={loading}
+                  className="w-full bg-white/[0.06] text-white/50 font-medium py-3 rounded-lg hover:bg-white/[0.1] transition text-sm disabled:opacity-50"
+                >
+                  {loading ? "Joining..." : "Yes, Continue Without Perks"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

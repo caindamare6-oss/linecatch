@@ -195,47 +195,28 @@ export async function PATCH(
         }
       }
 
-      // Review request at cut 2 (client came back — good time to ask)
-      if (newCutCount === 2 && barber?.google_review_url) {
+      // Schedule review request 3 hours after completion (30-day cooldown)
+      if (newCutCount >= 2 && barber?.google_review_url) {
         const { data: vipForReview } = await supabase
           .from("vip_clients")
           .select("last_review_request_at, is_opted_in, opted_out_at")
           .eq("id", vipClient.id)
           .single();
 
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const cooldownPassed = !vipForReview?.last_review_request_at ||
+          vipForReview.last_review_request_at < thirtyDaysAgo;
+
         if (
           vipForReview &&
-          !vipForReview.last_review_request_at &&
+          cooldownPassed &&
           vipForReview.is_opted_in &&
           !vipForReview.opted_out_at
         ) {
-          const reviewMsg = await buildSMS({
-            userId: booking.user_id,
-            templateKey: "review_request",
-            clientPhone: booking.customer_phone,
-            vars: { shop_name: shopName, review_url: barber.google_review_url },
+          await supabase.from("booking_reminders").insert({
+            booking_id: id,
+            reminder_type: "review",
           });
-
-          if (reviewMsg && barber) {
-            try {
-              await sendSMS(booking.customer_phone, barber.phone_number, reviewMsg);
-              await markFirstMessageSent(booking.user_id, booking.customer_phone);
-              await supabase
-                .from("vip_clients")
-                .update({ last_review_request_at: new Date().toISOString() })
-                .eq("id", vipClient.id);
-              await supabase.from("activity_feed").insert({
-                user_id: booking.user_id,
-                event_type: "review_sent",
-                client_name: completedClientName,
-                client_phone: booking.customer_phone,
-                description: `Google review request sent to ${completedClientName || "client"}`,
-                metadata: {},
-              });
-            } catch (err) {
-              console.error("Review request SMS failed:", err);
-            }
-          }
         }
       }
     }

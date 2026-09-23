@@ -11,6 +11,18 @@
     {
       "path": "/api/cron/retention-loop",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/morning-summary",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/completion-nudge",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

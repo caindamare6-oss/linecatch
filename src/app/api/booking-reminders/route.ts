@@ -115,5 +115,87 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ sent, checked: upcomingBookings.length });
+  // Delayed review requests: send 3h after booking completion
+  const { data: pendingReviews } = await supabase
+    .from("booking_reminders")
+    .select("booking_id")
+    .eq("reminder_type", "review");
+
+  let reviewsSent = 0;
+
+  if (pendingReviews && pendingReviews.length > 0) {
+    const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+
+    for (const pr of pendingReviews) {
+      const { data: completionEvent } = await supabase
+        .from("activity_feed")
+        .select("created_at, user_id, client_phone, client_name")
+        .eq("event_type", "booking_completed")
+        .eq("metadata->>booking_id", pr.booking_id)
+        .single();
+
+      if (!completionEvent || new Date(completionEvent.created_at) > threeHoursAgo) continue;
+
+      const { data: barber } = await supabase
+        .from("users")
+        .select("phone_number, business_name, google_review_url")
+        .eq("user_id", completionEvent.user_id)
+        .single();
+
+      if (!barber?.google_review_url) {
+        await supabase.from("booking_reminders").delete()
+          .eq("booking_id", pr.booking_id).eq("reminder_type", "review");
+        continue;
+      }
+
+      const { data: vipClient } = await supabase
+        .from("vip_clients")
+        .select("id, is_opted_in, opted_out_at")
+        .eq("user_id", completionEvent.user_id)
+        .eq("phone_number", completionEvent.client_phone)
+        .single();
+
+      if (!vipClient || !vipClient.is_opted_in || vipClient.opted_out_at) {
+        await supabase.from("booking_reminders").delete()
+          .eq("booking_id", pr.booking_id).eq("reminder_type", "review");
+        continue;
+      }
+
+      const shopName = barber.business_name || "your barber";
+
+      const reviewMsg = await buildSMS({
+        userId: completionEvent.user_id,
+        templateKey: "review_request",
+        clientPhone: completionEvent.client_phone,
+        vars: { shop_name: shopName, review_url: barber.google_review_url },
+      });
+
+      if (reviewMsg) {
+        try {
+          await sendSMS(completionEvent.client_phone, barber.phone_number, reviewMsg);
+          await markFirstMessageSent(completionEvent.user_id, completionEvent.client_phone);
+          await supabase
+            .from("vip_clients")
+            .update({ last_review_request_at: now.toISOString() })
+            .eq("id", vipClient.id);
+          await supabase.from("activity_feed").insert({
+            user_id: completionEvent.user_id,
+            event_type: "review_sent",
+            client_name: completionEvent.client_name,
+            client_phone: completionEvent.client_phone,
+            description: `Google review request sent to ${completionEvent.client_name || "client"}`,
+            metadata: {},
+          });
+          reviewsSent++;
+        } catch (err) {
+          console.error(`Review SMS failed for booking ${pr.booking_id}:`, err);
+        }
+      }
+
+      await supabase.from("booking_reminders").delete()
+        .eq("booking_id", pr.booking_id).eq("reminder_type", "review");
+    }
+  }
+
+  return NextResponse.json({ sent, reviewsSent, checked: upcomingBookings.length });
 }

@@ -67,6 +67,7 @@ export function StatsClient({
   totalClients,
   allClientPhones,
   contactNames: initialContactNames,
+  vipStatus = {},
   suppressedCalls = [],
   wednesdayTargeted,
   timezone,
@@ -86,6 +87,7 @@ export function StatsClient({
   totalClients: number;
   allClientPhones: string[];
   contactNames: Record<string, string>;
+  vipStatus?: Record<string, boolean>;
   suppressedCalls?: SuppressedCall[];
   wednesdayTargeted: number;
   timezone: string;
@@ -366,6 +368,8 @@ export function StatsClient({
                   const name = contactNames[phone];
                   const isNew = !previousSet.has(phone);
                   const weekCallCount = callCountByPhone[phone] || 0;
+                  const isVip = phone in vipStatus;
+                  const isOptedIn = vipStatus[phone] === true;
 
                   return (
                     <div key={phone}>
@@ -400,6 +404,12 @@ export function StatsClient({
                             </p>
                             {isNew && (
                               <span className="text-[9px] text-[var(--accent-color)] px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' }}>NEW</span>
+                            )}
+                            {isVip && isOptedIn && (
+                              <span className="text-[9px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-full shrink-0">VIP</span>
+                            )}
+                            {isVip && !isOptedIn && (
+                              <span className="text-[9px] text-white/30 bg-white/[0.06] px-1.5 py-0.5 rounded-full shrink-0">Not Opted In</span>
                             )}
                           </div>
                           <p className="text-[11px] text-white/20">

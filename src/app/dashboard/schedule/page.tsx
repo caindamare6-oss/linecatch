@@ -415,7 +415,7 @@ function ScheduleContent() {
             if (isOccupiedByOverlap) return null;
 
             const slotCount = booking ? Math.ceil((booking.service?.duration_minutes || slotDuration) / slotDuration) : 1;
-            const heightClass = slotCount > 1 ? "" : "";
+            const isOverdue = booking ? new Date() > new Date(new Date(booking.booking_time).getTime() + (booking.service?.duration_minutes || slotDuration) * 60 * 1000) : false;
 
             return (
               <div key={slotMin} className="flex gap-3 group">
@@ -471,14 +471,30 @@ function ScheduleContent() {
                         )}
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0 ml-2">
-                        <button
-                          onClick={() => completeBooking(booking.id)}
-                          disabled={actionId === booking.id}
-                          className="p-1 rounded-lg text-white/10 hover:text-[var(--accent-color)] hover:bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)] transition-colors disabled:opacity-50"
-                          title="Complete"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                        </button>
+                        {isOverdue ? (
+                          <button
+                            onClick={() => completeBooking(booking.id)}
+                            disabled={actionId === booking.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                            style={{
+                              backgroundColor: 'var(--accent-color)',
+                              color: '#0A0A0A',
+                              animation: 'pulse 2s infinite',
+                            }}
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            Done?
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => completeBooking(booking.id)}
+                            disabled={actionId === booking.id}
+                            className="p-1 rounded-lg text-white/10 hover:text-[var(--accent-color)] hover:bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)] transition-colors disabled:opacity-50"
+                            title="Complete"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <button
                           onClick={() => cancelBooking(booking.id)}
                           disabled={actionId === booking.id}

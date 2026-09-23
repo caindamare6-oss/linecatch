@@ -61,7 +61,7 @@ export default async function DashboardPage() {
 
   const { data: vipClients } = await supabase
     .from("vip_clients")
-    .select("phone_number, first_name")
+    .select("phone_number, first_name, is_opted_in")
     .eq("user_id", user.id);
 
   for (const vip of vipClients || []) {
@@ -84,6 +84,12 @@ export default async function DashboardPage() {
   // Manual contact names override VIP names
   for (const c of contacts || []) {
     if (c.name) contactMap[c.caller_phone] = c.name;
+  }
+
+  // Build VIP opt-in status map
+  const vipStatusMap: Record<string, boolean> = {};
+  for (const vip of vipClients || []) {
+    vipStatusMap[vip.phone_number] = vip.is_opted_in === true;
   }
 
   // Wednesday Engine: count targeted clients (same query as retention-loop cron)
@@ -119,11 +125,12 @@ export default async function DashboardPage() {
     if (!activeBooking) wednesdayTargeted++;
   }
 
-  // VIPs: count all VIP clients
+  // VIPs: count only opted-in clients
   const { count: loyaltyActiveClients } = await supabase
     .from("vip_clients")
     .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("is_opted_in", true);
 
   // Missed Call Auto-Respond: calls saved this week
   const { count: callsSavedThisWeek } = await supabase
@@ -196,6 +203,7 @@ export default async function DashboardPage() {
       totalClients={totalClients}
       allClientPhones={Array.from(allClientsSet)}
       contactNames={contactMap}
+      vipStatus={vipStatusMap}
       suppressedCalls={(suppressedCalls || []).map((c) => ({
         id: c.id,
         from_number: c.from_number,
