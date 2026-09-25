@@ -83,10 +83,17 @@ export async function PATCH(
       return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
     }
 
-    await supabase
+    const { error: completeError } = await supabase
       .from("bookings")
       .update({ status: "completed" })
       .eq("id", id);
+
+    if (completeError) {
+      return NextResponse.json(
+        { error: `Failed to complete booking: ${completeError.message}` },
+        { status: 500 }
+      );
+    }
 
     // Get client name for activity feed
     const { data: vipForName } = await supabase
@@ -138,7 +145,7 @@ export async function PATCH(
         p_claimed: vipClient.has_claimed_onboarding_discount,
       });
 
-      if (loyaltyResult === true && barber) {
+      if (loyaltyResult === true && barber?.phone_number) {
         if (newCutCount === 1 && !vipClient.has_claimed_onboarding_discount) {
           await supabase
             .from("vip_clients")
@@ -169,7 +176,7 @@ export async function PATCH(
             console.error("Loyalty SMS failed:", err);
           }
         }
-      } else if (barber) {
+      } else if (barber?.phone_number) {
         // Send progress message
         const { data: cutsLeft } = await supabase.rpc("loyalty_cuts_until_next", {
           p_cut_count: newCutCount,
@@ -229,12 +236,19 @@ export async function PATCH(
   }
 
   if (action === "cancel") {
-    await supabase
+    const { error: cancelError } = await supabase
       .from("bookings")
       .update({ status: "cancelled" })
       .eq("id", id);
 
-    if (barber) {
+    if (cancelError) {
+      return NextResponse.json(
+        { error: `Failed to cancel booking: ${cancelError.message}` },
+        { status: 500 }
+      );
+    }
+
+    if (barber?.phone_number) {
       const msg = await buildSMS({
         userId: booking.user_id,
         templateKey: "cancelled",
@@ -288,12 +302,19 @@ export async function PATCH(
     const oldBookingTime = new Date(booking.booking_time);
     const newBookingTime = new Date(newTime);
 
-    await supabase
+    const { error: rescheduleError } = await supabase
       .from("bookings")
       .update({ booking_time: newBookingTime.toISOString() })
       .eq("id", id);
 
-    if (barber) {
+    if (rescheduleError) {
+      return NextResponse.json(
+        { error: `Failed to reschedule booking: ${rescheduleError.message}` },
+        { status: 500 }
+      );
+    }
+
+    if (barber?.phone_number) {
       const dateStr = newBookingTime.toLocaleDateString("en-US", {
         weekday: "long",
         month: "long",

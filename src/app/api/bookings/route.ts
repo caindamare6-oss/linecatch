@@ -155,7 +155,7 @@ export async function POST(request: Request) {
 
   if (bookingError || !booking) {
     console.error("Booking creation error:", bookingError);
-    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
+    return NextResponse.json({ error: `Failed to create booking: ${bookingError?.message || "unknown error"}` }, { status: 500 });
   }
 
   const clientName = firstName?.trim() || vipClient?.first_name || null;
@@ -175,7 +175,7 @@ export async function POST(request: Request) {
     .eq("user_id", userId)
     .single();
 
-  if (barber) {
+  if (barber?.phone_number) {
     const dateStr = bTime.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",

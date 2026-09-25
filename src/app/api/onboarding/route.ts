@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createStickerCode } from "@/lib/sticker-codes";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   if (step === "profile") {
-    await admin
+    const { error } = await admin
       .from("users")
       .update({
         business_name: data.businessName || null,
@@ -22,11 +23,14 @@ export async function POST(request: Request) {
       })
       .eq("user_id", user.id);
 
+    if (error) {
+      return NextResponse.json({ error: `Failed to save profile: ${error.message}` }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   }
 
   if (step === "info") {
-    await admin
+    const { error } = await admin
       .from("users")
       .update({
         first_name: data.firstName || null,
@@ -35,22 +39,28 @@ export async function POST(request: Request) {
       })
       .eq("user_id", user.id);
 
+    if (error) {
+      return NextResponse.json({ error: `Failed to save info: ${error.message}` }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   }
 
   if (step === "hours") {
-    await admin
+    const { error } = await admin
       .from("users")
       .update({ business_hours: data.businessHours })
       .eq("user_id", user.id);
 
+    if (error) {
+      return NextResponse.json({ error: `Failed to save hours: ${error.message}` }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   }
 
   if (step === "services") {
     for (const svc of data.services) {
       if (svc.id) {
-        await admin
+        const { error } = await admin
           .from("services")
           .update({
             name: svc.name,
@@ -59,8 +69,12 @@ export async function POST(request: Request) {
             is_active: svc.enabled,
           })
           .eq("id", svc.id);
+
+        if (error) {
+          return NextResponse.json({ error: `Failed to update service "${svc.name}": ${error.message}` }, { status: 500 });
+        }
       } else {
-        await admin.from("services").insert({
+        const { error } = await admin.from("services").insert({
           user_id: user.id,
           name: svc.name,
           price: svc.price,
@@ -68,6 +82,10 @@ export async function POST(request: Request) {
           is_active: svc.enabled,
           sort_order: svc.sortOrder || 0,
         });
+
+        if (error) {
+          return NextResponse.json({ error: `Failed to create service "${svc.name}": ${error.message}` }, { status: 500 });
+        }
       }
     }
 
@@ -75,10 +93,20 @@ export async function POST(request: Request) {
   }
 
   if (step === "complete") {
-    await admin
+    const { error } = await admin
       .from("users")
       .update({ onboarding_completed: true })
       .eq("user_id", user.id);
+
+    if (error) {
+      return NextResponse.json({ error: `Failed to complete onboarding: ${error.message}` }, { status: 500 });
+    }
+
+    // Auto-create one sticker code for the new barber
+    const stickerResult = await createStickerCode(user.id, "onboarding");
+    if ("error" in stickerResult) {
+      console.error("Failed to create onboarding sticker code:", stickerResult.error);
+    }
 
     return NextResponse.json({ ok: true });
   }

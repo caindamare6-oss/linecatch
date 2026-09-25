@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { CONSENT_TEXT } from "@/lib/consent";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -33,6 +34,9 @@ export async function POST(request: Request) {
     phone_number: phone,
     first_name: name || null,
     is_opted_in: true,
+    opted_in_at: new Date().toISOString(),
+    consent_text: CONSENT_TEXT,
+    opt_in_source: "barber_added",
     cut_count: 0,
   });
 

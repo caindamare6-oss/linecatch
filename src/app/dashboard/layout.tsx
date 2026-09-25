@@ -23,12 +23,20 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
     if (pathname === "/dashboard/settings") {
       setSettingsOpen(true);
     }
   }, [pathname]);
+
+  useEffect(() => {
+    fetch("/api/admin/check")
+      .then((r) => r.json())
+      .then((d) => setIsAdminUser(!!d.isAdmin))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +104,14 @@ export default function DashboardLayout({
             >
               <Settings className="w-4.5 h-4.5" />
             </button>
+            {isAdminUser && (
+              <Link
+                href="/dashboard/admin/stickers"
+                className="text-[11px] text-white/30 hover:text-white/60 transition-colors"
+              >
+                Admin
+              </Link>
+            )}
             <button
               onClick={handleSignOut}
               className="text-[11px] text-white/30 hover:text-white/60 transition-colors"

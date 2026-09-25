@@ -37,8 +37,9 @@ export async function middleware(request: NextRequest) {
   const isPublicPage = request.nextUrl.pathname === "/privacy" || request.nextUrl.pathname === "/terms";
   const isBooking = request.nextUrl.pathname.startsWith("/book");
   const isManage = request.nextUrl.pathname.startsWith("/manage");
+  const isSticker = request.nextUrl.pathname.startsWith("/s");
 
-  if (isApiRoute || isCallbackRoute || isVip || isPublicPage || isBooking || isManage) {
+  if (isApiRoute || isCallbackRoute || isVip || isPublicPage || isBooking || isManage || isSticker) {
     return supabaseResponse;
   }
 

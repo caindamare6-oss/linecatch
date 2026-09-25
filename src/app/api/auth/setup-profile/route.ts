@@ -45,13 +45,22 @@ export async function POST() {
   }
 
   // Brand new user — create profile
-  await admin.from("users").insert({
+  const { error: insertError } = await admin.from("users").insert({
     user_id: user.id,
     phone_number: phone || null,
+    forwarding_number: null,
     is_active: true,
     custom_message:
       "Hey! Sorry I missed your call. Book your next appointment here: {link}\nReply STOP to opt out.",
   });
+
+  if (insertError) {
+    console.error("Profile creation error:", insertError);
+    return NextResponse.json(
+      { error: `Failed to create profile: ${insertError.message}` },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ status: "created" });
 }
