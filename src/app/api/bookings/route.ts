@@ -24,75 +24,89 @@ export async function POST(request: Request) {
     .eq("phone_number", normalized)
     .single();
 
+  // Opted-out clients can still book — just no SMS
   if (vipClient?.opted_out_at) {
-    return NextResponse.json(
-      { error: "This number has opted out of messages. Text START to the barber's number to re-subscribe before booking." },
-      { status: 403 }
-    );
-  }
-
-  if (!vipClient) {
-    // No row exists — need consent from booking form
-    if (!consentText) {
-      return NextResponse.json(
-        { error: "SMS consent required. Please check the consent box." },
-        { status: 403 }
-      );
+    if (firstName && !vipClient.first_name) {
+      await supabase
+        .from("vip_clients")
+        .update({ first_name: firstName })
+        .eq("id", vipClient.id);
     }
-
+  } else if (!vipClient) {
+    // No row exists — create one
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const userAgent = request.headers.get("user-agent") || "unknown";
 
-    const { error: insertError } = await supabase.from("vip_clients").insert({
-      user_id: userId,
-      phone_number: normalized,
-      opted_in_at: new Date().toISOString(),
-      is_opted_in: true,
-      opt_in_source: "booking_form",
-      opt_in_ip: ip,
-      opt_in_user_agent: userAgent,
-      consent_text: consentText,
-      first_name: firstName || null,
-    });
-
-    if (insertError) {
-      console.error("VIP client creation error:", insertError);
-      return NextResponse.json({ error: "Failed to record consent" }, { status: 500 });
-    }
-  } else if (!vipClient.is_opted_in) {
-    // Row exists but not opted in — need consent
-    if (!consentText) {
-      return NextResponse.json(
-        { error: "SMS consent required. Please check the consent box." },
-        { status: 403 }
-      );
-    }
-
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const userAgent = request.headers.get("user-agent") || "unknown";
-
-    await supabase
-      .from("vip_clients")
-      .update({
-        is_opted_in: true,
+    if (consentText) {
+      const { error: insertError } = await supabase.from("vip_clients").insert({
+        user_id: userId,
+        phone_number: normalized,
         opted_in_at: new Date().toISOString(),
+        is_opted_in: true,
         opt_in_source: "booking_form",
         opt_in_ip: ip,
         opt_in_user_agent: userAgent,
         consent_text: consentText,
-        first_name: firstName || vipClient.first_name || null,
-      })
-      .eq("id", vipClient.id);
-  } else {
-    // Already opted in — update first_name if provided but don't overwrite consent fields
-    if (firstName) {
+        first_name: firstName || null,
+      });
+
+      if (insertError) {
+        console.error("VIP client creation error:", insertError);
+        return NextResponse.json({ error: "Failed to record client" }, { status: 500 });
+      }
+    } else {
+      const { error: insertError } = await supabase.from("vip_clients").insert({
+        user_id: userId,
+        phone_number: normalized,
+        is_opted_in: false,
+        opt_in_source: "booking_form",
+        first_name: firstName || null,
+      });
+
+      if (insertError) {
+        console.error("VIP client creation error:", insertError);
+        return NextResponse.json({ error: "Failed to record client" }, { status: 500 });
+      }
+    }
+  } else if (!vipClient.is_opted_in) {
+    // Row exists but not opted in
+    if (consentText) {
+      const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+      const userAgent = request.headers.get("user-agent") || "unknown";
+
+      await supabase
+        .from("vip_clients")
+        .update({
+          is_opted_in: true,
+          opted_in_at: new Date().toISOString(),
+          opt_in_source: "booking_form",
+          opt_in_ip: ip,
+          opt_in_user_agent: userAgent,
+          consent_text: consentText,
+          first_name: firstName || vipClient.first_name || null,
+        })
+        .eq("id", vipClient.id);
+    } else if (firstName && !vipClient.first_name) {
       await supabase
         .from("vip_clients")
         .update({ first_name: firstName })
-        .eq("id", vipClient.id)
-        .is("first_name", null);
+        .eq("id", vipClient.id);
+    }
+  } else {
+    // Already opted in — update first_name if provided but don't overwrite consent fields
+    if (firstName && !vipClient.first_name) {
+      await supabase
+        .from("vip_clients")
+        .update({ first_name: firstName })
+        .eq("id", vipClient.id);
     }
   }
+
+  // Determine if this client is opted in for SMS (used later for confirmation)
+  const clientOptedIn =
+    (vipClient?.is_opted_in === true && !vipClient?.opted_out_at) ||
+    (!vipClient && !!consentText) ||
+    (vipClient && !vipClient.is_opted_in && !vipClient.opted_out_at && !!consentText);
 
   // Verify service exists
   const { data: service } = await supabase
@@ -175,7 +189,7 @@ export async function POST(request: Request) {
     .eq("user_id", userId)
     .single();
 
-  if (barber?.phone_number) {
+  if (barber?.phone_number && clientOptedIn) {
     const dateStr = bTime.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",

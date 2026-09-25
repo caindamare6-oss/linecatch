@@ -80,10 +80,6 @@ function BookingContent() {
 
   async function handleBook() {
     if (!selectedService || !selectedDate || !selectedTime || !phone) return;
-    if (!consentChecked) {
-      setError("You must agree to receive SMS messages to book.");
-      return;
-    }
     setError("");
     setSubmitting(true);
 
@@ -99,7 +95,7 @@ function BookingContent() {
           customerPhone: phone,
           bookingTime: bookingTime.toISOString(),
           firstName: firstName.trim() || undefined,
-          consentText: CONSENT_TEXT,
+          consentText: consentChecked ? CONSENT_TEXT : undefined,
           source: bookingSource,
         }),
       });
@@ -241,10 +237,18 @@ function BookingContent() {
           <p className="text-[var(--accent-color)] font-semibold text-lg mb-6">
             {formatTime(selectedTime)}
           </p>
-          <p className="text-sm text-gray-500">
-            A confirmation text has been sent to your phone. You&apos;ll get
-            reminders at 24 hours and 2 hours before.
-          </p>
+          {consentChecked ? (
+            <p className="text-sm text-gray-500">
+              A confirmation text has been sent to your phone. You&apos;ll get
+              reminders at 24 hours and 2 hours before.
+            </p>
+          ) : (
+            <div className="bg-amber-950/50 border border-amber-700/30 rounded-lg p-3">
+              <p className="text-sm text-amber-300">
+                Check the box to get booking reminders by text!
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -499,7 +503,7 @@ function BookingContent() {
 
               <button
                 onClick={handleBook}
-                disabled={!phone.trim() || !consentChecked || submitting}
+                disabled={!phone.trim() || submitting}
                 className="w-full bg-[var(--accent-color)] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:brightness-90 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {submitting ? "Booking..." : "Confirm Booking"}
