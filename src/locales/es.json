@@ -90,6 +90,7 @@
     "continue": "Continuar",
     "saving": "Guardando...",
     "setting_up": "Configurando...",
-    "step_of": "Paso {current} de {total}"
+    "step_of": "Paso {current} de {total}",
+    "progress_pct": "{pct}% completado"
   }
 }

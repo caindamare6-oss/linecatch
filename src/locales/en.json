@@ -90,6 +90,7 @@
     "continue": "Continue",
     "saving": "Saving...",
     "setting_up": "Setting up...",
-    "step_of": "Step {current} of {total}"
+    "step_of": "Step {current} of {total}",
+    "progress_pct": "{pct}% complete"
   }
 }

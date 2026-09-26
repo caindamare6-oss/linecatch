@@ -33,11 +33,17 @@ type Service = {
   durationInput?: string;
 };
 
-function getDefaultServices(t: (key: string) => string): Service[] {
+const SERVICE_NAMES: Record<string, Record<string, string>> = {
+  en: { lineup: "Lineup", lineup_taper: "Lineup + Taper", lineup_taper_beard: "Lineup + Taper + Beard" },
+  es: { lineup: "Lineup", lineup_taper: "Lineup + Taper", lineup_taper_beard: "Lineup + Taper + Barba" },
+};
+
+function getDefaultServices(lang: string): Service[] {
+  const n = SERVICE_NAMES[lang] || SERVICE_NAMES.en;
   return [
-    { name: t("services.lineup"), price: 35, duration: 30, enabled: true, sortOrder: 0 },
-    { name: t("services.lineup_taper"), price: 55, duration: 45, enabled: true, sortOrder: 1 },
-    { name: t("services.lineup_taper_beard"), price: 70, duration: 60, enabled: true, sortOrder: 2 },
+    { name: n.lineup, price: 30, duration: 30, enabled: true, sortOrder: 0 },
+    { name: n.lineup_taper, price: 35, duration: 45, enabled: true, sortOrder: 1 },
+    { name: n.lineup_taper_beard, price: 45, duration: 60, enabled: true, sortOrder: 2 },
   ];
 }
 
@@ -121,7 +127,7 @@ function OnboardingFlow({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  const [services, setServices] = useState<Service[]>(() => getDefaultServices((k) => k.split(".").pop() || k));
+  const [services, setServices] = useState<Service[]>([]);
   const [showAddCustom, setShowAddCustom] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("25");
@@ -179,8 +185,10 @@ function OnboardingFlow({
         id: s.id, name: s.name, price: s.price, duration: s.duration_minutes,
         enabled: s.is_active, sortOrder: s.sort_order,
       })));
+    } else {
+      setServices(getDefaultServices(language));
     }
-  }, [initialData]);
+  }, [initialData, language]);
 
   const saveStep = useCallback(async (stepName: string, data: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> => {
     setSaving(true);
@@ -405,7 +413,8 @@ function OnboardingFlow({
     return () => { running = false; window.removeEventListener("resize", sizeCanvas); };
   }, [step, confettiDone]);
 
-  const progress = step === 0 ? 0 : Math.round((step / (TOTAL_STEPS - 1)) * 100);
+  const STEP_PROGRESS = [0, 20, 40, 60, 80, 100, 100];
+  const progress = STEP_PROGRESS[step] ?? 0;
 
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden" style={{ backgroundColor: "var(--ob-bg)", fontFamily: "var(--ob-font-body)" }}>
@@ -423,7 +432,7 @@ function OnboardingFlow({
             </span>
             {step > 0 && step < 6 && (
               <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>
-                {t("nav.step_of", { current: step, total: TOTAL_STEPS - 2 })}
+                {t("nav.progress_pct", { pct: progress })}
               </span>
             )}
           </div>
