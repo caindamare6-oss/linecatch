@@ -95,13 +95,13 @@
   --ob-surface: #141414;
   --ob-surface-hover: #1A1A1A;
   --ob-border: rgba(255, 255, 255, 0.08);
-  --ob-border-focus: rgba(0, 245, 160, 0.4);
+  --ob-accent: var(--accent-color, #00F5A0);
+  --ob-accent-hover: color-mix(in srgb, var(--ob-accent) 85%, black);
+  --ob-accent-glow: color-mix(in srgb, var(--ob-accent) 15%, transparent);
+  --ob-border-focus: color-mix(in srgb, var(--ob-accent) 40%, transparent);
   --ob-text: #FFFFFF;
   --ob-text-secondary: #999999;
   --ob-text-muted: #666666;
-  --ob-accent: #00F5A0;
-  --ob-accent-hover: #00D68A;
-  --ob-accent-glow: rgba(0, 245, 160, 0.15);
   --ob-danger: #FF4D4D;
   --ob-input-bg: #1A1A1A;
   --ob-radius: 12px;

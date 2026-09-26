@@ -33,13 +33,13 @@ type Service = {
   durationInput?: string;
 };
 
-const DEFAULT_SERVICES: Service[] = [
-  { name: "Lineup", price: 20, duration: 20, enabled: true, sortOrder: 0 },
-  { name: "Taper", price: 30, duration: 30, enabled: true, sortOrder: 1 },
-  { name: "Lineup + Taper", price: 40, duration: 45, enabled: true, sortOrder: 2 },
-  { name: "Beard Trim", price: 15, duration: 15, enabled: false, sortOrder: 3 },
-  { name: "Kids Cut", price: 20, duration: 25, enabled: false, sortOrder: 4 },
-];
+function getDefaultServices(t: (key: string) => string): Service[] {
+  return [
+    { name: t("services.lineup"), price: 35, duration: 30, enabled: true, sortOrder: 0 },
+    { name: t("services.lineup_taper"), price: 55, duration: 45, enabled: true, sortOrder: 1 },
+    { name: t("services.lineup_taper_beard"), price: 70, duration: 60, enabled: true, sortOrder: 2 },
+  ];
+}
 
 const TOTAL_STEPS = 7;
 
@@ -121,7 +121,7 @@ function OnboardingFlow({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  const [services, setServices] = useState<Service[]>(DEFAULT_SERVICES);
+  const [services, setServices] = useState<Service[]>(() => getDefaultServices((k) => k.split(".").pop() || k));
   const [showAddCustom, setShowAddCustom] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("25");
@@ -373,7 +373,7 @@ function OnboardingFlow({
     window.addEventListener("resize", sizeCanvas);
 
     const particles: { x: number; y: number; vx: number; vy: number; color: string; size: number; rotation: number; rotationSpeed: number }[] = [];
-    const colors = ["#00F5A0", "#FFD700", "#FF6B6B", "#38BDF8", "#A78BFA", "#FB923C"];
+    const colors = [accentColor, "#FFD700", "#FF6B6B", "#38BDF8", "#A78BFA", "#FB923C"];
     for (let i = 0; i < 120; i++) {
       particles.push({
         x: Math.random() * canvas.width, y: -10 - Math.random() * canvas.height * 0.5,
