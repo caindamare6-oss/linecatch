@@ -80,7 +80,7 @@ export async function buildSMS(opts: {
   templateKey: string;
   clientPhone: string;
   vars: Record<string, string>;
-}): Promise<string> {
+}): Promise<{ body: string; language: string } | null> {
   const supabase = createAdminClient();
 
   const { data: client } = await supabase
@@ -97,7 +97,7 @@ export async function buildSMS(opts: {
     .single();
 
   const isBarberFacing = BARBER_FACING_TEMPLATES.has(opts.templateKey);
-  const lang = isBarberFacing
+  const language = isBarberFacing
     ? (barberProfile?.barber_language || "en")
     : (client?.client_language || "en");
 
@@ -105,17 +105,17 @@ export async function buildSMS(opts: {
   const isFirstMessage = !client?.first_message_sent_at;
   const barberName = barberProfile?.first_name || "";
 
-  const template = await resolveTemplate(opts.userId, opts.templateKey, lang);
-  if (!template) return "";
+  const template = await resolveTemplate(opts.userId, opts.templateKey, language);
+  if (!template) return null;
 
   const allVars = { ...opts.vars, first_name: firstName, barber_name: barberName };
-  let msg = interpolateTemplate(template, allVars);
+  let body = interpolateTemplate(template, allVars);
 
   if (isFirstMessage && !isBarberFacing) {
-    msg += getStopHelpLine(lang);
+    body += getStopHelpLine(language);
   }
 
-  return msg;
+  return { body, language };
 }
 
 export async function markFirstMessageSent(userId: string, clientPhone: string) {

@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   let sent = 0;
   for (const phone of recipients) {
     try {
-      await sendSMS(phone, barber.phone_number, message);
+      await sendSMS({ to: phone, from: barber.phone_number, body: message, userId: user.id, templateKey: "broadcast", language: "en" });
       sent++;
     } catch {
       // skip failed sends

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizePhone } from "@/lib/phone";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -55,8 +56,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const digits = phone.replace(/\D/g, "");
-  const normalized = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+  const phoneResult = normalizePhone(phone);
+  if (!phoneResult.valid) {
+    return NextResponse.json({ error: phoneResult.error }, { status: 400 });
+  }
+  const normalized = phoneResult.e164;
 
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const userAgent = request.headers.get("user-agent") || "unknown";

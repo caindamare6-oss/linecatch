@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, business_name, timezone, is_locked_out, is_active")
+    .select("user_id, phone_number, business_name, timezone, is_locked_out, is_active, barber_language")
     .eq("is_active", true)
     .eq("is_locked_out", false);
 
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     const msg = `${cutsToday} cut${cutsToday > 1 ? "s" : ""} today, first at ${firstTime}. ${vipLine}`.trim();
 
     try {
-      await sendSMS(barber.phone_number, barber.phone_number, msg);
+      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "morning_summary", language: barber.barber_language || "en" });
       sent++;
     } catch (err) {
       console.error(`Morning summary failed for ${barber.user_id}:`, err);

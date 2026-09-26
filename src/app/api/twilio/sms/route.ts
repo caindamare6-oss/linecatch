@@ -156,16 +156,16 @@ export async function POST(request: Request) {
 
         if (!vip || !vip.is_opted_in || vip.opted_out_at) continue;
 
-        const msg = await buildSMS({
+        const sms = await buildSMS({
           userId: barber.user_id,
           templateKey: "morning_late_broadcast",
           clientPhone: phone,
           vars: { shop_name: shopName },
         });
 
-        if (msg && barberInfo) {
+        if (sms && barberInfo) {
           try {
-            await sendSMS(phone, barberInfo.phone_number, msg);
+            await sendSMS({ to: phone, from: barberInfo.phone_number, body: sms.body, userId: barber.user_id, templateKey: "morning_late_broadcast", language: sms.language });
             await markFirstMessageSent(barber.user_id, phone);
             broadcastCount++;
           } catch (err) {

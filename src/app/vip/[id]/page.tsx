@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { CONSENT_TEXT } from "@/lib/consent";
+import { normalizePhone } from "@/lib/phone";
 
 export default function VIPOptIn() {
   const params = useParams();
@@ -72,9 +73,9 @@ export default function VIPOptIn() {
     e.preventDefault();
     setError("");
 
-    const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
-    if (!phone.trim() || !phoneRegex.test(phone)) {
-      setError("Please enter a valid phone number");
+    const result = normalizePhone(phone);
+    if (!result.valid) {
+      setError(result.error);
       return;
     }
 

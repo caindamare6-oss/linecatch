@@ -121,18 +121,18 @@ export async function POST(request: Request) {
       ? `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${callLog.call_id}`
       : barber.booking_link || "";
 
-    const msg = await buildSMS({
+    const sms = await buildSMS({
       userId: barber.user_id,
       templateKey: "missed_call",
       clientPhone: from,
       vars: { shop_name: shopName, link: trackingUrl },
     });
 
-    if (!msg) {
+    if (!sms) {
       return new NextResponse("OK", { status: 200 });
     }
 
-    await sendSMS(from, barber.phone_number, msg);
+    await sendSMS({ to: from, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: "missed_call", language: sms.language });
     await markFirstMessageSent(barber.user_id, from);
     await logMissedCall(supabase, barber.user_id, from, callSid, true, null);
 

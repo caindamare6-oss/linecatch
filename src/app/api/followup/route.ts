@@ -104,7 +104,7 @@ export async function GET(request: Request) {
         ? `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${call.call_id}`
         : "";
 
-      const message = await buildSMS({
+      const sms = await buildSMS({
         userId: call.user_id,
         templateKey: "missed_call",
         clientPhone: call.caller_phone,
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
         },
       });
 
-      if (!message) {
+      if (!sms) {
         await supabase
           .from("missed_calls_log")
           .update({ followed_up: true })
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
         continue;
       }
 
-      await sendSMS(call.caller_phone, barber.phone_number, message);
+      await sendSMS({ to: call.caller_phone, from: barber.phone_number, body: sms.body, userId: call.user_id, templateKey: "missed_call", language: sms.language });
       await markFirstMessageSent(call.user_id, call.caller_phone);
 
       await supabase

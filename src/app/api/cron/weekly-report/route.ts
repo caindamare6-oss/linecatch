@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, business_name, timezone, is_locked_out, is_active, avg_booking_value")
+    .select("user_id, phone_number, business_name, timezone, is_locked_out, is_active, avg_booking_value, barber_language")
     .eq("is_active", true)
     .eq("is_locked_out", false);
 
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, ${newVips || 0} new VIPs, ${missedCaught || 0} missed calls caught, ${reviewsSent || 0} review requests sent.`;
 
     try {
-      await sendSMS(barber.phone_number, barber.phone_number, msg);
+      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "weekly_report", language: barber.barber_language || "en" });
       sent++;
     } catch (err) {
       console.error(`Weekly report failed for ${barber.user_id}:`, err);

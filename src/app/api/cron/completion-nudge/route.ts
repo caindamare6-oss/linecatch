@@ -41,12 +41,12 @@ export async function GET(request: Request) {
   const barberIds = [...new Set(bookings.map((b) => b.user_id))];
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, is_locked_out, is_active")
+    .select("user_id, phone_number, is_locked_out, is_active, barber_language")
     .in("user_id", barberIds);
 
-  const barberMap: Record<string, { phone_number: string; is_locked_out: boolean; is_active: boolean }> = {};
+  const barberMap: Record<string, { phone_number: string; is_locked_out: boolean; is_active: boolean; barber_language: string | null }> = {};
   for (const b of barbers || []) {
-    barberMap[b.user_id] = { phone_number: b.phone_number, is_locked_out: b.is_locked_out, is_active: b.is_active };
+    barberMap[b.user_id] = { phone_number: b.phone_number, is_locked_out: b.is_locked_out, is_active: b.is_active, barber_language: b.barber_language };
   }
 
   for (const booking of bookings) {
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     const msg = `Done with ${clientName}? Tap to complete: ${link}`;
 
     try {
-      await sendSMS(barber.phone_number, barber.phone_number, msg);
+      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: booking.user_id, templateKey: "completion_nudge", language: barber.barber_language || "en" });
       sent++;
     } catch (err) {
       console.error(`Completion nudge failed for booking ${booking.id}:`, err);

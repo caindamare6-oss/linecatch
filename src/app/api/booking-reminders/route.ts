@@ -93,17 +93,17 @@ export async function GET(request: Request) {
     const shopName = barber.business_name || "your barber";
     const templateKey = reminderType === "24h" ? "reminder_24h" : "reminder_2h";
 
-    const msg = await buildSMS({
+    const sms = await buildSMS({
       userId: booking.user_id,
       templateKey,
       clientPhone: booking.customer_phone,
       vars: { shop_name: shopName, time: timeStr },
     });
 
-    if (!msg) continue;
+    if (!sms) continue;
 
     try {
-      await sendSMS(booking.customer_phone, barber.phone_number, msg);
+      await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: sms.body, userId: booking.user_id, templateKey, language: sms.language });
       await markFirstMessageSent(booking.user_id, booking.customer_phone);
       await supabase.from("booking_reminders").insert({
         booking_id: booking.id,
@@ -163,16 +163,16 @@ export async function GET(request: Request) {
 
       const shopName = barber.business_name || "your barber";
 
-      const reviewMsg = await buildSMS({
+      const reviewSms = await buildSMS({
         userId: completionEvent.user_id,
         templateKey: "review_request",
         clientPhone: completionEvent.client_phone,
         vars: { shop_name: shopName, review_url: barber.google_review_url },
       });
 
-      if (reviewMsg) {
+      if (reviewSms) {
         try {
-          await sendSMS(completionEvent.client_phone, barber.phone_number, reviewMsg);
+          await sendSMS({ to: completionEvent.client_phone, from: barber.phone_number, body: reviewSms.body, userId: completionEvent.user_id, templateKey: "review_request", language: reviewSms.language });
           await markFirstMessageSent(completionEvent.user_id, completionEvent.client_phone);
           await supabase
             .from("vip_clients")

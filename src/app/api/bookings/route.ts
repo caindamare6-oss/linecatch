@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
+import { normalizePhone } from "@/lib/phone";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -11,10 +12,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  const phoneResult = normalizePhone(customerPhone);
+  if (!phoneResult.valid) {
+    return NextResponse.json({ error: phoneResult.error }, { status: 400 });
+  }
+  const normalized = phoneResult.e164;
 
-  const digits = customerPhone.replace(/\D/g, "");
-  const normalized = digits.startsWith("1") ? `+${digits}` : `+1${digits}`;
+  const supabase = createAdminClient();
 
   // Check vip_clients for consent
   const { data: vipClient } = await supabase
@@ -202,16 +206,16 @@ export async function POST(request: Request) {
     const shopName = barber.business_name || "your barber";
     const link = barber.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${userId}`;
 
-    const msg = await buildSMS({
+    const confirmSms = await buildSMS({
       userId,
       templateKey: "booking_confirm",
       clientPhone: normalized,
       vars: { shop_name: shopName, date: dateStr, time: timeStr, link },
     });
 
-    if (msg) {
+    if (confirmSms) {
       try {
-        await sendSMS(normalized, barber.phone_number, msg);
+        await sendSMS({ to: normalized, from: barber.phone_number, body: confirmSms.body, userId, templateKey: "booking_confirm", language: confirmSms.language });
         await markFirstMessageSent(userId, normalized);
         await supabase.from("booking_reminders").insert({
           booking_id: booking.id,
@@ -240,7 +244,7 @@ export async function POST(request: Request) {
         timeZone: tz,
       });
 
-      const barberMsg = await buildSMS({
+      const notifySms = await buildSMS({
         userId,
         templateKey: "barber_booking_notify",
         clientPhone: normalized,
@@ -251,9 +255,9 @@ export async function POST(request: Request) {
         },
       });
 
-      if (barberMsg) {
+      if (notifySms) {
         try {
-          await sendSMS(barber.forwarding_number, barber.phone_number, barberMsg);
+          await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: notifySms.body, userId, templateKey: "barber_booking_notify", language: notifySms.language });
         } catch (err) {
           console.error("Barber booking notify failed:", err);
         }

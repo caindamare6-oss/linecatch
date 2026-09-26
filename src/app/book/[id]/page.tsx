@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { normalizePhone } from "@/lib/phone";
 
 const CONSENT_TEXT = "By checking this box, I consent to receive SMS messages from this business, including appointment reminders, confirmations, and offers. Message and data rates may apply. I can reply STOP to opt out or HELP for assistance at any time.";
 
@@ -81,6 +82,13 @@ function BookingContent() {
   async function handleBook() {
     if (!selectedService || !selectedDate || !selectedTime || !phone) return;
     setError("");
+
+    const phoneResult = normalizePhone(phone);
+    if (!phoneResult.valid) {
+      setError(phoneResult.error);
+      return;
+    }
+
     setSubmitting(true);
 
     const bookingTime = new Date(`${selectedDate}T${selectedTime}:00`);
@@ -92,7 +100,7 @@ function BookingContent() {
         body: JSON.stringify({
           userId: barberId,
           serviceId: selectedService.id,
-          customerPhone: phone,
+          customerPhone: phoneResult.e164,
           bookingTime: bookingTime.toISOString(),
           firstName: firstName.trim() || undefined,
           consentText: consentChecked ? CONSENT_TEXT : undefined,

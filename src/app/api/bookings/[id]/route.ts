@@ -153,16 +153,16 @@ export async function PATCH(
             .eq("id", vipClient.id);
         }
 
-        const msg = await buildSMS({
+        const sms = await buildSMS({
           userId: booking.user_id,
           templateKey: "loyalty_earned",
           clientPhone: booking.customer_phone,
           vars: { shop_name: shopName, link },
         });
 
-        if (msg) {
+        if (sms) {
           try {
-            await sendSMS(booking.customer_phone, barber.phone_number, msg);
+            await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: sms.body, userId: booking.user_id, templateKey: "loyalty_earned", language: sms.language });
             await markFirstMessageSent(booking.user_id, booking.customer_phone);
             await supabase.from("activity_feed").insert({
               user_id: booking.user_id,
@@ -184,16 +184,16 @@ export async function PATCH(
         });
 
         if (cutsLeft && cutsLeft > 0) {
-          const msg = await buildSMS({
+          const progressSms = await buildSMS({
             userId: booking.user_id,
             templateKey: "loyalty_progress",
             clientPhone: booking.customer_phone,
             vars: { shop_name: shopName, cuts_left: String(cutsLeft) },
           });
 
-          if (msg) {
+          if (progressSms) {
             try {
-              await sendSMS(booking.customer_phone, barber.phone_number, msg);
+              await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: progressSms.body, userId: booking.user_id, templateKey: "loyalty_progress", language: progressSms.language });
               await markFirstMessageSent(booking.user_id, booking.customer_phone);
             } catch (err) {
               console.error("Loyalty progress SMS failed:", err);
@@ -249,16 +249,16 @@ export async function PATCH(
     }
 
     if (barber?.phone_number) {
-      const msg = await buildSMS({
+      const cancelSms = await buildSMS({
         userId: booking.user_id,
         templateKey: "cancelled",
         clientPhone: booking.customer_phone,
         vars: { shop_name: shopName, link },
       });
 
-      if (msg) {
+      if (cancelSms) {
         try {
-          await sendSMS(booking.customer_phone, barber.phone_number, msg);
+          await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: cancelSms.body, userId: booking.user_id, templateKey: "cancelled", language: cancelSms.language });
           await markFirstMessageSent(booking.user_id, booking.customer_phone);
         } catch (err) {
           console.error("Cancel SMS failed:", err);
@@ -274,7 +274,7 @@ export async function PATCH(
           .single();
 
         const oldTime = new Date(booking.booking_time);
-        const barberMsg = await buildSMS({
+        const cancelNotifySms = await buildSMS({
           userId: booking.user_id,
           templateKey: "barber_cancel_notify",
           clientPhone: booking.customer_phone,
@@ -284,9 +284,9 @@ export async function PATCH(
             time: oldTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
           },
         });
-        if (barberMsg) {
+        if (cancelNotifySms) {
           try {
-            await sendSMS(barber.phone_number, barber.phone_number, barberMsg);
+            await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: cancelNotifySms.body, userId: booking.user_id, templateKey: "barber_cancel_notify", language: cancelNotifySms.language });
           } catch (err) {
             console.error("Barber cancel notify failed:", err);
           }
@@ -324,16 +324,16 @@ export async function PATCH(
         minute: "2-digit",
       });
 
-      const msg = await buildSMS({
+      const rescheduleSms = await buildSMS({
         userId: booking.user_id,
         templateKey: "rescheduled",
         clientPhone: booking.customer_phone,
         vars: { shop_name: shopName, date: dateStr, time: timeStr, link },
       });
 
-      if (msg) {
+      if (rescheduleSms) {
         try {
-          await sendSMS(booking.customer_phone, barber.phone_number, msg);
+          await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: rescheduleSms.body, userId: booking.user_id, templateKey: "rescheduled", language: rescheduleSms.language });
           await markFirstMessageSent(booking.user_id, booking.customer_phone);
         } catch (err) {
           console.error("Reschedule SMS failed:", err);
@@ -348,7 +348,7 @@ export async function PATCH(
           .eq("phone_number", booking.customer_phone)
           .single();
 
-        const barberMsg = await buildSMS({
+        const rescheduleNotifySms = await buildSMS({
           userId: booking.user_id,
           templateKey: "barber_reschedule_notify",
           clientPhone: booking.customer_phone,
@@ -360,9 +360,9 @@ export async function PATCH(
             time: timeStr,
           },
         });
-        if (barberMsg) {
+        if (rescheduleNotifySms) {
           try {
-            await sendSMS(barber.phone_number, barber.phone_number, barberMsg);
+            await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: rescheduleNotifySms.body, userId: booking.user_id, templateKey: "barber_reschedule_notify", language: rescheduleNotifySms.language });
           } catch (err) {
             console.error("Barber reschedule notify failed:", err);
           }

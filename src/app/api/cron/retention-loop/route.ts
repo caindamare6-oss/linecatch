@@ -92,17 +92,17 @@ export async function GET(request: Request) {
       linkUrl.searchParams.set("src", "cron_reengagement");
       const link = linkUrl.toString();
 
-      const msg = await buildSMS({
+      const sms = await buildSMS({
         userId: barber.user_id,
         templateKey: "wednesday_dropin",
         clientPhone: client.phone_number,
         vars: { shop_name: shopName, link },
       });
 
-      if (!msg) continue;
+      if (!sms) continue;
 
       try {
-        await sendSMS(client.phone_number, barber.phone_number, msg);
+        await sendSMS({ to: client.phone_number, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: "wednesday_dropin", language: sms.language });
         await markFirstMessageSent(barber.user_id, client.phone_number);
 
         await supabase
