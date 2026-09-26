@@ -31,12 +31,18 @@ export async function POST(request: Request) {
     const { data: barber, error: barberError } = await supabase
       .from("users")
       .select(
-        "user_id, phone_number, booking_link, is_active, business_name, is_locked_out"
+        "user_id, phone_number, booking_link, is_active, business_name, is_locked_out, feature_autotext"
       )
       .eq("phone_number", to)
       .single();
 
     if (barberError || !barber || !barber.is_active) {
+      return new NextResponse("OK", { status: 200 });
+    }
+
+    if (barber.feature_autotext === false) {
+      await logMissedCall(supabase, barber.user_id, from, callSid, false, "autotext_disabled");
+      await logCallLegacy(supabase, barber.user_id, from, to, "logged");
       return new NextResponse("OK", { status: 200 });
     }
 

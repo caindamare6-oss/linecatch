@@ -89,6 +89,58 @@
   --sidebar-ring: var(--accent-color, #00F5A0);
 }
 
+/* Onboarding design tokens */
+:root {
+  --ob-bg: #0A0A0A;
+  --ob-surface: #141414;
+  --ob-surface-hover: #1A1A1A;
+  --ob-border: rgba(255, 255, 255, 0.08);
+  --ob-border-focus: rgba(0, 245, 160, 0.4);
+  --ob-text: #FFFFFF;
+  --ob-text-secondary: #999999;
+  --ob-text-muted: #666666;
+  --ob-accent: #00F5A0;
+  --ob-accent-hover: #00D68A;
+  --ob-accent-glow: rgba(0, 245, 160, 0.15);
+  --ob-danger: #FF4D4D;
+  --ob-input-bg: #1A1A1A;
+  --ob-radius: 12px;
+  --ob-radius-sm: 8px;
+  --ob-radius-lg: 16px;
+  --ob-font-heading: var(--font-space-grotesk, 'Space Grotesk', sans-serif);
+  --ob-font-body: var(--font-dm-sans, 'DM Sans', sans-serif);
+  --ob-header-height: 56px;
+  --ob-footer-height: 80px;
+  --ob-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes ob-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ob-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ob-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

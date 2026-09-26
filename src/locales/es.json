@@ -1,0 +1,94 @@
+{
+  "welcome": {
+    "title_pre": "Bienvenido a ",
+    "title_brand": "LineCatch",
+    "subtitle": "30 días gratis. Sin tarjeta.\nCancela cuando quieras.",
+    "bullet_1": "Las llamadas perdidas se responden por texto",
+    "bullet_2": "Tus clientes reservan al instante",
+    "bullet_3": "No pierdes ni un corte",
+    "cta": "Empezar",
+    "language_label": "Idioma"
+  },
+  "step1": {
+    "badge": "1",
+    "title": "Quién eres",
+    "subtitle": "Empecemos con lo básico.",
+    "avatar_add": "Agregar foto",
+    "avatar_change": "Toca para cambiar",
+    "name_label": "Tu nombre",
+    "name_placeholder": "ej. Carlos"
+  },
+  "step2": {
+    "badge": "2",
+    "title": "Tu negocio",
+    "subtitle": "Cómo te encontrarán tus clientes.",
+    "shop_label": "Nombre del local",
+    "shop_placeholder": "ej. Cortes by Carlos",
+    "phone_label": "Tu número de teléfono",
+    "phone_placeholder": "+1 (212) 555-9876",
+    "phone_hint": "Este es el número que llaman tus clientes. LineCatch reenvía las llamadas perdidas a tu auto-texto.",
+    "email_label": "Correo electrónico",
+    "email_placeholder": "tu@correo.com"
+  },
+  "step3": {
+    "badge": "3",
+    "title": "Servicios",
+    "subtitle": "Activa lo que ofreces. Edita precios y tiempos.",
+    "price_label": "Precio",
+    "minutes_label": "Minutos",
+    "add_custom": "+ Agregar servicio",
+    "custom_name_placeholder": "Nombre del servicio",
+    "custom_price_label": "Precio ($)",
+    "custom_minutes_label": "Minutos",
+    "cancel": "Cancelar",
+    "add": "Agregar",
+    "at_least_one": "Activa al menos un servicio para continuar"
+  },
+  "step4": {
+    "badge": "4",
+    "title": "Horario",
+    "subtitle": "¿Cuándo estás en la silla?",
+    "closed": "Cerrado",
+    "timezone_label": "Zona horaria",
+    "timezone_detecting": "Detectando...",
+    "timezone_hint": "Detectada automáticamente desde tu dispositivo."
+  },
+  "step5": {
+    "badge": "5",
+    "title": "Preferencias",
+    "subtitle": "Elige qué funciones activar.",
+    "autotext_label": "Auto-texto en llamadas perdidas",
+    "autotext_desc": "Cuando un cliente no te encuentra, LineCatch le envía un enlace de reserva.",
+    "wednesday_label": "Reactivación de miércoles",
+    "wednesday_desc": "Envía un recordatorio a clientes que no reservan hace más de 2 semanas.",
+    "reviews_label": "Solicitar reseñas en Google",
+    "reviews_desc": "Después del segundo corte de un cliente, pídele que deje una reseña en Google.",
+    "review_url_label": "Enlace de reseña de Google",
+    "review_url_placeholder": "https://g.page/tu-local/review",
+    "review_url_hint": "Encuéntralo en tu Perfil de Negocio de Google, en \"Obtener más reseñas\"."
+  },
+  "done": {
+    "title": "¡Todo listo!",
+    "subtitle": "Tu página de reservas está activa. Ve al panel para empezar a captar llamadas.",
+    "working_days": "Días laborales",
+    "days_per_week": "{count} días/semana",
+    "more_services": "+{count} más",
+    "cta": "Ir al Panel"
+  },
+  "days": {
+    "monday": "Lun",
+    "tuesday": "Mar",
+    "wednesday": "Mié",
+    "thursday": "Jue",
+    "friday": "Vie",
+    "saturday": "Sáb",
+    "sunday": "Dom"
+  },
+  "nav": {
+    "back": "Atrás",
+    "continue": "Continuar",
+    "saving": "Guardando...",
+    "setting_up": "Configurando...",
+    "step_of": "Paso {current} de {total}"
+  }
+}

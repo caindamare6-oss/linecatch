@@ -72,11 +72,11 @@ export async function GET(request: Request) {
 
     const { data: barber } = await supabase
       .from("users")
-      .select("phone_number, booking_link, business_name, is_active, is_locked_out")
+      .select("phone_number, booking_link, business_name, is_active, is_locked_out, feature_autotext")
       .eq("user_id", call.user_id)
       .single();
 
-    if (!barber || !barber.is_active || barber.is_locked_out) {
+    if (!barber || !barber.is_active || barber.is_locked_out || barber.feature_autotext === false) {
       await supabase
         .from("missed_calls_log")
         .update({ followed_up: true })

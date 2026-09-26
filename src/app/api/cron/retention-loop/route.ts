@@ -16,9 +16,10 @@ export async function GET(request: Request) {
   // Find barbers where local time is Wednesday 12:00–12:59 PM
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, business_name, booking_link, timezone, is_locked_out, is_active")
+    .select("user_id, phone_number, business_name, booking_link, timezone, is_locked_out, is_active, feature_wednesday")
     .eq("is_active", true)
-    .eq("is_locked_out", false);
+    .eq("is_locked_out", false)
+    .neq("feature_wednesday", false);
 
   if (!barbers || barbers.length === 0) {
     return NextResponse.json({ sent: 0, checked: 0 });

@@ -1,0 +1,94 @@
+{
+  "welcome": {
+    "title_pre": "Welcome to ",
+    "title_brand": "LineCatch",
+    "subtitle": "30 days free. No card needed.\nCancel anytime.",
+    "bullet_1": "Missed calls get auto-texted",
+    "bullet_2": "Clients book instantly",
+    "bullet_3": "You never lose a cut",
+    "cta": "Let's go",
+    "language_label": "Language"
+  },
+  "step1": {
+    "badge": "1",
+    "title": "Who you are",
+    "subtitle": "Let's start with the basics.",
+    "avatar_add": "Add a photo",
+    "avatar_change": "Tap to change",
+    "name_label": "Your name",
+    "name_placeholder": "e.g. Marcus"
+  },
+  "step2": {
+    "badge": "2",
+    "title": "Your business",
+    "subtitle": "How clients will find you.",
+    "shop_label": "Shop name",
+    "shop_placeholder": "e.g. Fresh Cuts by Mike",
+    "phone_label": "Your phone number",
+    "phone_placeholder": "+1 (212) 555-9876",
+    "phone_hint": "This is the number clients will call. LineCatch forwards missed calls to your auto-text.",
+    "email_label": "Email",
+    "email_placeholder": "you@email.com"
+  },
+  "step3": {
+    "badge": "3",
+    "title": "Services",
+    "subtitle": "Toggle on what you offer. Edit prices and times.",
+    "price_label": "Price",
+    "minutes_label": "Minutes",
+    "add_custom": "+ Add custom service",
+    "custom_name_placeholder": "Service name",
+    "custom_price_label": "Price ($)",
+    "custom_minutes_label": "Minutes",
+    "cancel": "Cancel",
+    "add": "Add",
+    "at_least_one": "Enable at least one service to continue"
+  },
+  "step4": {
+    "badge": "4",
+    "title": "Calendar & hours",
+    "subtitle": "When are you in the chair?",
+    "closed": "Closed",
+    "timezone_label": "Timezone",
+    "timezone_detecting": "Detecting...",
+    "timezone_hint": "Auto-detected from your device."
+  },
+  "step5": {
+    "badge": "5",
+    "title": "Preferences",
+    "subtitle": "Choose which features to turn on.",
+    "autotext_label": "Auto-text missed calls",
+    "autotext_desc": "When a client's call goes unanswered, LineCatch sends them a booking link automatically.",
+    "wednesday_label": "Wednesday re-engagement",
+    "wednesday_desc": "Send a midweek check-in to clients who haven't booked in 2+ weeks.",
+    "reviews_label": "Google review requests",
+    "reviews_desc": "After a client's second cut, ask them to leave a Google review.",
+    "review_url_label": "Google review link",
+    "review_url_placeholder": "https://g.page/your-shop/review",
+    "review_url_hint": "Find this in Google Business Profile under \"Get more reviews.\""
+  },
+  "done": {
+    "title": "You're all set!",
+    "subtitle": "Your booking page is live. Head to your dashboard to start catching calls.",
+    "working_days": "Working days",
+    "days_per_week": "{count} days/week",
+    "more_services": "+{count} more",
+    "cta": "Go to Dashboard"
+  },
+  "days": {
+    "monday": "Mon",
+    "tuesday": "Tue",
+    "wednesday": "Wed",
+    "thursday": "Thu",
+    "friday": "Fri",
+    "saturday": "Sat",
+    "sunday": "Sun"
+  },
+  "nav": {
+    "back": "Back",
+    "continue": "Continue",
+    "saving": "Saving...",
+    "setting_up": "Setting up...",
+    "step_of": "Step {current} of {total}"
+  }
+}

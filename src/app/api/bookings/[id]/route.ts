@@ -65,7 +65,7 @@ export async function PATCH(
 
   const { data: barber } = await supabase
     .from("users")
-    .select("phone_number, business_name, booking_link, google_review_url")
+    .select("phone_number, business_name, booking_link, google_review_url, feature_reviews")
     .eq("user_id", booking.user_id)
     .single();
 
@@ -203,7 +203,7 @@ export async function PATCH(
       }
 
       // Schedule review request 3 hours after completion (30-day cooldown)
-      if (newCutCount >= 2 && barber?.google_review_url) {
+      if (newCutCount >= 2 && barber?.google_review_url && barber.feature_reviews !== false) {
         const { data: vipForReview } = await supabase
           .from("vip_clients")
           .select("last_review_request_at, is_opted_in, opted_out_at")

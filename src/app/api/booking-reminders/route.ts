@@ -138,11 +138,11 @@ export async function GET(request: Request) {
 
       const { data: barber } = await supabase
         .from("users")
-        .select("phone_number, business_name, google_review_url")
+        .select("phone_number, business_name, google_review_url, feature_reviews")
         .eq("user_id", completionEvent.user_id)
         .single();
 
-      if (!barber?.google_review_url) {
+      if (!barber?.google_review_url || barber.feature_reviews === false) {
         await supabase.from("booking_reminders").delete()
           .eq("booking_id", pr.booking_id).eq("reminder_type", "review");
         continue;
