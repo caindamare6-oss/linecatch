@@ -16,7 +16,8 @@
     "avatar_add": "Agregar foto",
     "avatar_change": "Toca para cambiar",
     "name_label": "Tu nombre",
-    "name_placeholder": "ej. Carlos"
+    "name_placeholder": "ej. Carlos",
+    "color_label": "Color de acento"
   },
   "step2": {
     "badge": "2",

@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     const update: Record<string, unknown> = {};
     if (data.language) update.barber_language = data.language;
     if (data.firstName !== undefined) update.first_name = data.firstName || null;
+    if (data.accentColor) update.accent_color = data.accentColor;
 
     const { error } = await admin
       .from("users")

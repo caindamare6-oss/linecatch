@@ -16,7 +16,8 @@
     "avatar_add": "Add a photo",
     "avatar_change": "Tap to change",
     "name_label": "Your name",
-    "name_placeholder": "e.g. Marcus"
+    "name_placeholder": "e.g. Marcus",
+    "color_label": "Accent color"
   },
   "step2": {
     "badge": "2",

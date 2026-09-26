@@ -4,6 +4,15 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { I18nProvider, useT } from "@/lib/i18n";
 
+const ACCENT_COLORS = [
+  { name: "Mint", hex: "#00F5A0" },
+  { name: "Gold", hex: "#FFD700" },
+  { name: "Sky", hex: "#38BDF8" },
+  { name: "Coral", hex: "#FF6B6B" },
+  { name: "Violet", hex: "#A78BFA" },
+  { name: "Orange", hex: "#FB923C" },
+];
+
 const LANGUAGES = [
   { code: "en" as const, label: "English", flag: "🇺🇸" },
   { code: "es" as const, label: "Español", flag: "🇲🇽" },
@@ -103,6 +112,7 @@ function OnboardingFlow({
   const [animKey, setAnimKey] = useState(0);
 
   const [firstName, setFirstName] = useState("");
+  const [accentColor, setAccentColor] = useState("#00F5A0");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -148,6 +158,10 @@ function OnboardingFlow({
     if (!initialData) return;
     const p = initialData.profile || {};
     if (p.first_name) setFirstName(p.first_name as string);
+    if (p.accent_color) {
+      setAccentColor(p.accent_color as string);
+      document.documentElement.style.setProperty("--accent-color", p.accent_color as string);
+    }
     if (p.avatar_url) setAvatarUrl(p.avatar_url as string);
     if (p.business_name) setBusinessName(p.business_name as string);
     if (p.forwarding_number) setPhone(p.forwarding_number as string);
@@ -249,11 +263,16 @@ function OnboardingFlow({
     uploadAvatar(file);
   }
 
+  function handleAccentChange(hex: string) {
+    setAccentColor(hex);
+    document.documentElement.style.setProperty("--accent-color", hex);
+  }
+
   async function goNext() {
     let result: { ok: boolean; error?: string } | null = null;
 
     if (step === 0) result = await saveStep("who", { language });
-    else if (step === 1) result = await saveStep("who", { firstName, language });
+    else if (step === 1) result = await saveStep("who", { firstName, language, accentColor });
     else if (step === 2) result = await saveStep("business", { businessName, phone, email });
     else if (step === 3) result = await saveStep("services", { services: services.filter((s) => s.enabled) });
     else if (step === 4) result = await saveStep("hours", { businessHours, timezone });
@@ -505,6 +524,33 @@ function OnboardingFlow({
                 </span>
               </div>
               <InputField label={t("step1.name_label")} value={firstName} onChange={setFirstName} placeholder={t("step1.name_placeholder")} />
+
+              <div className="mt-5">
+                <label className="text-xs uppercase tracking-wider font-medium block mb-3" style={{ color: "var(--ob-text-muted)", fontFamily: "var(--ob-font-heading)" }}>
+                  {t("step1.color_label")}
+                </label>
+                <div className="flex flex-wrap gap-2.5">
+                  {ACCENT_COLORS.map((c) => (
+                    <button
+                      key={c.hex}
+                      onClick={() => handleAccentChange(c.hex)}
+                      className="w-10 h-10 rounded-xl transition-all duration-200 relative"
+                      style={{
+                        backgroundColor: c.hex,
+                        boxShadow: accentColor === c.hex ? `0 0 0 2px var(--ob-bg), 0 0 0 4px ${c.hex}` : "none",
+                        transform: accentColor === c.hex ? "scale(1.1)" : "scale(1)",
+                      }}
+                      title={c.name}
+                    >
+                      {accentColor === c.hex && (
+                        <svg className="w-4 h-4 absolute inset-0 m-auto text-black/60" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </StepContainer>
           )}
 
