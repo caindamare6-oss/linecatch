@@ -182,10 +182,10 @@ export async function POST(request: Request) {
     metadata: { booking_id: booking.id, service_name: service.name, source: source || "direct" },
   });
 
-  // Get barber info for confirmation SMS
+  // Get barber info for confirmation SMS and barber notify
   const { data: barber } = await supabase
     .from("users")
-    .select("phone_number, business_name, booking_link")
+    .select("phone_number, forwarding_number, business_name, booking_link, timezone, is_locked_out")
     .eq("user_id", userId)
     .single();
 
@@ -219,6 +219,44 @@ export async function POST(request: Request) {
         });
       } catch (err) {
         console.error("Confirmation SMS failed:", err);
+      }
+    }
+  }
+
+  // Notify barber of same-day booking if morning summary already sent
+  if (barber && !barber.is_locked_out && barber.forwarding_number) {
+    const tz = barber.timezone || "America/New_York";
+    const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+    const bookingLocal = new Date(bTime.toLocaleString("en-US", { timeZone: tz }));
+    const isSameDay =
+      nowLocal.getFullYear() === bookingLocal.getFullYear() &&
+      nowLocal.getMonth() === bookingLocal.getMonth() &&
+      nowLocal.getDate() === bookingLocal.getDate();
+
+    if (isSameDay && nowLocal.getHours() >= 9) {
+      const timeStr = bTime.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: tz,
+      });
+
+      const barberMsg = await buildSMS({
+        userId,
+        templateKey: "barber_booking_notify",
+        clientPhone: normalized,
+        vars: {
+          customer_name: clientName || normalized,
+          service: service.name,
+          time: timeStr,
+        },
+      });
+
+      if (barberMsg) {
+        try {
+          await sendSMS(barber.forwarding_number, barber.phone_number, barberMsg);
+        } catch (err) {
+          console.error("Barber booking notify failed:", err);
+        }
       }
     }
   }

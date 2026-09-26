@@ -72,6 +72,7 @@ const BARBER_FACING_TEMPLATES = new Set([
   "completion_nudge",
   "barber_cancel_notify",
   "barber_reschedule_notify",
+  "barber_booking_notify",
 ]);
 
 export async function buildSMS(opts: {

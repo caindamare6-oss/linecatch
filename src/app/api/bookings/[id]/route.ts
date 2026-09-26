@@ -279,7 +279,6 @@ export async function PATCH(
           templateKey: "barber_cancel_notify",
           clientPhone: booking.customer_phone,
           vars: {
-            first_name: vip?.first_name || "A client",
             customer_name: vip?.first_name || booking.customer_phone,
             date: oldTime.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
             time: oldTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
@@ -354,7 +353,6 @@ export async function PATCH(
           templateKey: "barber_reschedule_notify",
           clientPhone: booking.customer_phone,
           vars: {
-            first_name: vip?.first_name || "A client",
             customer_name: vip?.first_name || booking.customer_phone,
             old_date: oldBookingTime.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
             old_time: oldBookingTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
