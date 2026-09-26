@@ -18,7 +18,6 @@ export default async function StickerPage({
     .eq("code", normalized)
     .single();
 
-  // Unknown or retired code
   if (!sticker || sticker.status === "retired") {
     return (
       <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
@@ -44,7 +43,6 @@ export default async function StickerPage({
     const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || null;
     const userAgent = headersList.get("user-agent") || null;
 
-    // Log scan — never block the redirect on analytics failure
     admin
       .from("sticker_scans")
       .insert({ code: sticker.code, ip, user_agent: userAgent })
@@ -62,11 +60,24 @@ export default async function StickerPage({
   } = await supabase.auth.getUser();
 
   if (user) {
-    // Signed-in barber can claim
-    return <ClaimSticker code={sticker.code} />;
+    // Check if this barber already has an active sticker
+    const { data: existingSticker } = await admin
+      .from("sticker_codes")
+      .select("code")
+      .eq("owner_user_id", user.id)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    return (
+      <ClaimSticker
+        code={sticker.code}
+        existingCode={existingSticker?.code || null}
+      />
+    );
   }
 
-  // Not signed in — friendly message
+  // Not signed in
   return (
     <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createStickerCode } from "@/lib/sticker-codes";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -20,6 +19,7 @@ export async function POST(request: Request) {
       .update({
         business_name: data.businessName || null,
         accent_color: data.accentColor || "#00F5A0",
+        barber_language: data.language || "en",
       })
       .eq("user_id", user.id);
 
@@ -95,17 +95,11 @@ export async function POST(request: Request) {
   if (step === "complete") {
     const { error } = await admin
       .from("users")
-      .update({ onboarding_completed: true })
+      .update({ onboarding_completed: true, is_locked_out: true })
       .eq("user_id", user.id);
 
     if (error) {
       return NextResponse.json({ error: `Failed to complete onboarding: ${error.message}` }, { status: 500 });
-    }
-
-    // Auto-create one sticker code for the new barber
-    const stickerResult = await createStickerCode(user.id, "onboarding");
-    if ("error" in stickerResult) {
-      console.error("Failed to create onboarding sticker code:", stickerResult.error);
     }
 
     return NextResponse.json({ ok: true });
@@ -125,7 +119,7 @@ export async function GET() {
 
   const { data: profile } = await admin
     .from("users")
-    .select("first_name, email, business_name, forwarding_number, accent_color, business_hours")
+    .select("first_name, email, business_name, forwarding_number, accent_color, business_hours, barber_language")
     .eq("user_id", user.id)
     .single();
 

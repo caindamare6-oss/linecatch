@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import QRCode from "qrcode";
+import JSZip from "jszip";
 
 type StickerCode = {
   code: string;
@@ -13,11 +15,99 @@ type StickerCode = {
   shipped_at: string | null;
 };
 
+const SITE_URL = "https://linecatch.app";
+const PNG_W = 1800;
+const PNG_H = 2400;
+
+async function renderStickerPNG(code: string): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = PNG_W;
+  canvas.height = PNG_H;
+  const ctx = canvas.getContext("2d")!;
+
+  // Background
+  ctx.fillStyle = "#111111";
+  ctx.fillRect(0, 0, PNG_W, PNG_H);
+
+  // Outer border with accent
+  const borderInset = 60;
+  ctx.strokeStyle = "#00F5A0";
+  ctx.lineWidth = 6;
+  ctx.roundRect(borderInset, borderInset, PNG_W - borderInset * 2, PNG_H - borderInset * 2, 40);
+  ctx.stroke();
+
+  // LineCatch logo text at top
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 120px sans-serif";
+  ctx.fillText("Line", PNG_W / 2 - 135, 280);
+  ctx.fillStyle = "#00F5A0";
+  ctx.fillText("Catch", PNG_W / 2 + 145, 280);
+
+  // Tagline
+  ctx.fillStyle = "#888888";
+  ctx.font = "44px sans-serif";
+  ctx.fillText("Never miss a client again", PNG_W / 2, 360);
+
+  // QR code — render to a temporary canvas then draw centered
+  const qrUrl = `${SITE_URL}/s/${code}`;
+  const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+    width: 900,
+    margin: 2,
+    color: { dark: "#000000", light: "#ffffff" },
+    errorCorrectionLevel: "H",
+  });
+
+  const qrImg = await new Promise<HTMLImageElement>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.src = qrDataUrl;
+  });
+
+  const qrSize = 900;
+  const qrX = (PNG_W - qrSize) / 2;
+  const qrY = 460;
+
+  // White background behind QR
+  ctx.fillStyle = "#ffffff";
+  const qrPad = 40;
+  ctx.roundRect(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 24);
+  ctx.fill();
+
+  ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+  // "Scan to book" text
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 72px sans-serif";
+  ctx.fillText("Scan to book", PNG_W / 2, 1540);
+
+  // Code display
+  ctx.fillStyle = "#00F5A0";
+  ctx.font = "bold 64px monospace";
+  ctx.fillText(code, PNG_W / 2, 1660);
+
+  // Instructions at bottom
+  ctx.fillStyle = "#666666";
+  ctx.font = "36px sans-serif";
+  ctx.fillText("Open your camera app and point it at the QR code", PNG_W / 2, 1800);
+  ctx.fillText("to sign up as a VIP client", PNG_W / 2, 1850);
+
+  // LineCatch small mark at very bottom
+  ctx.fillStyle = "#333333";
+  ctx.font = "28px sans-serif";
+  ctx.fillText("linecatch.app", PNG_W / 2, 2260);
+
+  return new Promise<Blob>((resolve) => {
+    canvas.toBlob((blob) => resolve(blob!), "image/png");
+  });
+}
+
 export default function AdminStickersPage() {
   const [codes, setCodes] = useState<StickerCode[]>([]);
   const [barbers, setBarbers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   // Generate form
   const [genCount, setGenCount] = useState("10");
@@ -25,21 +115,28 @@ export default function AdminStickersPage() {
   const [generating, setGenerating] = useState(false);
   const [genResult, setGenResult] = useState("");
 
-  // Assign & Ship form
-  const [shipCode, setShipCode] = useState("");
-  const [shipBarber, setShipBarber] = useState("");
-  const [shipTracking, setShipTracking] = useState("");
-  const [shipping, setShipping] = useState(false);
-  const [shipResult, setShipResult] = useState("");
+  // ZIP download
+  const [downloadingBatch, setDownloadingBatch] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState("");
 
   // Filter
   const [statusFilter, setStatusFilter] = useState("");
 
   useEffect(() => {
-    loadCodes();
+    fetch("/api/admin/check")
+      .then((r) => r.json())
+      .then((d) => {
+        setAuthorized(!!d.isAdmin);
+        if (d.isAdmin) loadCodes();
+      })
+      .catch(() => setAuthorized(false));
+  }, []);
+
+  useEffect(() => {
+    if (authorized) loadCodes();
   }, [statusFilter]);
 
-  async function loadCodes() {
+  const loadCodes = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -57,7 +154,7 @@ export default function AdminStickersPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [statusFilter]);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -75,7 +172,6 @@ export default function AdminStickersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      // Download CSV
       const blob = new Blob([data.csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -94,32 +190,37 @@ export default function AdminStickersPage() {
     }
   }
 
-  async function handleAssignAndShip() {
-    setShipping(true);
-    setShipResult("");
-    try {
-      const res = await fetch("/api/admin/stickers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "assign_and_ship",
-          code: shipCode.trim().toUpperCase(),
-          ownerUserId: shipBarber.trim(),
-          trackingNumber: shipTracking.trim() || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+  async function handleDownloadBatchZip(batchLabel: string) {
+    const batchCodes = codes.filter((c) => c.batch_label === batchLabel);
+    if (batchCodes.length === 0) return;
 
-      setShipResult("Assigned and shipped!");
-      setShipCode("");
-      setShipBarber("");
-      setShipTracking("");
-      loadCodes();
+    setDownloadingBatch(batchLabel);
+    setDownloadProgress(`0 / ${batchCodes.length}`);
+
+    try {
+      const zip = new JSZip();
+
+      for (let i = 0; i < batchCodes.length; i++) {
+        const c = batchCodes[i];
+        setDownloadProgress(`${i + 1} / ${batchCodes.length}`);
+        const pngBlob = await renderStickerPNG(c.code);
+        zip.file(`${c.code}.png`, pngBlob);
+      }
+
+      setDownloadProgress("Zipping...");
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `stickers-${batchLabel}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (err: unknown) {
-      setShipResult(err instanceof Error ? err.message : "Failed");
+      alert(err instanceof Error ? err.message : "ZIP generation failed");
     } finally {
-      setShipping(false);
+      setDownloadingBatch(null);
+      setDownloadProgress("");
     }
   }
 
@@ -141,10 +242,32 @@ export default function AdminStickersPage() {
     }
   }
 
-  if (error === "Forbidden") {
+  // Group codes by batch label
+  const batches = codes.reduce<Record<string, StickerCode[]>>((acc, c) => {
+    const label = c.batch_label || "No batch";
+    if (!acc[label]) acc[label] = [];
+    acc[label].push(c);
+    return acc;
+  }, {});
+
+  const batchLabels = Object.keys(batches).sort((a, b) => {
+    if (a === "No batch") return 1;
+    if (b === "No batch") return -1;
+    return a.localeCompare(b);
+  });
+
+  if (authorized === false || error === "Forbidden") {
     return (
       <div className="text-center py-16 text-white/40">
         <p>Access denied.</p>
+      </div>
+    );
+  }
+
+  if (authorized === null) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
       </div>
     );
   }
@@ -187,49 +310,7 @@ export default function AdminStickersPage() {
         )}
       </div>
 
-      {/* Assign & Ship */}
-      <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5 space-y-3">
-        <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium">
-          Assign &amp; ship
-        </h3>
-        <div className="grid grid-cols-1 gap-2">
-          <input
-            type="text"
-            value={shipCode}
-            onChange={(e) => setShipCode(e.target.value.toUpperCase())}
-            placeholder="Sticker code"
-            className="bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)] font-mono"
-          />
-          <input
-            type="text"
-            value={shipBarber}
-            onChange={(e) => setShipBarber(e.target.value)}
-            placeholder="Barber user ID (UUID)"
-            className="bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)] font-mono"
-          />
-          <input
-            type="text"
-            value={shipTracking}
-            onChange={(e) => setShipTracking(e.target.value)}
-            placeholder="USPS tracking number (optional)"
-            className="bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)]"
-          />
-          <button
-            onClick={handleAssignAndShip}
-            disabled={shipping || !shipCode.trim() || !shipBarber.trim()}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[#0d0d0d] hover:brightness-90 disabled:opacity-30 transition-all"
-          >
-            {shipping ? "..." : "Assign & Ship"}
-          </button>
-        </div>
-        {shipResult && (
-          <p className={`text-xs ${shipResult.includes("!") ? "text-[var(--accent-color)]" : "text-red-400"}`}>
-            {shipResult}
-          </p>
-        )}
-      </div>
-
-      {/* Codes Table */}
+      {/* Codes by Batch */}
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium">
@@ -252,52 +333,68 @@ export default function AdminStickersPage() {
             <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
           </div>
         ) : (
-          <div className="space-y-2 max-h-[500px] overflow-y-auto">
-            {codes.map((c) => (
-              <div
-                key={c.code}
-                className="flex items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl px-3 py-2.5"
-              >
-                <span className="font-mono text-sm text-white/80 w-20 shrink-0">{c.code}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                  c.status === "active"
-                    ? "text-[var(--accent-color)] bg-[var(--accent-color)]/10"
-                    : c.status === "unclaimed"
-                    ? "text-yellow-400 bg-yellow-400/10"
-                    : "text-white/30 bg-white/5"
-                }`}>
-                  {c.status}
-                </span>
-                <span className="text-xs text-white/30 truncate flex-1">
-                  {c.owner_user_id
-                    ? barbers[c.owner_user_id] || c.owner_user_id.slice(0, 8)
-                    : "—"}
-                </span>
-                {c.tracking_number && (
-                  <span className="text-[10px] text-white/20 truncate max-w-[80px]">
-                    {c.tracking_number}
-                  </span>
-                )}
-                <span className="text-[10px] text-white/15 shrink-0">
-                  {c.batch_label || ""}
-                </span>
-                <div className="flex gap-1 shrink-0">
-                  {c.status === "active" && (
+          <div className="space-y-5 max-h-[600px] overflow-y-auto">
+            {batchLabels.map((label) => (
+              <div key={label}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-white/50">{label}</span>
+                    <span className="text-[10px] text-white/20">({batches[label].length} codes)</span>
+                  </div>
+                  {label !== "No batch" && (
                     <button
-                      onClick={() => handleAction(c.code, "reassign")}
-                      className="text-[10px] text-white/30 hover:text-white/60 px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06]"
+                      onClick={() => handleDownloadBatchZip(label)}
+                      disabled={downloadingBatch !== null}
+                      className="flex items-center gap-1.5 text-[11px] text-[var(--accent-color)] hover:brightness-90 disabled:opacity-30 px-2.5 py-1 rounded-lg bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/15 transition-all"
                     >
-                      Clear
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                      {downloadingBatch === label ? downloadProgress : "Download ZIP"}
                     </button>
                   )}
-                  {c.status !== "retired" && (
-                    <button
-                      onClick={() => handleAction(c.code, "retire")}
-                      className="text-[10px] text-red-400/50 hover:text-red-400 px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-red-400/10"
+                </div>
+                <div className="space-y-1.5">
+                  {batches[label].map((c) => (
+                    <div
+                      key={c.code}
+                      className="flex items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl px-3 py-2.5"
                     >
-                      Retire
-                    </button>
-                  )}
+                      <span className="font-mono text-sm text-white/80 w-20 shrink-0">{c.code}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
+                        c.status === "active"
+                          ? "text-[var(--accent-color)] bg-[var(--accent-color)]/10"
+                          : c.status === "unclaimed"
+                          ? "text-yellow-400 bg-yellow-400/10"
+                          : "text-white/30 bg-white/5"
+                      }`}>
+                        {c.status}
+                      </span>
+                      <span className="text-xs text-white/30 truncate flex-1">
+                        {c.owner_user_id
+                          ? barbers[c.owner_user_id] || c.owner_user_id.slice(0, 8)
+                          : "—"}
+                      </span>
+                      <div className="flex gap-1 shrink-0">
+                        {c.status === "active" && (
+                          <button
+                            onClick={() => handleAction(c.code, "reassign")}
+                            className="text-[10px] text-white/30 hover:text-white/60 px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06]"
+                          >
+                            Clear
+                          </button>
+                        )}
+                        {c.status !== "retired" && (
+                          <button
+                            onClick={() => handleAction(c.code, "retire")}
+                            className="text-[10px] text-red-400/50 hover:text-red-400 px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-red-400/10"
+                          >
+                            Retire
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import QRCode from "qrcode";
 
 type BusinessHours = Record<
   string,
@@ -88,11 +87,8 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState("");
   const [linkCopied, setLinkCopied] = useState<"vip" | "book" | "sticker" | false>(false);
   const [stickerCodes, setStickerCodes] = useState<{ code: string; status: string; claimed_at: string }[]>([]);
-  const [claimInput, setClaimInput] = useState("");
-  const [claimingSticker, setClaimingSticker] = useState(false);
-  const [claimError, setClaimError] = useState("");
-  const [claimSuccess, setClaimSuccess] = useState("");
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [requestingStickers, setRequestingStickers] = useState(false);
+  const [stickerRequestSent, setStickerRequestSent] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -269,49 +265,16 @@ export default function SettingsPage() {
     }));
   }
 
-  async function handleClaimSticker() {
-    if (!claimInput.trim()) return;
-    setClaimingSticker(true);
-    setClaimError("");
-    setClaimSuccess("");
-
+  async function requestMoreStickers() {
+    setRequestingStickers(true);
     try {
-      const res = await fetch("/api/stickers/claim", {
+      await fetch("/api/stickers/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: claimInput.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to claim");
-
-      setClaimSuccess(`Code ${data.code} claimed!`);
-      setClaimInput("");
-      // Reload sticker codes
-      const r = await fetch("/api/stickers");
-      const d = await r.json();
-      if (d.codes) setStickerCodes(d.codes);
-    } catch (err: unknown) {
-      setClaimError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setClaimingSticker(false);
-    }
-  }
-
-  async function downloadQR(code: string) {
-    const url = `${window.location.origin}/s/${code}`;
-    try {
-      const dataUrl = await QRCode.toDataURL(url, {
-        width: 1024,
-        margin: 2,
-        color: { dark: "#000000", light: "#ffffff" },
-      });
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `linecatch-qr-${code}.png`;
-      a.click();
-    } catch (err) {
-      console.error("QR generation failed:", err);
-    }
+      setStickerRequestSent(true);
+    } catch {}
+    setRequestingStickers(false);
   }
 
   if (loading) {
@@ -449,11 +412,11 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* QR Code & Sticker */}
+      {/* Sticker */}
       {userId && (
         <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5 space-y-4">
           <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium">
-            QR code &amp; sticker
+            Sticker
           </h3>
 
           {stickerCodes.length > 0 ? (
@@ -471,7 +434,7 @@ export default function SettingsPage() {
                         Active
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2">
                       <div className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-white/50 truncate">
                         {stickerUrl}
                       </div>
@@ -487,53 +450,37 @@ export default function SettingsPage() {
                         {linkCopied === "sticker" ? "Copied!" : "Copy"}
                       </button>
                     </div>
-                    <button
-                      onClick={() => downloadQR(sc.code)}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-xs text-white/40 hover:text-white/60"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Download QR PNG (1024x1024)
-                    </button>
                   </div>
                 );
               })}
+              <div className="border-t border-white/[0.05] pt-3">
+                {stickerRequestSent ? (
+                  <p className="text-xs text-[var(--accent-color)]">Request sent! We&apos;ll be in touch.</p>
+                ) : (
+                  <button
+                    onClick={requestMoreStickers}
+                    disabled={requestingStickers}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-xs text-white/40 hover:text-white/60 disabled:opacity-30"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Request more stickers
+                  </button>
+                )}
+                <p className="text-[11px] text-white/15 mt-2">
+                  All your stickers use the same code — clients always land on your VIP page.
+                </p>
+              </div>
             </div>
           ) : (
-            <p className="text-xs text-white/20">No sticker codes linked yet.</p>
-          )}
-
-          <div className="border-t border-white/[0.05] pt-4">
-            <p className="text-xs text-white/40 font-medium mb-2">Link a sticker</p>
-            <p className="text-[11px] text-white/20 mb-2">
-              Got a LineCatch sticker? Enter the code to link it to your account.
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={claimInput}
-                onChange={(e) => setClaimInput(e.target.value.toUpperCase())}
-                maxLength={8}
-                placeholder="e.g. AB3XY7"
-                className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)] transition-colors font-mono tracking-wider"
-              />
-              <button
-                onClick={handleClaimSticker}
-                disabled={claimingSticker || !claimInput.trim()}
-                className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[#0d0d0d] hover:brightness-90 disabled:opacity-30 transition-all"
-              >
-                {claimingSticker ? "..." : "Claim"}
-              </button>
+            <div className="text-center py-2">
+              <p className="text-sm text-white/40 mb-1">No sticker activated yet</p>
+              <p className="text-xs text-white/20">
+                Scan the QR code on your LineCatch sticker to activate SMS features.
+              </p>
             </div>
-            {claimError && (
-              <p className="text-[11px] text-red-400 mt-2">{claimError}</p>
-            )}
-            {claimSuccess && (
-              <p className="text-[11px] text-[var(--accent-color)] mt-2">{claimSuccess}</p>
-            )}
-          </div>
-          <canvas ref={qrCanvasRef} className="hidden" />
+          )}
         </div>
       )}
 

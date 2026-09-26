@@ -39,6 +39,17 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .single();
 
+  // Check if barber has an active sticker
+  const { data: activeSticker } = await supabase
+    .from("sticker_codes")
+    .select("code")
+    .eq("owner_user_id", user.id)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  const hasActiveSticker = !!activeSticker;
+
   const avgBookingValue = barber?.avg_booking_value || 35;
   const barberTimezone = barber?.timezone || "America/New_York";
   const googleReviewUrl: string | null = barber?.google_review_url || null;
@@ -220,9 +231,13 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .eq("status", "completed");
 
+  const bookingLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.app"}/book/${user.id}`;
+
   return (
     <StatsClient
       barberFirstName={barberFirstName}
+      hasActiveSticker={hasActiveSticker}
+      bookingLink={bookingLink}
       weeklyRevenue={weeklyRevenue}
       lastMonthRevenue={lastMonthRevenue}
       totalCompleted={totalCompletedCount || 0}

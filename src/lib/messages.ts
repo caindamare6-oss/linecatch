@@ -65,6 +65,15 @@ export function interpolateTemplate(
   return result;
 }
 
+const BARBER_FACING_TEMPLATES = new Set([
+  "morning_summary",
+  "morning_late_broadcast",
+  "weekly_report",
+  "completion_nudge",
+  "barber_cancel_notify",
+  "barber_reschedule_notify",
+]);
+
 export async function buildSMS(opts: {
   userId: string;
   templateKey: string;
@@ -78,19 +87,21 @@ export async function buildSMS(opts: {
     .select("client_language, first_name, first_message_sent_at")
     .eq("user_id", opts.userId)
     .eq("phone_number", opts.clientPhone)
-    .single();
+    .maybeSingle();
 
-  const lang = client?.client_language || "en";
-  const firstName = client?.first_name || "";
-  const isFirstMessage = !client?.first_message_sent_at;
-
-  // Fetch barber's first name for {barber_name} variable
   const { data: barberProfile } = await supabase
     .from("users")
-    .select("first_name")
+    .select("first_name, barber_language")
     .eq("user_id", opts.userId)
     .single();
 
+  const isBarberFacing = BARBER_FACING_TEMPLATES.has(opts.templateKey);
+  const lang = isBarberFacing
+    ? (barberProfile?.barber_language || "en")
+    : (client?.client_language || "en");
+
+  const firstName = client?.first_name || "";
+  const isFirstMessage = !client?.first_message_sent_at;
   const barberName = barberProfile?.first_name || "";
 
   const template = await resolveTemplate(opts.userId, opts.templateKey, lang);
@@ -99,7 +110,7 @@ export async function buildSMS(opts: {
   const allVars = { ...opts.vars, first_name: firstName, barber_name: barberName };
   let msg = interpolateTemplate(template, allVars);
 
-  if (isFirstMessage) {
+  if (isFirstMessage && !isBarberFacing) {
     msg += getStopHelpLine(lang);
   }
 

@@ -20,6 +20,22 @@ export async function POST(request: Request) {
   const normalized = code.trim().toUpperCase();
   const admin = createAdminClient();
 
+  // Check if barber already has an active sticker
+  const { data: existing } = await admin
+    .from("sticker_codes")
+    .select("code")
+    .eq("owner_user_id", user.id)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    return NextResponse.json(
+      { error: "You already have an active sticker. Each barber can only claim one.", existingCode: existing.code },
+      { status: 409 }
+    );
+  }
+
   // Atomic claim: only succeeds if status is still 'unclaimed'
   const { data, error } = await admin
     .from("sticker_codes")
@@ -34,23 +50,22 @@ export async function POST(request: Request) {
     .single();
 
   if (error || !data) {
-    // Check why it failed
-    const { data: existing } = await admin
+    const { data: check } = await admin
       .from("sticker_codes")
       .select("status, owner_user_id")
       .eq("code", normalized)
       .single();
 
-    if (!existing) {
+    if (!check) {
       return NextResponse.json({ error: "Code not found" }, { status: 404 });
     }
-    if (existing.status === "active") {
-      if (existing.owner_user_id === user.id) {
+    if (check.status === "active") {
+      if (check.owner_user_id === user.id) {
         return NextResponse.json({ error: "You already own this code" }, { status: 409 });
       }
       return NextResponse.json({ error: "This code has already been claimed" }, { status: 409 });
     }
-    if (existing.status === "retired") {
+    if (check.status === "retired") {
       return NextResponse.json({ error: "This code has been retired" }, { status: 410 });
     }
     return NextResponse.json(
@@ -58,6 +73,12 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  // Unlock SMS for this barber
+  await admin
+    .from("users")
+    .update({ is_locked_out: false })
+    .eq("user_id", user.id);
 
   return NextResponse.json({ success: true, code: data.code });
 }

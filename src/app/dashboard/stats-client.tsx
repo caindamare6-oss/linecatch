@@ -61,6 +61,8 @@ function timeAgo(dateStr: string): string {
 
 export function StatsClient({
   barberFirstName,
+  hasActiveSticker,
+  bookingLink,
   weeklyRevenue,
   lastMonthRevenue,
   totalCompleted,
@@ -85,6 +87,8 @@ export function StatsClient({
   activityFeed: initialFeed,
 }: {
   barberFirstName: string;
+  hasActiveSticker: boolean;
+  bookingLink: string;
   weeklyRevenue: number[];
   lastMonthRevenue: number;
   totalCompleted: number;
@@ -463,8 +467,54 @@ export function StatsClient({
 
   const monthName = new Date().toLocaleDateString("en-US", { month: "long" });
 
+  const [stickerBannerDismissed, setStickerBannerDismissed] = useState(false);
+
   return (
     <div className="space-y-4">
+      {/* Sticker Activation Banner */}
+      {!hasActiveSticker && !stickerBannerDismissed && (
+        <div className="relative bg-gradient-to-r from-[var(--accent-color)]/10 to-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-2xl p-5">
+          <button
+            onClick={() => setStickerBannerDismissed(true)}
+            className="absolute top-3 right-3 text-white/20 hover:text-white/40 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[var(--accent-color)]/15">
+              <svg className="w-5 h-5 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 14.625v6.75h6.75v-6.75h-6.75z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-white/90 mb-1">Activate your sticker to unlock SMS</h3>
+              <p className="text-xs text-white/40 leading-relaxed mb-3">
+                Scan the QR code on your LineCatch sticker to turn on missed-call auto-replies, booking confirmations, reminders, and review requests.
+              </p>
+              <div className="flex flex-col gap-2">
+                <a
+                  href="/dashboard/settings"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                  style={{ backgroundColor: 'var(--accent-color)', color: '#0d0d0d' }}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.04l-.821 1.315z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                  </svg>
+                  Enter sticker code
+                </a>
+                <p className="text-[11px] text-white/25">
+                  Share your booking link with clients while your sticker is on the way: <span className="text-white/40 break-all">{bookingLink}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Monthly Revenue Ring */}
       <button
         onClick={() => setDrillDown("roi")}

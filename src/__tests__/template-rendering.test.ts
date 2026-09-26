@@ -62,7 +62,7 @@ const SYSTEM_TEMPLATES: Record<string, Record<string, string>> = {
 const vars = {
   first_name: "Mike",
   shop_name: "Ace Cuts",
-  link: "https://book.linecatch.com/abc",
+  link: "https://linecatch.app/book/abc",
   cuts_until: "2",
 };
 
