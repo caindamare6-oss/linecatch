@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { normalizePhone } from "@/lib/phone";
+import { formatBarberDate, barberLocalToUTC } from "@/lib/format";
 
 const CONSENT_TEXT = "By checking this box, I consent to receive SMS messages from this business, including appointment reminders, confirmations, and offers. Message and data rates may apply. I can reply STOP to opt out or HELP for assistance at any time.";
 
@@ -43,6 +44,7 @@ function BookingContent() {
   const [error, setError] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [barberTimezone, setBarberTimezone] = useState("America/New_York");
 
   useEffect(() => {
     async function load() {
@@ -57,6 +59,7 @@ function BookingContent() {
       if (barberRes.ok) {
         const data = await barberRes.json();
         if (data.businessName) setBusinessName(data.businessName);
+        if (data.timezone) setBarberTimezone(data.timezone);
         const color = data.accentColor || "#00F5A0";
         document.documentElement.style.setProperty("--accent-color", color);
       }
@@ -91,7 +94,7 @@ function BookingContent() {
 
     setSubmitting(true);
 
-    const bookingTime = new Date(`${selectedDate}T${selectedTime}:00`);
+    const bookingTime = barberLocalToUTC(selectedDate, selectedTime, barberTimezone);
 
     try {
       const res = await fetch("/api/bookings", {
@@ -226,7 +229,7 @@ function BookingContent() {
   }
 
   if (step === "done") {
-    const bookingDate = new Date(`${selectedDate}T${selectedTime}:00`);
+    const bookingDate = barberLocalToUTC(selectedDate, selectedTime, barberTimezone);
     return (
       <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl p-8 border border-[#2a2a2a] text-center">
@@ -236,11 +239,7 @@ function BookingContent() {
             {selectedService?.name} with {displayName}
           </p>
           <p className="text-white/70 font-medium mb-1">
-            {bookingDate.toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-            })}
+            {formatBarberDate(bookingDate, barberTimezone)}
           </p>
           <p className="text-[var(--accent-color)] font-semibold text-lg mb-6">
             {formatTime(selectedTime)}

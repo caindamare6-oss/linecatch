@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   // Find barbers where local time is Wednesday 12:00–12:59 PM
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, business_name, booking_link, timezone, is_locked_out, is_active, feature_wednesday")
+    .select("user_id, phone_number, business_name, first_name, booking_link, timezone, is_locked_out, is_active, feature_wednesday")
     .eq("is_active", true)
     .eq("is_locked_out", false)
     .neq("feature_wednesday", false);
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
 
       if (optOut) continue;
 
-      const shopName = barber.business_name || "your barber";
+      const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
       const baseLink = barber.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${barber.user_id}`;
       const linkUrl = new URL(baseLink);
       linkUrl.searchParams.set("src", "cron_reengagement");

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const { data: barber, error: barberError } = await supabase
       .from("users")
       .select(
-        "user_id, phone_number, booking_link, is_active, business_name, is_locked_out, feature_autotext"
+        "user_id, phone_number, booking_link, is_active, business_name, first_name, is_locked_out, feature_autotext"
       )
       .eq("phone_number", to)
       .single();
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       "logged"
     );
 
-    const shopName = barber.business_name || "your barber";
+    const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
     const trackingUrl = callLog?.call_id
       ? `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${callLog.call_id}`
       : barber.booking_link || "";

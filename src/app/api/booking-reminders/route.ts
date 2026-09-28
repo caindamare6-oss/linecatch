@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
+import { formatBarberTime } from "@/lib/format";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -80,17 +81,15 @@ export async function GET(request: Request) {
 
     const { data: barber } = await supabase
       .from("users")
-      .select("phone_number, business_name")
+      .select("phone_number, business_name, first_name, timezone")
       .eq("user_id", booking.user_id)
       .single();
 
     if (!barber) continue;
 
-    const timeStr = bookingTime.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    const shopName = barber.business_name || "your barber";
+    const tz = barber.timezone || "America/New_York";
+    const timeStr = formatBarberTime(bookingTime, tz);
+    const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
     const templateKey = reminderType === "24h" ? "reminder_24h" : "reminder_2h";
 
     const sms = await buildSMS({
@@ -138,7 +137,7 @@ export async function GET(request: Request) {
 
       const { data: barber } = await supabase
         .from("users")
-        .select("phone_number, business_name, google_review_url, feature_reviews")
+        .select("phone_number, business_name, first_name, google_review_url, feature_reviews")
         .eq("user_id", completionEvent.user_id)
         .single();
 
@@ -161,7 +160,7 @@ export async function GET(request: Request) {
         continue;
       }
 
-      const shopName = barber.business_name || "your barber";
+      const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
 
       const reviewSms = await buildSMS({
         userId: completionEvent.user_id,

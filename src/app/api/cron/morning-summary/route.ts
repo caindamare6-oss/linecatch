@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
+import { formatBarberTime } from "@/lib/format";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -45,11 +46,7 @@ export async function GET(request: Request) {
 
     const cutsToday = todayBookings.length;
     const firstBookingTime = new Date(todayBookings[0].booking_time);
-    const firstTime = firstBookingTime.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: tz,
-    });
+    const firstTime = formatBarberTime(firstBookingTime, tz);
 
     let vipNote = "";
     for (const b of todayBookings) {
@@ -73,7 +70,7 @@ export async function GET(request: Request) {
     const msg = `${cutsToday} cut${cutsToday > 1 ? "s" : ""} today, first at ${firstTime}. ${vipLine}`.trim();
 
     try {
-      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "morning_summary", language: barber.barber_language || "en" });
+      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "morning_summary", language: barber.barber_language || "en", audience: "barber" });
       sent++;
     } catch (err) {
       console.error(`Morning summary failed for ${barber.user_id}:`, err);

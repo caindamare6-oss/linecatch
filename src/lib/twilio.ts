@@ -17,6 +17,13 @@ export function isTwilioEnabled(): boolean {
   return process.env.TWILIO_ENABLED !== "false";
 }
 
+const OPT_OUT = "\nReply STOP to opt out.";
+
+function withOptOut(body: string, audience: "client" | "barber"): string {
+  if (audience === "barber") return body;
+  return /\bSTOP\b/i.test(body) ? body : body + OPT_OUT;
+}
+
 export async function sendSMS(opts: {
   to: string;
   from: string;
@@ -24,8 +31,10 @@ export async function sendSMS(opts: {
   userId: string;
   templateKey: string;
   language: string;
+  audience?: "client" | "barber";
 }): Promise<boolean> {
-  const { to, from, body, userId, templateKey, language } = opts;
+  const { to, from, userId, templateKey, language, audience = "client" } = opts;
+  const body = withOptOut(opts.body, audience);
   const admin = createAdminClient();
   const isDevMode = process.env.SMS_DEV_MODE === "true";
 

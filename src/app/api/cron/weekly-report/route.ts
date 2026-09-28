@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, ${newVips || 0} new VIPs, ${missedCaught || 0} missed calls caught, ${reviewsSent || 0} review requests sent.`;
 
     try {
-      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "weekly_report", language: barber.barber_language || "en" });
+      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "weekly_report", language: barber.barber_language || "en", audience: "barber" });
       sent++;
     } catch (err) {
       console.error(`Weekly report failed for ${barber.user_id}:`, err);

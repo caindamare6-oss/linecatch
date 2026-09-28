@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { normalizePhone } from "@/lib/phone";
+import { formatBarberDate, formatBarberTime, minutesInTz } from "@/lib/format";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -125,6 +126,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Service not found" }, { status: 404 });
   }
 
+  // Get barber timezone for overlap check
+  const { data: barberTz } = await supabase
+    .from("users")
+    .select("timezone")
+    .eq("user_id", userId)
+    .single();
+  const tz = barberTz?.timezone || "America/New_York";
+
   // Check slot is still available
   const bTime = new Date(bookingTime);
   const startOfDay = new Date(bTime);
@@ -141,7 +150,7 @@ export async function POST(request: Request) {
     .lte("booking_time", endOfDay.toISOString());
 
   if (existing) {
-    const requestMinutes = bTime.getHours() * 60 + bTime.getMinutes();
+    const requestMinutes = minutesInTz(bTime, tz);
     for (const b of existing) {
       const { data: bs } = await supabase
         .from("services")
@@ -149,7 +158,7 @@ export async function POST(request: Request) {
         .eq("id", b.service_id)
         .single();
       const bt = new Date(b.booking_time);
-      const bm = bt.getHours() * 60 + bt.getMinutes();
+      const bm = minutesInTz(bt, tz);
       const bd = bs?.duration_minutes || 30;
       if (requestMinutes < bm + bd && requestMinutes + service.duration_minutes > bm) {
         return NextResponse.json({ error: "This time slot is no longer available" }, { status: 409 });
@@ -189,28 +198,22 @@ export async function POST(request: Request) {
   // Get barber info for confirmation SMS and barber notify
   const { data: barber } = await supabase
     .from("users")
-    .select("phone_number, forwarding_number, business_name, booking_link, timezone, is_locked_out")
+    .select("phone_number, forwarding_number, business_name, first_name, booking_link, timezone, is_locked_out")
     .eq("user_id", userId)
     .single();
 
   if (barber?.phone_number && clientOptedIn) {
-    const dateStr = bTime.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    });
-    const timeStr = bTime.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-    const shopName = barber.business_name || "your barber";
-    const link = barber.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${userId}`;
+    const tz = barber.timezone || "America/New_York";
+    const dateStr = formatBarberDate(bTime, tz);
+    const timeStr = formatBarberTime(bTime, tz);
+    const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
+    const manageLink = `${process.env.NEXT_PUBLIC_APP_URL}/manage/${booking.id}`;
 
     const confirmSms = await buildSMS({
       userId,
       templateKey: "booking_confirm",
       clientPhone: normalized,
-      vars: { shop_name: shopName, date: dateStr, time: timeStr, link },
+      vars: { shop_name: shopName, date: dateStr, time: timeStr, link: manageLink },
     });
 
     if (confirmSms) {
@@ -238,11 +241,7 @@ export async function POST(request: Request) {
       nowLocal.getDate() === bookingLocal.getDate();
 
     if (isSameDay && nowLocal.getHours() >= 9) {
-      const timeStr = bTime.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        timeZone: tz,
-      });
+      const timeStr = formatBarberTime(bTime, tz);
 
       const notifySms = await buildSMS({
         userId,
@@ -257,7 +256,7 @@ export async function POST(request: Request) {
 
       if (notifySms) {
         try {
-          await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: notifySms.body, userId, templateKey: "barber_booking_notify", language: notifySms.language });
+          await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: notifySms.body, userId, templateKey: "barber_booking_notify", language: notifySms.language, audience: "barber" });
         } catch (err) {
           console.error("Barber booking notify failed:", err);
         }

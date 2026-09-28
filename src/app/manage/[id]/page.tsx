@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { formatBarberDate, formatBarberTime, barberLocalToUTC } from "@/lib/format";
 
 type BookingData = {
   id: string;
@@ -12,6 +13,7 @@ type BookingData = {
   serviceId: string;
   service: { name: string; price: number; duration_minutes: number } | null;
   businessName: string | null;
+  timezone: string;
 };
 
 export default function ManageBookingPage() {
@@ -86,9 +88,9 @@ export default function ManageBookingPage() {
   }
 
   async function handleReschedule() {
-    if (!selectedDate || !selectedTime) return;
+    if (!selectedDate || !selectedTime || !booking) return;
     setSubmitting(true);
-    const newTime = new Date(`${selectedDate}T${selectedTime}:00`);
+    const newTime = barberLocalToUTC(selectedDate, selectedTime, booking.timezone);
     const res = await fetch(`/api/bookings/${bookingId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -232,8 +234,8 @@ export default function ManageBookingPage() {
           <h2 className="text-lg font-bold text-white mb-2">Cancel this appointment?</h2>
           <p className="text-gray-400 text-sm mb-6">
             {booking.service?.name} with {displayName} on{" "}
-            {bt.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} at{" "}
-            {bt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+            {formatBarberDate(bt, booking.timezone)} at{" "}
+            {formatBarberTime(bt, booking.timezone)}
           </p>
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
           <div className="flex gap-3">
@@ -349,13 +351,13 @@ export default function ManageBookingPage() {
             <div className="flex justify-between text-sm">
               <span className="text-white/50">Date</span>
               <span className="text-white/80">
-                {bt.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                {formatBarberDate(bt, booking.timezone)}
               </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-white/50">Time</span>
               <span className="text-white/80">
-                {bt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                {formatBarberTime(bt, booking.timezone)}
               </span>
             </div>
             <div className="flex justify-between text-sm">

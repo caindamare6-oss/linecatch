@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
+import { formatBarberDate, formatBarberTime } from "@/lib/format";
 
 export async function GET(
   _request: Request,
@@ -28,7 +29,7 @@ export async function GET(
 
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name")
+    .select("business_name, timezone")
     .eq("user_id", booking.user_id)
     .single();
 
@@ -40,6 +41,7 @@ export async function GET(
     serviceId: booking.service_id,
     service: service ? { name: service.name, price: service.price, duration_minutes: service.duration_minutes } : null,
     businessName: barber?.business_name || null,
+    timezone: barber?.timezone || "America/New_York",
   });
 }
 
@@ -65,7 +67,7 @@ export async function PATCH(
 
   const { data: barber } = await supabase
     .from("users")
-    .select("phone_number, business_name, booking_link, google_review_url, feature_reviews")
+    .select("phone_number, business_name, first_name, booking_link, google_review_url, feature_reviews, timezone")
     .eq("user_id", booking.user_id)
     .single();
 
@@ -75,8 +77,9 @@ export async function PATCH(
     .eq("id", booking.service_id)
     .single();
 
-  const shopName = barber?.business_name || "your barber";
+  const shopName = barber?.business_name?.trim() || barber?.first_name?.trim() || "your barber";
   const link = barber?.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${booking.user_id}`;
+  const tz = barber?.timezone || "America/New_York";
 
   if (action === "complete") {
     if (booking.status !== "confirmed") {
@@ -280,13 +283,13 @@ export async function PATCH(
           clientPhone: booking.customer_phone,
           vars: {
             customer_name: vip?.first_name || booking.customer_phone,
-            date: oldTime.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }),
-            time: oldTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+            date: formatBarberDate(oldTime, tz),
+            time: formatBarberTime(oldTime, tz),
           },
         });
         if (cancelNotifySms) {
           try {
-            await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: cancelNotifySms.body, userId: booking.user_id, templateKey: "barber_cancel_notify", language: cancelNotifySms.language });
+            await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: cancelNotifySms.body, userId: booking.user_id, templateKey: "barber_cancel_notify", language: cancelNotifySms.language, audience: "barber" });
           } catch (err) {
             console.error("Barber cancel notify failed:", err);
           }
@@ -314,15 +317,8 @@ export async function PATCH(
     }
 
     if (barber?.phone_number) {
-      const dateStr = newBookingTime.toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      });
-      const timeStr = newBookingTime.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      });
+      const dateStr = formatBarberDate(newBookingTime, tz);
+      const timeStr = formatBarberTime(newBookingTime, tz);
 
       const rescheduleSms = await buildSMS({
         userId: booking.user_id,
@@ -354,15 +350,15 @@ export async function PATCH(
           clientPhone: booking.customer_phone,
           vars: {
             customer_name: vip?.first_name || booking.customer_phone,
-            old_date: oldBookingTime.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
-            old_time: oldBookingTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+            old_date: formatBarberDate(oldBookingTime, tz, "short"),
+            old_time: formatBarberTime(oldBookingTime, tz),
             date: dateStr,
             time: timeStr,
           },
         });
         if (rescheduleNotifySms) {
           try {
-            await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: rescheduleNotifySms.body, userId: booking.user_id, templateKey: "barber_reschedule_notify", language: rescheduleNotifySms.language });
+            await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: rescheduleNotifySms.body, userId: booking.user_id, templateKey: "barber_reschedule_notify", language: rescheduleNotifySms.language, audience: "barber" });
           } catch (err) {
             console.error("Barber reschedule notify failed:", err);
           }

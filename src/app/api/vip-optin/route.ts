@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const supabase = createAdminClient();
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name, is_locked_out, accent_color")
+    .select("business_name, is_locked_out, accent_color, timezone")
     .eq("user_id", barberId)
     .single();
 
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     businessName: barber?.business_name || null,
     isLockedOut: barber?.is_locked_out || false,
     accentColor: barber?.accent_color || null,
+    timezone: barber?.timezone || "America/New_York",
   });
 }
 

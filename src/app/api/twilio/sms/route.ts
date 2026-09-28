@@ -135,11 +135,11 @@ export async function POST(request: Request) {
     if (todayBookings && todayBookings.length > 0) {
       const { data: barberInfo } = await supabase
         .from("users")
-        .select("business_name, phone_number")
+        .select("business_name, first_name, phone_number")
         .eq("user_id", barber.user_id)
         .single();
 
-      const shopName = barberInfo?.business_name || "Your barber";
+      const shopName = barberInfo?.business_name?.trim() || barberInfo?.first_name?.trim() || "Your barber";
       const { buildSMS, markFirstMessageSent } = await import("@/lib/messages");
       const { sendSMS } = await import("@/lib/twilio");
 

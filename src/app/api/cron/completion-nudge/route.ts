@@ -73,7 +73,7 @@ export async function GET(request: Request) {
     const msg = `Done with ${clientName}? Tap to complete: ${link}`;
 
     try {
-      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: booking.user_id, templateKey: "completion_nudge", language: barber.barber_language || "en" });
+      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: booking.user_id, templateKey: "completion_nudge", language: barber.barber_language || "en", audience: "barber" });
       sent++;
     } catch (err) {
       console.error(`Completion nudge failed for booking ${booking.id}:`, err);

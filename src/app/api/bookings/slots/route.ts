@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { minutesInTz } from "@/lib/format";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
   const openMinutes = openH * 60 + openM;
   const closeMinutes = closeH * 60 + closeM;
   const duration = service.duration_minutes;
+  const tz = barber.timezone || "America/New_York";
 
   const startOfDay = new Date(date + "T00:00:00");
   const endOfDay = new Date(date + "T23:59:59");
@@ -69,7 +71,7 @@ export async function GET(request: Request) {
         .eq("id", b.service_id)
         .single();
       const bTime = new Date(b.booking_time);
-      const bMinutes = bTime.getHours() * 60 + bTime.getMinutes();
+      const bMinutes = minutesInTz(bTime, tz);
       bookedSlots.push({
         start: bMinutes,
         end: bMinutes + (bookedService?.duration_minutes || 30),
@@ -78,7 +80,6 @@ export async function GET(request: Request) {
   }
 
   // Get current time in barber's timezone to filter past slots
-  const tz = barber.timezone || "America/New_York";
   const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
   const todayStr = `${nowLocal.getFullYear()}-${(nowLocal.getMonth() + 1).toString().padStart(2, "0")}-${nowLocal.getDate().toString().padStart(2, "0")}`;
   const isToday = date === todayStr;
@@ -97,5 +98,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ slots });
+  return NextResponse.json({ slots, timezone: tz });
 }
