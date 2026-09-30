@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveTemplate } from "@/lib/messages";
 
 export async function POST() {
   const supabase = await createClient();
@@ -44,14 +45,14 @@ export async function POST() {
     }
   }
 
-  // Brand new user — create profile
+  const defaultMsg = await resolveTemplate(user.id, "missed_call", "en")
+    || "Hey! Sorry I missed your call. Book your next appointment here: {link}";
   const { error: insertError } = await admin.from("users").insert({
     user_id: user.id,
     phone_number: phone || null,
     forwarding_number: null,
     is_active: true,
-    custom_message:
-      "Hey! Sorry I missed your call. Book your next appointment here: {link}\nReply STOP to opt out.",
+    custom_message: defaultMsg,
   });
 
   if (insertError) {

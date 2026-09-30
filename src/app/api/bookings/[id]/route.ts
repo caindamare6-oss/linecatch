@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
-import { formatBarberDate, formatBarberTime } from "@/lib/format";
+import { formatCasualDate, formatCasualTime } from "@/lib/format";
 
 export async function GET(
   _request: Request,
@@ -283,8 +283,8 @@ export async function PATCH(
           clientPhone: booking.customer_phone,
           vars: {
             customer_name: vip?.first_name || booking.customer_phone,
-            date: formatBarberDate(oldTime, tz),
-            time: formatBarberTime(oldTime, tz),
+            date: formatCasualDate(oldTime, tz),
+            time: formatCasualTime(oldTime, tz),
           },
         });
         if (cancelNotifySms) {
@@ -317,8 +317,8 @@ export async function PATCH(
     }
 
     if (barber?.phone_number) {
-      const dateStr = formatBarberDate(newBookingTime, tz);
-      const timeStr = formatBarberTime(newBookingTime, tz);
+      const dateStr = formatCasualDate(newBookingTime, tz);
+      const timeStr = formatCasualTime(newBookingTime, tz);
 
       const rescheduleSms = await buildSMS({
         userId: booking.user_id,
@@ -350,8 +350,8 @@ export async function PATCH(
           clientPhone: booking.customer_phone,
           vars: {
             customer_name: vip?.first_name || booking.customer_phone,
-            old_date: formatBarberDate(oldBookingTime, tz, "short"),
-            old_time: formatBarberTime(oldBookingTime, tz),
+            old_date: formatCasualDate(oldBookingTime, tz),
+            old_time: formatCasualTime(oldBookingTime, tz),
             date: dateStr,
             time: timeStr,
           },

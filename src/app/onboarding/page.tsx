@@ -16,6 +16,7 @@ const ACCENT_COLORS = [
 const LANGUAGES = [
   { code: "en" as const, label: "English", flag: "🇺🇸" },
   { code: "es" as const, label: "Español", flag: "🇲🇽" },
+  { code: "other" as const, label: "Other", flag: "🌐" },
 ];
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -50,7 +51,8 @@ function getDefaultServices(lang: string): Service[] {
 const TOTAL_STEPS = 7;
 
 export default function OnboardingPage() {
-  const [language, setLanguage] = useState<"en" | "es">("en");
+  const [language, setLanguage] = useState<string>("en");
+  const [otherLanguage, setOtherLanguage] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [initialData, setInitialData] = useState<{
     profile: Record<string, unknown>;
@@ -67,8 +69,15 @@ export default function OnboardingPage() {
         if (cancelled) return;
         const data = await res.json();
         if (cancelled) return;
-        const savedLang = data.profile?.barber_language;
-        if (savedLang === "en" || savedLang === "es") setLanguage(savedLang);
+        const savedLang = data.profile?.barber_language as string | undefined;
+        if (savedLang) {
+          if (savedLang === "en" || savedLang === "es") {
+            setLanguage(savedLang);
+          } else {
+            setLanguage("other");
+            setOtherLanguage(savedLang);
+          }
+        }
         setInitialData(data);
       } catch {}
       if (!cancelled) setLoaded(true);
@@ -86,10 +95,12 @@ export default function OnboardingPage() {
   }
 
   return (
-    <I18nProvider locale={language}>
+    <I18nProvider locale={language === "en" || language === "es" ? language : "en"}>
       <OnboardingFlow
         language={language}
         setLanguage={setLanguage}
+        otherLanguage={otherLanguage}
+        setOtherLanguage={setOtherLanguage}
         initialData={initialData}
       />
     </I18nProvider>
@@ -99,10 +110,14 @@ export default function OnboardingPage() {
 function OnboardingFlow({
   language,
   setLanguage,
+  otherLanguage,
+  setOtherLanguage,
   initialData,
 }: {
-  language: "en" | "es";
-  setLanguage: (l: "en" | "es") => void;
+  language: string;
+  setLanguage: (l: string) => void;
+  otherLanguage: string;
+  setOtherLanguage: (l: string) => void;
   initialData: {
     profile: Record<string, unknown>;
     services: { id: string; name: string; price: number; duration_minutes: number; is_active: boolean; sort_order: number }[];
@@ -279,8 +294,9 @@ function OnboardingFlow({
   async function goNext() {
     let result: { ok: boolean; error?: string } | null = null;
 
-    if (step === 0) result = await saveStep("who", { language });
-    else if (step === 1) result = await saveStep("who", { firstName, language, accentColor });
+    const langToSave = language === "other" ? (otherLanguage.trim() || "other") : language;
+    if (step === 0) result = await saveStep("who", { language: langToSave });
+    else if (step === 1) result = await saveStep("who", { firstName, language: langToSave, accentColor });
     else if (step === 2) result = await saveStep("business", { businessName, phone, email });
     else if (step === 3) result = await saveStep("services", { services: services.filter((s) => s.enabled) });
     else if (step === 4) result = await saveStep("hours", { businessHours, timezone });
@@ -485,6 +501,20 @@ function OnboardingFlow({
                     </button>
                   ))}
                 </div>
+                {language === "other" && (
+                  <input
+                    type="text"
+                    value={otherLanguage}
+                    onChange={(e) => setOtherLanguage(e.target.value)}
+                    placeholder="e.g. French, Haitian Creole…"
+                    className="mt-2 w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{
+                      backgroundColor: "var(--ob-surface)",
+                      color: "var(--ob-text)",
+                      border: "1px solid var(--ob-border)",
+                    }}
+                  />
+                )}
               </div>
 
               <div

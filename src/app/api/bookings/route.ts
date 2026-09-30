@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { normalizePhone } from "@/lib/phone";
-import { formatBarberDate, formatBarberTime, minutesInTz } from "@/lib/format";
+import { formatCasualDate, formatCasualTime, minutesInTz } from "@/lib/format";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -204,8 +204,8 @@ export async function POST(request: Request) {
 
   if (barber?.phone_number && clientOptedIn) {
     const tz = barber.timezone || "America/New_York";
-    const dateStr = formatBarberDate(bTime, tz);
-    const timeStr = formatBarberTime(bTime, tz);
+    const dateStr = formatCasualDate(bTime, tz);
+    const timeStr = formatCasualTime(bTime, tz);
     const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
     const manageLink = `${process.env.NEXT_PUBLIC_APP_URL}/manage/${booking.id}`;
 
@@ -241,7 +241,7 @@ export async function POST(request: Request) {
       nowLocal.getDate() === bookingLocal.getDate();
 
     if (isSameDay && nowLocal.getHours() >= 9) {
-      const timeStr = formatBarberTime(bTime, tz);
+      const timeStr = formatCasualTime(bTime, tz);
 
       const notifySms = await buildSMS({
         userId,

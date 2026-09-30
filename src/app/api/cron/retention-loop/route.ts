@@ -94,7 +94,7 @@ export async function GET(request: Request) {
 
       const sms = await buildSMS({
         userId: barber.user_id,
-        templateKey: "wednesday_dropin",
+        templateKey: "winback_1",
         clientPhone: client.phone_number,
         vars: { shop_name: shopName, link },
       });
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
       if (!sms) continue;
 
       try {
-        await sendSMS({ to: client.phone_number, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: "wednesday_dropin", language: sms.language });
+        await sendSMS({ to: client.phone_number, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: "winback_1", language: sms.language });
         await markFirstMessageSent(barber.user_id, client.phone_number);
 
         await supabase

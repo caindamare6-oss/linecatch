@@ -21,6 +21,27 @@ export function formatBarberTime(date: Date, tz: string = DEFAULT_TZ): string {
   });
 }
 
+export function formatCasualDate(date: Date, tz: string = DEFAULT_TZ): string {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    timeZone: tz,
+  });
+}
+
+export function formatCasualTime(date: Date, tz: string = DEFAULT_TZ): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: tz,
+  }).formatToParts(date);
+  const hour = parts.find((p) => p.type === "hour")?.value || "12";
+  const minute = parts.find((p) => p.type === "minute")?.value || "00";
+  const dp = parts.find((p) => p.type === "dayPeriod")?.value || "am";
+  const period = dp.toLowerCase();
+  return minute === "00" ? `${hour}${period}` : `${hour}:${minute}${period}`;
+}
+
 /**
  * Extract the hour and minute of a Date in a given timezone, as minutes-since-midnight.
  */

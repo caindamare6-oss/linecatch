@@ -1,16 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const STOP_HELP_LINE_EN = "\nReply STOP to end";
-const STOP_HELP_LINE_ES = "\nResponde PARAR para salir";
-const STOP_HELP_LINE_PT = "\nResponda SAIR para sair";
-
 export { CONSENT_TEXT } from "./consent";
-
-export function getStopHelpLine(lang: string): string {
-  if (lang === "es") return STOP_HELP_LINE_ES;
-  if (lang === "pt") return STOP_HELP_LINE_PT;
-  return STOP_HELP_LINE_EN;
-}
 
 export async function resolveTemplate(
   userId: string,
@@ -85,14 +75,14 @@ export async function buildSMS(opts: {
 
   const { data: client } = await supabase
     .from("vip_clients")
-    .select("client_language, first_name, first_message_sent_at")
+    .select("client_language, first_name")
     .eq("user_id", opts.userId)
     .eq("phone_number", opts.clientPhone)
     .maybeSingle();
 
   const { data: barberProfile } = await supabase
     .from("users")
-    .select("first_name, barber_language")
+    .select("first_name, barber_language, custom_message, winback_offer")
     .eq("user_id", opts.userId)
     .single();
 
@@ -102,18 +92,23 @@ export async function buildSMS(opts: {
     : (client?.client_language || "en");
 
   const firstName = client?.first_name || "";
-  const isFirstMessage = !client?.first_message_sent_at;
   const barberName = barberProfile?.first_name || "";
 
-  const template = await resolveTemplate(opts.userId, opts.templateKey, language);
+  let template: string | null;
+  if (opts.templateKey === "missed_call" && barberProfile?.custom_message) {
+    template = barberProfile.custom_message;
+  } else {
+    template = await resolveTemplate(opts.userId, opts.templateKey, language);
+  }
   if (!template) return null;
 
-  const allVars = { ...opts.vars, first_name: firstName, barber_name: barberName };
-  let body = interpolateTemplate(template, allVars);
-
-  if (isFirstMessage && !isBarberFacing) {
-    body += getStopHelpLine(language);
-  }
+  const allVars: Record<string, string> = {
+    ...opts.vars,
+    first_name: firstName,
+    barber_name: barberName,
+    offer: barberProfile?.winback_offer || "",
+  };
+  const body = interpolateTemplate(template, allVars);
 
   return { body, language };
 }

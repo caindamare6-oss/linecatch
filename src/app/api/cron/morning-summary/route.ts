@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
-import { formatBarberTime } from "@/lib/format";
+import { formatCasualTime } from "@/lib/format";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 
     const cutsToday = todayBookings.length;
     const firstBookingTime = new Date(todayBookings[0].booking_time);
-    const firstTime = formatBarberTime(firstBookingTime, tz);
+    const firstTime = formatCasualTime(firstBookingTime, tz);
 
     let vipNote = "";
     for (const b of todayBookings) {

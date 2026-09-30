@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveTemplate } from "@/lib/messages";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -35,13 +36,13 @@ export async function GET(request: Request) {
             .update({ user_id: data.user.id })
             .eq("email", data.user.email);
         } else {
-          // Brand new user — create profile
+          const defaultMsg = await resolveTemplate(data.user.id, "missed_call", "en")
+            || "Hey! Sorry I missed your call. Book your next appointment here: {link}";
           await admin.from("users").insert({
             user_id: data.user.id,
             email: data.user.email,
             is_active: true,
-            custom_message:
-              "Hey! Sorry I missed your call. Book your next appointment here: {link}\nReply STOP to opt out.",
+            custom_message: defaultMsg,
           });
         }
       }

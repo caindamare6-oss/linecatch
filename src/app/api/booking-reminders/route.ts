@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
-import { formatBarberTime } from "@/lib/format";
+import { formatCasualTime } from "@/lib/format";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
     if (!barber) continue;
 
     const tz = barber.timezone || "America/New_York";
-    const timeStr = formatBarberTime(bookingTime, tz);
+    const timeStr = formatCasualTime(bookingTime, tz);
     const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
     const templateKey = reminderType === "24h" ? "reminder_24h" : "reminder_2h";
 

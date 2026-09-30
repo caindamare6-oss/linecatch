@@ -182,9 +182,6 @@ export default function SettingsPage() {
     if (!user) return;
 
     const msg = getActiveMessage();
-    const finalMsg = msg.toLowerCase().includes("stop")
-      ? msg
-      : msg + "\n\nReply STOP to opt out.";
 
     // Only include enabled days (filter out null/closed entries)
     const cleanedHours: BusinessHours = {};
@@ -196,7 +193,7 @@ export default function SettingsPage() {
       .from("users")
       .update({
         booking_link: bookingLink || null,
-        custom_message: finalMsg,
+        custom_message: msg,
         forwarding_number: forwardingNumber || null,
         business_hours: Object.keys(cleanedHours).length
           ? cleanedHours

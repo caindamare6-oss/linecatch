@@ -109,7 +109,7 @@ export async function GET(request: Request) {
         templateKey: "missed_call",
         clientPhone: call.caller_phone,
         vars: {
-          shop_name: barber.business_name || "",
+          shop_name: barber.business_name?.trim() || "",
           link: trackingUrl,
         },
       });
