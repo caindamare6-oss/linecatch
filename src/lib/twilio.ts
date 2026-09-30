@@ -1,5 +1,6 @@
 import twilio from "twilio";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isOptedOut } from "@/lib/opt-out";
 
 let client: ReturnType<typeof twilio> | null = null;
 
@@ -37,6 +38,11 @@ export async function sendSMS(opts: {
   const body = withOptOut(opts.body, audience);
   const admin = createAdminClient();
   const isDevMode = process.env.SMS_DEV_MODE === "true";
+
+  if (audience === "client" && (await isOptedOut(admin as unknown as Parameters<typeof isOptedOut>[0], userId, to))) {
+    console.log(`[SMS Blocked] ${to} opted out, template ${templateKey} not sent`);
+    return false;
+  }
 
   const { data: row } = await admin
     .from("sms_log")

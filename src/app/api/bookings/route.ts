@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { normalizePhone } from "@/lib/phone";
+import { CONSENT_TEXT } from "@/lib/consent";
 import { formatCasualDate, formatCasualTime, minutesInTz } from "@/lib/format";
 
 export async function POST(request: Request) {
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
         opt_in_source: "booking_form",
         opt_in_ip: ip,
         opt_in_user_agent: userAgent,
-        consent_text: consentText,
+        consent_text: CONSENT_TEXT,
         first_name: firstName || null,
       });
 
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
           opt_in_source: "booking_form",
           opt_in_ip: ip,
           opt_in_user_agent: userAgent,
-          consent_text: consentText,
+          consent_text: CONSENT_TEXT,
           first_name: firstName || vipClient.first_name || null,
         })
         .eq("id", vipClient.id);

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
+import { CONSENT_TEXT, toOptInSource } from "@/lib/consent";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { phone, barberId, firstName, consentText, consented, optInSource } = body;
+  const { phone, barberId, firstName, consented, optInSource } = body;
 
   if (!phone || !barberId) {
     return NextResponse.json(
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
 
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const userAgent = request.headers.get("user-agent") || "unknown";
-  const source = optInSource || "vip_form";
+  const source = toOptInSource(optInSource, "vip_form");
 
   const { data: existing } = await supabase
     .from("vip_clients")
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
         opt_in_source: source,
         opt_in_ip: ip,
         opt_in_user_agent: userAgent,
-        consent_text: didConsent ? consentText : null,
+        consent_text: didConsent ? CONSENT_TEXT : null,
         first_name: firstName || null,
       })
       .eq("id", existing.id);
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
     opt_in_source: source,
     opt_in_ip: ip,
     opt_in_user_agent: userAgent,
-    consent_text: didConsent ? consentText : null,
+    consent_text: didConsent ? CONSENT_TEXT : null,
     first_name: firstName || null,
   });
 

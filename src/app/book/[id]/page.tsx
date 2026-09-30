@@ -5,8 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { normalizePhone } from "@/lib/phone";
 import { formatBarberDate, barberLocalToUTC } from "@/lib/format";
-
-const CONSENT_TEXT = "By checking this box, I consent to receive SMS messages from this business, including appointment reminders, confirmations, and offers. Message and data rates may apply. I can reply STOP to opt out or HELP for assistance at any time.";
+import { CONSENT_TEXT } from "@/lib/consent";
 
 type Service = {
   id: string;
@@ -489,13 +488,7 @@ function BookingContent() {
                   htmlFor="booking-consent"
                   className="text-xs text-gray-400 cursor-pointer"
                 >
-                  By checking this box, I consent to receive SMS messages from
-                  this business, including appointment reminders, confirmations,
-                  and offers. Message and data rates may apply. I can reply{" "}
-                  <strong className="text-gray-200">STOP</strong> to opt out or{" "}
-                  <strong className="text-gray-200">HELP</strong> for assistance
-                  at any time.
-                  {" "}
+                  {CONSENT_TEXT}{" "}
                   <a href="/privacy" className="text-[var(--accent-color)] hover:underline">Privacy Policy</a>
                   {" & "}
                   <a href="/terms" className="text-[var(--accent-color)] hover:underline">Terms</a>

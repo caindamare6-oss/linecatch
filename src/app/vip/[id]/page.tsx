@@ -48,7 +48,7 @@ export default function VIPOptIn() {
           firstName: firstName.trim() || undefined,
           consentText: didConsent ? CONSENT_TEXT : null,
           consented: didConsent,
-          optInSource: "vip_form",
+          optInSource: new URLSearchParams(window.location.search).get("src") === "qr" ? "qr" : "vip_form",
         }),
       });
 
@@ -208,12 +208,10 @@ export default function VIPOptIn() {
                   htmlFor="consent"
                   className="text-sm text-gray-400 cursor-pointer"
                 >
-                  By checking this box, I consent to receive SMS messages from
-                  this business, including appointment reminders, confirmations,
-                  and offers. Message and data rates may apply. I can reply{" "}
-                  <strong className="text-gray-200">STOP</strong> to opt out or{" "}
-                  <strong className="text-gray-200">HELP</strong> for assistance
-                  at any time.
+                  {CONSENT_TEXT}{" "}
+                  <a href="/privacy" className="text-[var(--accent-color)] hover:underline">Privacy Policy</a>
+                  {" & "}
+                  <a href="/terms" className="text-[var(--accent-color)] hover:underline">Terms</a>
                 </label>
               </div>
 

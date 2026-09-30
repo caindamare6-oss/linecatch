@@ -50,7 +50,7 @@ export default async function StickerPage({
         if (error) console.error("Sticker scan log failed:", error.message);
       });
 
-    redirect(`/vip/${sticker.owner_user_id}`);
+    redirect(`/vip/${sticker.owner_user_id}?src=qr`);
   }
 
   // Unclaimed code — check if visitor is a signed-in barber
