@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { sendSMS } from "@/lib/twilio";
+import { isSlotFree, withinBusinessHours } from "@/lib/availability";
+
+const CLIENT_CUTOFF_HOURS = 3;
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
 
@@ -51,7 +55,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const body = await request.json();
-  const { action, newTime, source } = body;
+  const { action, newTime } = body;
 
   const supabase = createAdminClient();
 
@@ -65,15 +69,36 @@ export async function PATCH(
     return NextResponse.json({ error: "Booking not found" }, { status: 404 });
   }
 
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  const isOwner = !!user && user.id === booking.user_id;
+  const source = isOwner ? "barber" : "client";
+
+  if (!isOwner) {
+    if (action !== "cancel" && action !== "reschedule") {
+      return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+    }
+    if (booking.status !== "confirmed") {
+      return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
+    }
+    const hoursUntil = (new Date(booking.booking_time).getTime() - Date.now()) / (60 * 60 * 1000);
+    if (hoursUntil <= CLIENT_CUTOFF_HOURS) {
+      return NextResponse.json(
+        { error: `Changes must be made at least ${CLIENT_CUTOFF_HOURS} hours before your appointment. Please call the shop.` },
+        { status: 403 }
+      );
+    }
+  }
+
   const { data: barber } = await supabase
     .from("users")
-    .select("phone_number, business_name, first_name, booking_link, google_review_url, feature_reviews, timezone")
+    .select("phone_number, business_name, first_name, booking_link, google_review_url, feature_reviews, timezone, business_hours")
     .eq("user_id", booking.user_id)
     .single();
 
   const { data: service } = await supabase
     .from("services")
-    .select("name, price")
+    .select("name, price, duration_minutes")
     .eq("id", booking.service_id)
     .single();
 
@@ -303,6 +328,17 @@ export async function PATCH(
   if (action === "reschedule" && newTime) {
     const oldBookingTime = new Date(booking.booking_time);
     const newBookingTime = new Date(newTime);
+    const duration = service?.duration_minutes || 30;
+
+    if (isNaN(newBookingTime.getTime()) || newBookingTime.getTime() <= Date.now()) {
+      return NextResponse.json({ error: "Pick a time in the future" }, { status: 400 });
+    }
+    if (!isOwner && !withinBusinessHours(barber?.business_hours ?? null, newBookingTime, duration, tz)) {
+      return NextResponse.json({ error: "That time is outside business hours" }, { status: 400 });
+    }
+    if (!(await isSlotFree(supabase, booking.user_id, newBookingTime, duration, [booking.id]))) {
+      return NextResponse.json({ error: "That time slot was just taken. Please pick another." }, { status: 409 });
+    }
 
     const { error: rescheduleError } = await supabase
       .from("bookings")
