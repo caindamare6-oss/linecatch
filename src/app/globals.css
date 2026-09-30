@@ -141,6 +141,39 @@
   }
 }
 
+/* ── Portfolio + booking motion: CSS only ─────────────────────────────── */
+
+@keyframes pf-float-a { 0%, 100% { transform: rotate(-8deg) translateY(0); } 50% { transform: rotate(-6deg) translateY(-9px); } }
+@keyframes pf-float-b { 0%, 100% { transform: rotate(-1deg) translateY(0); } 50% { transform: rotate(1.5deg) translateY(-7px); } }
+@keyframes pf-float-c { 0%, 100% { transform: rotate(6deg) translateY(0); } 50% { transform: rotate(8deg) translateY(-11px); } }
+.pf-float-a { animation: pf-float-a 6s ease-in-out infinite; }
+.pf-float-b { animation: pf-float-b 5s ease-in-out infinite; }
+.pf-float-c { animation: pf-float-c 7s ease-in-out infinite; }
+
+/* Photos fade up as they enter and fly off their own side as they leave. No scroll listeners:
+   browsers without scroll-driven animations simply show the photos still. */
+@keyframes pf-reveal { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+@keyframes pf-fly-left { to { opacity: 0.1; transform: translateX(-120%) rotate(-20deg) scale(0.85); } }
+@keyframes pf-fly-right { to { opacity: 0.1; transform: translateX(120%) rotate(20deg) scale(0.85); } }
+@supports (animation-timeline: view()) {
+  .pf-reveal { animation: pf-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 70%; }
+  .pf-fly-left { animation: pf-fly-left linear both; animation-timeline: view(); animation-range: exit 10% exit 100%; }
+  .pf-fly-right { animation: pf-fly-right linear both; animation-timeline: view(); animation-range: exit 10% exit 100%; }
+}
+
+/* Spring-style tap: overshooting ease on press and on becoming selected. */
+.tap-spring { transition: transform 0.45s cubic-bezier(0.3, 1.6, 0.5, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease, color 0.2s ease; }
+.tap-spring:active { transform: scale(0.93); transition-duration: 0.12s; }
+.tap-spring[aria-pressed="true"] { transform: scale(1.03); }
+
+@keyframes pill-slide { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+.pill-slide { animation: pill-slide 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-float-a, .pf-float-b, .pf-float-c, .pf-reveal, .pf-fly-left, .pf-fly-right, .pill-slide { animation: none !important; }
+  .tap-spring, .tap-spring:active, .tap-spring[aria-pressed="true"] { transition: none; transform: none; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

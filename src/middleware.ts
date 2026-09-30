@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { RESERVED_SLUGS } from "@/lib/slug";
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -29,17 +30,21 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
-  const isApiRoute = request.nextUrl.pathname.startsWith("/api");
-  const isCallbackRoute = request.nextUrl.pathname.startsWith("/auth/callback");
-  const isOnboarding = request.nextUrl.pathname.startsWith("/onboarding");
-  const isVip = request.nextUrl.pathname.startsWith("/vip");
-  const isPublicPage = request.nextUrl.pathname === "/privacy" || request.nextUrl.pathname === "/terms";
-  const isBooking = request.nextUrl.pathname.startsWith("/book");
-  const isManage = request.nextUrl.pathname.startsWith("/manage");
-  const isSticker = request.nextUrl.pathname.startsWith("/s");
+  const path = request.nextUrl.pathname;
+  const isAuthRoute = path.startsWith("/login");
+  const isApiRoute = path.startsWith("/api");
+  const isCallbackRoute = path.startsWith("/auth/callback");
+  const isOnboarding = path.startsWith("/onboarding");
+  const isVip = path.startsWith("/vip/");
+  const isPublicPage = path === "/privacy" || path === "/terms" || path === "/robots.txt";
+  const isBooking = path.startsWith("/book/");
+  const isManage = path.startsWith("/manage/");
+  const isSticker = path.startsWith("/s/");
+  // Barber portfolio: a single path segment that isn't one of the app's own routes.
+  const segments = path.split("/").filter(Boolean);
+  const isPortfolio = segments.length === 1 && !RESERVED_SLUGS.has(segments[0]);
 
-  if (isApiRoute || isCallbackRoute || isVip || isPublicPage || isBooking || isManage || isSticker) {
+  if (isApiRoute || isCallbackRoute || isVip || isPublicPage || isBooking || isManage || isSticker || isPortfolio) {
     return supabaseResponse;
   }
 

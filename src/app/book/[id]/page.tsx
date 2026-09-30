@@ -26,6 +26,21 @@ function todayInTz(tz: string) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
 
+const FEW_SPOTS = 3;
+
+function groupSlots(slots: string[]) {
+  const groups = [
+    { name: "Morning", times: [] as string[] },
+    { name: "Afternoon", times: [] as string[] },
+    { name: "Evening", times: [] as string[] },
+  ];
+  for (const t of slots) {
+    const h = Number(t.split(":")[0]);
+    groups[h < 12 ? 0 : h < 17 ? 1 : 2].times.push(t);
+  }
+  return groups.filter((g) => g.times.length > 0);
+}
+
 function formatSlot(t: string) {
   const [h, m] = t.split(":").map(Number);
   const hour = h % 12 === 0 ? 12 : h % 12;
@@ -296,13 +311,14 @@ function BookingContent() {
                 {PARTY_SIZES.map((n) => (
                   <button
                     key={n}
+                    aria-pressed={partySize === n}
                     onClick={() => {
                       setPartySize(n);
                       setSelectedTime("");
                     }}
-                    className={`${HEADING} py-3 rounded-xl text-[15px] font-semibold border-[1.5px] transition-all duration-200 hover:-translate-y-px flex items-center justify-center gap-1.5 ${
+                    className={`tap-spring ${HEADING} h-12 rounded-xl text-[15px] font-semibold border-[1.5px] flex items-center justify-center gap-1.5 ${
                       partySize === n
-                        ? "border-[var(--accent-color)]/50 bg-[var(--accent-color)]/[0.06] text-[var(--accent-color)]"
+                        ? "border-[var(--accent-color)] bg-[var(--accent-color)] text-[#04130D] shadow-[0_0_18px_color-mix(in_srgb,var(--accent-color)_35%,transparent)]"
                         : "border-white/[0.06] bg-white/[0.02] text-white/60 hover:border-[var(--accent-color)]/25 hover:text-white"
                     }`}
                   >
@@ -325,13 +341,14 @@ function BookingContent() {
                     return (
                       <button
                         key={s.id}
+                        aria-pressed={picked}
                         onClick={() => {
                           setService(s);
                           setSelectedTime("");
                         }}
-                        className={`p-4 rounded-[14px] border-2 flex items-center gap-3.5 text-left transition-all duration-200 hover:-translate-y-px ${
+                        className={`tap-spring p-4 rounded-[14px] border-2 flex items-center gap-3.5 text-left ${
                           picked
-                            ? "border-[var(--accent-color)]/50 bg-[var(--accent-color)]/[0.04]"
+                            ? "border-[var(--accent-color)]/60 bg-[var(--accent-color)]/[0.07] shadow-[0_0_22px_color-mix(in_srgb,var(--accent-color)_18%,transparent)]"
                             : "border-white/[0.06] bg-white/[0.02] hover:border-[var(--accent-color)]/20"
                         }`}
                       >
@@ -359,7 +376,7 @@ function BookingContent() {
               )}
             </div>
             <BottomCta disabled={!service} onClick={() => setStep("time")}>
-              Continue <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+              {service ? "Pick a time" : "Choose a service"} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
         )}
@@ -383,7 +400,14 @@ function BookingContent() {
 
               {selectedDate && (
                 <div className="mt-5">
-                  <SectionLabel>Available times</SectionLabel>
+                  <div className="flex items-baseline justify-between">
+                    <SectionLabel>Available times</SectionLabel>
+                    {!slotsLoading && slots.length > 0 && slots.length <= FEW_SPOTS && (
+                      <span className="text-xs font-semibold text-[var(--accent-color)]">
+                        {slots.length === 1 ? "Only 1 spot left" : `Only ${slots.length} spots left`}
+                      </span>
+                    )}
+                  </div>
                   {error && <ErrorBox>{error}</ErrorBox>}
                   {slotsLoading ? (
                     <div className="flex justify-center py-6">
@@ -394,19 +418,29 @@ function BookingContent() {
                       {partySize > 1 ? `No back-to-back openings for ${partySize} this day` : "No openings this day"}
                     </p>
                   ) : (
-                    <div className="grid grid-cols-3 gap-2">
-                      {slots.map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => setSelectedTime(t)}
-                          className={`${HEADING} py-3 rounded-[10px] border-[1.5px] text-[13px] font-semibold transition-all duration-200 hover:-translate-y-px ${
-                            selectedTime === t
-                              ? "border-[var(--accent-color)]/50 bg-[var(--accent-color)]/[0.06] text-[var(--accent-color)]"
-                              : "border-white/[0.06] bg-white/[0.02] text-white/60 hover:border-[var(--accent-color)]/25 hover:text-white"
-                          }`}
-                        >
-                          {formatSlot(t)}
-                        </button>
+                    // Keyed by day so the pills slide in again whenever a new day is picked.
+                    <div key={`${selectedDate}-${partySize}`} className="flex flex-col gap-4">
+                      {groupSlots(slots).map((group) => (
+                        <div key={group.name}>
+                          <div className="text-[11px] text-white/35 font-medium mb-2">{group.name}</div>
+                          <div className="flex gap-2 overflow-x-auto -mx-6 px-6 pb-1 [scrollbar-width:none]">
+                            {group.times.map((t, i) => (
+                              <button
+                                key={t}
+                                aria-pressed={selectedTime === t}
+                                onClick={() => setSelectedTime(t)}
+                                className={`pill-slide tap-spring ${HEADING} shrink-0 h-11 px-4 rounded-xl border-[1.5px] text-[13px] font-semibold ${
+                                  selectedTime === t
+                                    ? "border-[var(--accent-color)] bg-[var(--accent-color)] text-[#04130D] shadow-[0_0_18px_color-mix(in_srgb,var(--accent-color)_35%,transparent)]"
+                                    : "border-white/[0.08] bg-white/[0.04] text-white/70 hover:border-[var(--accent-color)]/30 hover:text-white"
+                                }`}
+                                style={{ animationDelay: `${i * 35}ms` }}
+                              >
+                                {formatSlot(t)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -414,7 +448,7 @@ function BookingContent() {
               )}
             </div>
             <BottomCta disabled={!selectedTime} onClick={() => { setError(""); setStep("confirm"); }}>
-              Continue <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+              {selectedTime ? "Review booking" : selectedDate ? "Pick a time" : "Pick a day"} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
         )}
@@ -559,11 +593,11 @@ function DetailRow({ icon, title, sub }: { icon: React.ReactNode; title: string;
 
 function BottomCta({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <div className="px-6 pt-3 pb-9 sticky bottom-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A] to-transparent">
+    <div className="px-6 pt-3 pb-9 sticky bottom-0 border-t border-white/[0.08] bg-[#070908]/80 backdrop-blur-md">
       <button
         onClick={onClick}
         disabled={disabled}
-        className="w-full py-4 rounded-[14px] bg-[var(--accent-color)] text-[#0A0A0A] text-base font-bold flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_6px_24px_color-mix(in_srgb,var(--accent-color)_30%,transparent)] active:scale-[0.99] disabled:opacity-40 disabled:hover:scale-100 disabled:hover:shadow-none disabled:cursor-not-allowed"
+        className="w-full h-[58px] rounded-2xl bg-[var(--accent-color)] text-[#04130D] text-base font-bold flex items-center justify-center gap-2 shadow-[0_0_28px_color-mix(in_srgb,var(--accent-color)_35%,transparent)] transition-[transform,box-shadow,opacity] duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0 disabled:cursor-not-allowed"
       >
         {children}
       </button>
