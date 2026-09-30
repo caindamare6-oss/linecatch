@@ -201,9 +201,9 @@ function BookingContent() {
           {total > 0 && <SummaryRow label="Total" value={`$${total}`} accent last />}
         </div>
 
-        <p className="mt-4 text-xs text-white/35 flex items-center gap-1.5" style={fadeUp(500)}>
-          <Wallet className="w-3.5 h-3.5" /> Pay in person at your appointment
-        </p>
+        <div className="mt-4 w-full max-w-[300px]" style={fadeUp(500)}>
+          <PayInPerson />
+        </div>
 
         {bookingId && (
           <a
@@ -440,8 +440,8 @@ function BookingContent() {
                 )}
               </div>
 
-              <div className="mt-3 rounded-xl px-3.5 py-3 flex items-center gap-2 text-xs text-white/40 bg-white/[0.02] border border-white/[0.05]" style={fadeUp(150)}>
-                <Wallet className="w-3.5 h-3.5 shrink-0" /> Pay in person at your appointment. No card needed.
+              <div className="mt-3" style={fadeUp(150)}>
+                <PayInPerson />
               </div>
 
               <div className="mt-6" style={fadeUp(200)}>
@@ -502,6 +502,20 @@ function BookingContent() {
             </BottomCta>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PayInPerson() {
+  return (
+    <div className="rounded-xl px-4 py-3 flex items-center gap-3 text-left bg-emerald-500/15 border-[1.5px] border-emerald-400/60 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+      <div className="w-9 h-9 rounded-lg bg-emerald-400 text-[#0A0A0A] flex items-center justify-center shrink-0">
+        <Wallet className="w-5 h-5" strokeWidth={2.25} />
+      </div>
+      <div>
+        <div className="text-sm font-bold text-emerald-300">Pay in person</div>
+        <div className="text-xs text-emerald-100/70">No card needed. You pay at your appointment.</div>
       </div>
     </div>
   );
