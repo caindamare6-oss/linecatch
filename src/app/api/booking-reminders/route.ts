@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualTime } from "@/lib/format";
+import { projectVisit, rewardVars } from "@/lib/loyalty";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -103,12 +104,18 @@ export async function GET(request: Request) {
     const timeStr = formatCasualTime(bookingTime, tz);
     const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
     const templateKey = reminderType === "24h" ? "reminder_24h" : "reminder_2h";
+    const loyalty = reminderType === "2h" ? await projectVisit(supabase, booking.id) : null;
 
     const sms = await buildSMS({
       userId: booking.user_id,
       templateKey,
       clientPhone: booking.customer_phone,
-      vars: { shop_name: shopName, time: timeStr },
+      vars: {
+        shop_name: shopName,
+        time: timeStr,
+        link: `${process.env.NEXT_PUBLIC_APP_URL}/manage/${booking.id}`,
+        ...rewardVars(!!loyalty?.due),
+      },
     });
 
     if (!sms) continue;

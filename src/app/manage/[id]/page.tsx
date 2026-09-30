@@ -15,6 +15,7 @@ type BookingData = {
   businessName: string | null;
   timezone: string;
   partySize: number;
+  rewardDue: boolean;
 };
 
 export default function ManageBookingPage() {
@@ -349,7 +350,15 @@ export default function ManageBookingPage() {
             {booking.service && booking.service.price > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-white/50">Price</span>
-                <span className="text-[var(--accent-color)]">${booking.service.price * (booking.partySize || 1)}</span>
+                <span className="text-[var(--accent-color)]">
+                  ${Math.max(booking.service.price * (booking.partySize || 1) - (booking.rewardDue ? 5 : 0), 0)}
+                </span>
+              </div>
+            )}
+            {booking.rewardDue && (
+              <div className="flex justify-between text-sm">
+                <span className="text-white/50">Loyalty reward</span>
+                <span className="text-[var(--accent-color)] font-semibold">$5 off this visit</span>
               </div>
             )}
             <div className="flex justify-between text-sm">

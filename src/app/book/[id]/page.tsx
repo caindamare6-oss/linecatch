@@ -70,6 +70,7 @@ function BookingContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
+  const [rewardDue, setRewardDue] = useState(false);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -157,6 +158,7 @@ function BookingContent() {
         return;
       }
       setBookingId(data.bookingId);
+      setRewardDue(!!data.rewardDue);
       setStep("done");
     } catch {
       setError("Something went wrong. Please try again.");
@@ -198,7 +200,8 @@ function BookingContent() {
           <SummaryRow label="Party" value={partyLabel} />
           <SummaryRow label="Date" value={dateLabel} />
           <SummaryRow label="Time" value={formatSlot(selectedTime)} />
-          {total > 0 && <SummaryRow label="Total" value={`$${total}`} accent last />}
+          {total > 0 && <SummaryRow label="Total" value={rewardDue ? `$${Math.max(total - 5, 0)}` : `$${total}`} accent last={!rewardDue} />}
+          {rewardDue && <SummaryRow label="Loyalty reward" value="$5 off this visit" accent last />}
         </div>
 
         <div className="mt-4 w-full max-w-[300px]" style={fadeUp(500)}>

@@ -5,6 +5,7 @@ import { sendSMS } from "@/lib/twilio";
 import { isSlotFree, withinBusinessHours } from "@/lib/availability";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
+import { completeBookingLoyalty, projectVisit } from "@/lib/loyalty";
 
 const CLIENT_CUTOFF_HOURS = 3;
 
@@ -47,8 +48,11 @@ export async function GET(
     partySize = count || 1;
   }
 
+  const loyalty = booking.status === "confirmed" ? await projectVisit(supabase, booking.id) : null;
+
   return NextResponse.json({
     partySize,
+    rewardDue: !!loyalty?.due,
     id: booking.id,
     status: booking.status,
     bookingTime: booking.booking_time,
@@ -135,17 +139,17 @@ export async function PATCH(
       return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
     }
 
-    const { error: completeError } = await supabase
-      .from("bookings")
-      .update({ status: "completed" })
-      .eq("id", id);
-
-    if (completeError) {
-      return NextResponse.json(
-        { error: `Failed to complete booking: ${completeError.message}` },
-        { status: 500 }
-      );
+    let result: Awaited<ReturnType<typeof completeBookingLoyalty>>;
+    try {
+      result = await completeBookingLoyalty(supabase, id, tz);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error: `Failed to complete booking: ${message}` }, { status: 500 });
     }
+    if (!result) {
+      return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
+    }
+    const { projection, newCutCount, rewardedNow, visitFinished, visitRewarded, nextCut } = result;
 
     // Get client name for activity feed
     const { data: vipForName } = await supabase
@@ -172,84 +176,40 @@ export async function PATCH(
       .eq("booking_id", id)
       .in("reminder_type", ["24h", "2h"]);
 
-    // Increment cut_count and set last_cut_date
-    const { data: vipClient } = await supabase
-      .from("vip_clients")
-      .select("id, cut_count, has_claimed_onboarding_discount")
-      .eq("user_id", booking.user_id)
-      .eq("phone_number", booking.customer_phone)
-      .single();
-
-    if (vipClient) {
-      const newCutCount = vipClient.cut_count + 1;
-
-      await supabase
-        .from("vip_clients")
-        .update({
-          cut_count: newCutCount,
-          last_cut_date: new Date().toISOString().split("T")[0],
-        })
-        .eq("id", vipClient.id);
-
-      // Check loyalty discount via SQL function
-      const { data: loyaltyResult } = await supabase.rpc("loyalty_discount_due", {
-        p_cut_count: newCutCount,
-        p_claimed: vipClient.has_claimed_onboarding_discount,
+    if (rewardedNow && projection) {
+      await supabase.from("activity_feed").insert({
+        user_id: booking.user_id,
+        event_type: "loyalty_claimed",
+        client_name: completedClientName,
+        client_phone: booking.customer_phone,
+        description: `${completedClientName || "Client"} got $5 off (cut #${projection.rewardCut})`,
+        metadata: { booking_id: id, visit_key: projection.visitKey, cut_count: projection.rewardCut },
       });
+    }
 
-      if (loyaltyResult === true && barber?.phone_number) {
-        if (newCutCount === 1 && !vipClient.has_claimed_onboarding_discount) {
-          await supabase
-            .from("vip_clients")
-            .update({ has_claimed_onboarding_discount: true })
-            .eq("id", vipClient.id);
-        }
+    // A group is one visit: text and review request go out once, after its last person is done.
+    if (visitFinished && newCutCount !== null && nextCut !== null) {
+      const templateKey = visitRewarded ? "loyalty_earned" : "loyalty_progress";
 
-        const sms = await buildSMS({
+      if (barber?.phone_number) {
+        const loyaltySms = await buildSMS({
           userId: booking.user_id,
-          templateKey: "loyalty_earned",
+          templateKey,
           clientPhone: booking.customer_phone,
-          vars: { shop_name: shopName, link },
+          vars: {
+            shop_name: shopName,
+            link,
+            cuts: String(newCutCount),
+            next_cut: String(nextCut),
+            cuts_left: String(nextCut - newCutCount),
+          },
         });
-
-        if (sms) {
+        if (loyaltySms) {
           try {
-            await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: sms.body, userId: booking.user_id, templateKey: "loyalty_earned", language: sms.language });
+            await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: loyaltySms.body, userId: booking.user_id, templateKey, language: loyaltySms.language });
             await markFirstMessageSent(booking.user_id, booking.customer_phone);
-            await supabase.from("activity_feed").insert({
-              user_id: booking.user_id,
-              event_type: "loyalty_claimed",
-              client_name: completedClientName,
-              client_phone: booking.customer_phone,
-              description: `${completedClientName || "Client"} earned $5 loyalty discount`,
-              metadata: { cut_count: newCutCount },
-            });
           } catch (err) {
             console.error("Loyalty SMS failed:", err);
-          }
-        }
-      } else if (barber?.phone_number) {
-        // Send progress message
-        const { data: cutsLeft } = await supabase.rpc("loyalty_cuts_until_next", {
-          p_cut_count: newCutCount,
-          p_claimed: newCutCount >= 1 || vipClient.has_claimed_onboarding_discount,
-        });
-
-        if (cutsLeft && cutsLeft > 0) {
-          const progressSms = await buildSMS({
-            userId: booking.user_id,
-            templateKey: "loyalty_progress",
-            clientPhone: booking.customer_phone,
-            vars: { shop_name: shopName, cuts_left: String(cutsLeft) },
-          });
-
-          if (progressSms) {
-            try {
-              await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: progressSms.body, userId: booking.user_id, templateKey: "loyalty_progress", language: progressSms.language });
-              await markFirstMessageSent(booking.user_id, booking.customer_phone);
-            } catch (err) {
-              console.error("Loyalty progress SMS failed:", err);
-            }
           }
         }
       }
@@ -259,7 +219,8 @@ export async function PATCH(
         const { data: vipForReview } = await supabase
           .from("vip_clients")
           .select("last_review_request_at, is_opted_in, opted_out_at")
-          .eq("id", vipClient.id)
+          .eq("user_id", booking.user_id)
+          .eq("phone_number", booking.customer_phone)
           .single();
 
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -305,7 +266,7 @@ export async function PATCH(
         userId: booking.user_id,
         templateKey: "cancelled",
         clientPhone: booking.customer_phone,
-        vars: { shop_name: shopName, link },
+        vars: { shop_name: shopName, link, date: formatCasualDate(new Date(members[0].booking_time), tz) },
       });
 
       if (cancelSms) {

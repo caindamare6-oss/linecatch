@@ -15,6 +15,7 @@ type Booking = {
   first_name: string | null;
   is_new_vip: boolean;
   loyalty_badge: string | null;
+  loyalty_due: boolean;
 };
 
 type BusinessHours = Record<string, { open: string; close: string } | null>;
@@ -186,25 +187,26 @@ function ScheduleContent() {
 
       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
+      const badgeRes = await fetch(`/api/loyalty/badges?ids=${rawBookings.map((b) => b.id).join(",")}`)
+        .then((r) => (r.ok ? r.json() : { badges: {} }))
+        .catch(() => ({ badges: {} }));
+      const badgeMap: Record<string, { rewardDue: boolean; nextRewardCut: number; firstOfVisit: boolean; partySize: number }> =
+        badgeRes.badges || {};
+
+      if (cancelled) return;
+
       const enriched: Booking[] = rawBookings.map((b) => {
         const vip = vipMap.get(b.customer_phone);
+        const badge = badgeMap[b.id];
+        const loyaltyDue = !!badge?.rewardDue && badge.firstOfVisit;
         let loyaltyBadge: string | null = null;
-
-        if (vip) {
-          const nextCut = vip.cut_count + 1;
-          const claimed = vip.has_claimed_onboarding_discount;
-          if ((nextCut === 1 && !claimed) || (nextCut >= 4 && (nextCut - 1) % 3 === 0)) {
-            loyaltyBadge = "$5 off this cut!";
-          } else {
-            let cutsLeft: number;
-            if (!claimed && nextCut < 1) cutsLeft = 1 - nextCut;
-            else if (nextCut < 4) cutsLeft = 4 - nextCut;
-            else cutsLeft = (3 - ((nextCut - 1) % 3)) % 3;
-            if (cutsLeft > 0 && cutsLeft <= 3) loyaltyBadge = `${cutsLeft} until reward`;
-          }
+        if (badge?.firstOfVisit) {
+          const party = badge.partySize > 1 ? ` (party of ${badge.partySize})` : "";
+          loyaltyBadge = badge.rewardDue ? `$5 off this visit${party}` : `$5 off on cut #${badge.nextRewardCut}`;
         }
 
         return {
+          loyalty_due: loyaltyDue,
           id: b.id,
           booking_time: b.booking_time,
           status: b.status,
@@ -463,12 +465,17 @@ function ScheduleContent() {
                             )}
                           </div>
                         )}
-                        {booking.loyalty_badge && (
+                        {booking.loyalty_badge && (booking.loyalty_due ? (
+                          <div className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-md bg-yellow-400 text-[#0d0d0d]">
+                            <Gift className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="text-[11px] font-bold">{booking.loyalty_badge}</span>
+                          </div>
+                        ) : (
                           <div className="flex items-center gap-1.5 mt-1">
                             <Gift className="w-3 h-3 text-yellow-400/50 flex-shrink-0" />
                             <span className="text-[10px] font-medium text-yellow-400/70">{booking.loyalty_badge}</span>
                           </div>
-                        )}
+                        ))}
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0 ml-2">
                         {isOverdue ? (

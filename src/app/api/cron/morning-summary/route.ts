@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { formatCasualTime } from "@/lib/format";
+import { projectVisit } from "@/lib/loyalty";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
 
     const { data: todayBookings } = await supabase
       .from("bookings")
-      .select("id, customer_phone, booking_time")
+      .select("id, customer_phone, booking_time, group_id")
       .eq("user_id", barber.user_id)
       .eq("status", "confirmed")
       .gte("booking_time", dayStart.toISOString())
@@ -48,26 +49,21 @@ export async function GET(request: Request) {
     const firstBookingTime = new Date(todayBookings[0].booking_time);
     const firstTime = formatCasualTime(firstBookingTime, tz);
 
-    let vipNote = "";
+    const visitKeys = new Set<string>();
+    let rewardsDue = 0;
     for (const b of todayBookings) {
-      const { data: vip } = await supabase
-        .from("vip_clients")
-        .select("cut_count, has_claimed_onboarding_discount")
-        .eq("user_id", barber.user_id)
-        .eq("phone_number", b.customer_phone)
-        .single();
-
-      if (vip && vip.cut_count === 0 && !vip.has_claimed_onboarding_discount) {
-        const count = vipNote ? parseInt(vipNote) + 1 : 1;
-        vipNote = String(count);
-      }
+      const key = b.group_id || b.id;
+      if (visitKeys.has(key)) continue;
+      visitKeys.add(key);
+      const p = await projectVisit(supabase, b.id);
+      if (p?.due && !p.alreadyRewarded) rewardsDue++;
     }
 
-    const vipLine = vipNote
-      ? `${vipNote} new VIP${parseInt(vipNote) > 1 ? "s" : ""} — $5 off.`
+    const rewardLine = rewardsDue
+      ? `${rewardsDue} get${rewardsDue === 1 ? "s" : ""} $5 off (check the badge).`
       : "";
 
-    const msg = `${cutsToday} cut${cutsToday > 1 ? "s" : ""} today, first at ${firstTime}. ${vipLine}`.trim();
+    const msg = `${cutsToday} cut${cutsToday > 1 ? "s" : ""} today, first at ${firstTime}. ${rewardLine}`.trim();
 
     try {
       await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "morning_summary", language: barber.barber_language || "en", audience: "barber" });

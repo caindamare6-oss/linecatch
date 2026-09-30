@@ -1,78 +1,72 @@
 import { describe, it, expect } from "vitest";
+import { isRewardCut, nextRewardCut, visitReward } from "../lib/loyalty-rules";
 
-// Mirror the SQL function logic in JS for testability
-// Discount at cut 1 (onboarding, not yet claimed), then every 3 from cut 4: 4, 7, 10, 13...
-function loyaltyDiscountDue(cutCount: number, claimed: boolean): boolean {
-  if (cutCount === 1 && !claimed) return true;
-  if (cutCount >= 4 && (cutCount - 1) % 3 === 0) return true;
-  return false;
-}
+const rewardCuts = (plan: "basic" | "full") =>
+  Array.from({ length: 16 }, (_, i) => i + 1).filter((n) => isRewardCut(n, plan));
 
-function loyaltyCutsUntilNext(cutCount: number, claimed: boolean): number {
-  if (!claimed && cutCount < 1) return 1 - cutCount;
-  if (cutCount < 4) return 4 - cutCount;
-  return (3 - ((cutCount - 1) % 3)) % 3;
-}
-
-describe("loyaltyDiscountDue", () => {
-  it("returns true at cut 1 (onboarding, not yet claimed)", () => {
-    expect(loyaltyDiscountDue(1, false)).toBe(true);
+describe("reward cadence by plan", () => {
+  it("Basic rewards cuts 3, 6, 9, 12, 15 — no signup reward", () => {
+    expect(rewardCuts("basic")).toEqual([3, 6, 9, 12, 15]);
   });
 
-  it("returns true at cuts 4, 7, 10, 13", () => {
-    expect(loyaltyDiscountDue(4, true)).toBe(true);
-    expect(loyaltyDiscountDue(7, true)).toBe(true);
-    expect(loyaltyDiscountDue(10, true)).toBe(true);
-    expect(loyaltyDiscountDue(13, true)).toBe(true);
+  it("Full rewards cuts 1, 4, 7, 10, 13, 16", () => {
+    expect(rewardCuts("full")).toEqual([1, 4, 7, 10, 13, 16]);
   });
 
-  it("returns false at cuts 2, 3, 5, 6, 8", () => {
-    expect(loyaltyDiscountDue(2, true)).toBe(false);
-    expect(loyaltyDiscountDue(3, true)).toBe(false);
-    expect(loyaltyDiscountDue(5, true)).toBe(false);
-    expect(loyaltyDiscountDue(6, true)).toBe(false);
-    expect(loyaltyDiscountDue(8, true)).toBe(false);
+  it("cut 0 is never a reward", () => {
+    expect(isRewardCut(0, "basic")).toBe(false);
+    expect(isRewardCut(0, "full")).toBe(false);
   });
 
-  it("returns false at cut 1 if already claimed", () => {
-    expect(loyaltyDiscountDue(1, true)).toBe(false);
-  });
-
-  it("returns true at cut 16 (next in sequence after 13)", () => {
-    expect(loyaltyDiscountDue(16, true)).toBe(true);
+  it("nextRewardCut names the right upcoming cut (the old progress text was one late)", () => {
+    expect(nextRewardCut(3, "full")).toBe(4);
+    expect(nextRewardCut(2, "full")).toBe(4);
+    expect(nextRewardCut(0, "full")).toBe(1);
+    expect(nextRewardCut(0, "basic")).toBe(3);
+    expect(nextRewardCut(3, "basic")).toBe(6);
   });
 });
 
-describe("loyaltyCutsUntilNext", () => {
-  it("returns 1 for a new client (0 cuts, not claimed)", () => {
-    expect(loyaltyCutsUntilNext(0, false)).toBe(1);
+describe("solo visits", () => {
+  it("Full: 1st visit is $5 off, 2nd and 3rd aren't, 4th is", () => {
+    expect(visitReward(0, 1, "full").due).toBe(true);
+    expect(visitReward(1, 1, "full").due).toBe(false);
+    expect(visitReward(2, 1, "full").due).toBe(false);
+    expect(visitReward(3, 1, "full").due).toBe(true);
   });
 
-  it("returns 3 at cut 1 (not claimed — next reward at 4)", () => {
-    expect(loyaltyCutsUntilNext(1, false)).toBe(3);
+  it("Basic: only the 3rd visit is $5 off", () => {
+    expect([0, 1, 2, 3, 4, 5].map((before) => visitReward(before, 1, "basic").due)).toEqual([
+      false, false, true, false, false, true,
+    ]);
+  });
+});
+
+describe("group visits", () => {
+  it("each person adds a stamp to the booker's card", () => {
+    expect(visitReward(2, 3, "basic").stampsAfter).toBe(5);
   });
 
-  it("returns 3 at cut 1 (claimed — next is 4)", () => {
-    expect(loyaltyCutsUntilNext(1, true)).toBe(3);
+  it("a group that lands on a reward cut gets $5 once", () => {
+    const r = visitReward(1, 2, "basic"); // stamps 2,3 → hits 3
+    expect(r.due).toBe(true);
+    expect(r.rewardCut).toBe(3);
   });
 
-  it("returns 2 at cut 2 (claimed — next is 4)", () => {
-    expect(loyaltyCutsUntilNext(2, true)).toBe(2);
+  it("a group crossing two reward cuts still gets only one $5", () => {
+    // Full from 0 with a party of 4: stamps 1,2,3,4 cross cuts 1 and 4
+    const r = visitReward(0, 4, "full");
+    expect(r.due).toBe(true);
+    expect(r.rewardCut).toBe(1);
+    expect(r.stampsAfter).toBe(4);
   });
 
-  it("returns 0 at cut 4", () => {
-    expect(loyaltyCutsUntilNext(4, true)).toBe(0);
+  it("a group that doesn't reach a reward cut gets nothing", () => {
+    expect(visitReward(3, 2, "basic").due).toBe(false); // stamps 4,5
   });
 
-  it("returns 2 at cut 5", () => {
-    expect(loyaltyCutsUntilNext(5, true)).toBe(2);
-  });
-
-  it("returns 1 at cut 6", () => {
-    expect(loyaltyCutsUntilNext(6, true)).toBe(1);
-  });
-
-  it("returns 0 at cut 7", () => {
-    expect(loyaltyCutsUntilNext(7, true)).toBe(0);
+  it("after the visit, the next reward is counted from the new total", () => {
+    expect(visitReward(0, 4, "full").nextRewardCut).toBe(7);
+    expect(visitReward(1, 2, "basic").nextRewardCut).toBe(6);
   });
 });

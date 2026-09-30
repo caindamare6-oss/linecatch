@@ -52,7 +52,8 @@ export function interpolateTemplate(
   for (const [key, value] of Object.entries(vars)) {
     result = result.replace(new RegExp(`\\{${key}\\}`, "g"), value);
   }
-  return result;
+  // A placeholder with no value must never reach a client as literal "{reward}".
+  return result.replace(/\{[a-z_]+\}/g, "");
 }
 
 const BARBER_FACING_TEMPLATES = new Set([

@@ -6,6 +6,7 @@ import { normalizePhone } from "@/lib/phone";
 import { CONSENT_TEXT } from "@/lib/consent";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
 import { isSlotFree, withinBusinessHours, MAX_PARTY_SIZE } from "@/lib/availability";
+import { projectVisit, rewardVars } from "@/lib/loyalty";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -201,6 +202,9 @@ export async function POST(request: Request) {
     .eq("user_id", userId)
     .single();
 
+  const loyalty = await projectVisit(supabase, booking.id);
+  const rewardDue = !!loyalty?.due;
+
   if (barber?.phone_number && clientOptedIn) {
     const tz = barber.timezone || "America/New_York";
     const dateStr = formatCasualDate(bTime, tz);
@@ -219,6 +223,7 @@ export async function POST(request: Request) {
         link: manageLink,
         party: partySize > 1 ? `, party of ${partySize}` : "",
         party_es: partySize > 1 ? `, grupo de ${partySize}` : "",
+        ...rewardVars(rewardDue),
       },
     });
 
@@ -270,5 +275,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ success: true, bookingId: booking.id, bookingIds: createdIds, partySize });
+  return NextResponse.json({ success: true, bookingId: booking.id, bookingIds: createdIds, partySize, rewardDue });
 }
