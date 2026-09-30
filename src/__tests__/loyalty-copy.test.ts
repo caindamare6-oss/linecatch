@@ -63,7 +63,7 @@ describe("client texts after the template-copy migration", () => {
   });
 
   it("earned text", () => {
-    expect(interpolateTemplate(earnedEn, { next_cut: "7" })).toBe("Your $5 off was applied today. Cut #7 is your next one.");
+    expect(interpolateTemplate(earnedEn, { next_cut: "7" })).toBe("Your $5 off was applied today. Your next $5 off is cut #7.");
   });
 
   it("an unfilled placeholder never reaches the client", () => {

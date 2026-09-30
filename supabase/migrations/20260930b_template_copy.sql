@@ -33,6 +33,6 @@ set custom_message = 'That''s {cuts} cuts. Cut #{next_cut} is $5 off.',
 where user_id is null and template_key = 'loyalty_progress';
 
 update message_templates
-set custom_message = 'Your $5 off was applied today. Cut #{next_cut} is your next one.',
-    custom_message_es = 'Hoy se aplicaron tus $5 de descuento. El próximo es en el corte #{next_cut}.'
+set custom_message = 'Your $5 off was applied today. Your next $5 off is cut #{next_cut}.',
+    custom_message_es = 'Hoy se aplicaron tus $5 de descuento. Tu próximo descuento de $5 es en el corte #{next_cut}.'
 where user_id is null and template_key = 'loyalty_earned';

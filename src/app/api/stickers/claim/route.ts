@@ -74,7 +74,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // Unlock SMS and move to Full: the QR sticker is the Full-plan feature.
+  // Placeholder until Stripe (Phase 8): plan must come from the subscription, and Basic
+  // barbers won't be allowed to claim a sticker at all.
   await admin
     .from("users")
     .update({ is_locked_out: false, plan: "full" })
