@@ -113,30 +113,81 @@ export async function completeBookingLoyalty(db: Admin, bookingId: string, tz: s
     rewardedNow = !rewardError;
   }
 
-  let visitFinished = true;
+  return { projection, newCutCount, rewardedNow };
+}
+
+const REVIEW_COOLDOWN_DAYS = 30;
+const REVIEW_MIN_CUTS = 2;
+
+/**
+ * Closes out a visit once every person in it is completed or cancelled and at least one
+ * was completed. Returns null until then, and null on every later call (visit_closeouts is
+ * keyed by visit, so the loyalty text and review request can only happen once).
+ * Only completed people added stamps, so cut_count here is already correct.
+ */
+export async function closeVisitIfResolved(db: Admin, bookingId: string) {
+  const { data: row } = await db
+    .from("bookings")
+    .select("id, user_id, customer_phone, group_id, status, booking_time")
+    .eq("id", bookingId)
+    .single();
+  if (!row) return null;
+
+  let members = [row];
   if (row.group_id) {
-    const { count } = await db
+    const { data: group } = await db
       .from("bookings")
-      .select("id", { count: "exact", head: true })
+      .select("id, user_id, customer_phone, group_id, status, booking_time")
       .eq("group_id", row.group_id)
-      .eq("status", "confirmed");
-    visitFinished = !count;
+      .order("booking_time", { ascending: true });
+    if (group && group.length) members = group;
+  }
+  if (members.some((m) => m.status === "confirmed")) return null;
+  const completed = members.filter((m) => m.status === "completed");
+  if (completed.length === 0) return null;
+
+  const visitKey = row.group_id || row.id;
+  const { error: claimError } = await db
+    .from("visit_closeouts")
+    .insert({ visit_key: visitKey, user_id: row.user_id, client_phone: row.customer_phone });
+  if (claimError) return null;
+
+  const [{ data: barber }, { data: vip }, { data: reward }] = await Promise.all([
+    db.from("users").select("plan, google_review_url, feature_reviews").eq("user_id", row.user_id).single(),
+    db
+      .from("vip_clients")
+      .select("cut_count, is_opted_in, opted_out_at, last_review_request_at")
+      .eq("user_id", row.user_id)
+      .eq("phone_number", row.customer_phone)
+      .maybeSingle(),
+    db.from("loyalty_rewards").select("id").eq("visit_key", visitKey).maybeSingle(),
+  ]);
+
+  const plan = toPlan(barber?.plan);
+  const cutCount = vip?.cut_count ?? null;
+
+  // The review cron keys off the last completed person's booking_completed event.
+  const lastCompleted = completed[completed.length - 1];
+  const cooldownStart = new Date(Date.now() - REVIEW_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const reviewDue =
+    !!barber?.google_review_url &&
+    barber.feature_reviews !== false &&
+    !!vip?.is_opted_in &&
+    !vip.opted_out_at &&
+    (cutCount ?? 0) >= REVIEW_MIN_CUTS &&
+    (!vip.last_review_request_at || vip.last_review_request_at < cooldownStart);
+
+  if (reviewDue) {
+    await db.from("booking_reminders").insert({ booking_id: lastCompleted.id, reminder_type: "review" });
   }
 
-  let visitRewarded = rewardedNow;
-  if (!visitRewarded && projection) {
-    const { data: existing } = await db.from("loyalty_rewards").select("id").eq("visit_key", projection.visitKey).maybeSingle();
-    visitRewarded = !!existing;
-  }
-
-  const plan = projection?.plan ?? "full";
   return {
-    projection,
-    newCutCount,
-    rewardedNow,
-    visitFinished,
-    visitRewarded,
-    nextCut: newCutCount !== null ? nextRewardCut(newCutCount, plan) : null,
+    visitKey,
+    cutCount,
+    nextCut: cutCount !== null ? nextRewardCut(cutCount, plan) : null,
+    visitRewarded: !!reward,
+    reviewScheduled: reviewDue,
+    completedCount: completed.length,
   };
 }
 

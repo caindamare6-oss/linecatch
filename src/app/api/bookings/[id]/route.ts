@@ -5,7 +5,7 @@ import { sendSMS } from "@/lib/twilio";
 import { isSlotFree, withinBusinessHours } from "@/lib/availability";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
-import { completeBookingLoyalty, projectVisit } from "@/lib/loyalty";
+import { completeBookingLoyalty, closeVisitIfResolved, projectVisit } from "@/lib/loyalty";
 
 const CLIENT_CUTOFF_HOURS = 3;
 
@@ -134,6 +134,32 @@ export async function PATCH(
   const link = barber?.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${booking.user_id}`;
   const tz = barber?.timezone || "America/New_York";
 
+  // Once every person in the visit is completed or cancelled: one loyalty text + review request.
+  async function closeOutVisit() {
+    const closeout = await closeVisitIfResolved(supabase, id);
+    if (!closeout || closeout.cutCount === null || closeout.nextCut === null || !barber?.phone_number) return;
+    const templateKey = closeout.visitRewarded ? "loyalty_earned" : "loyalty_progress";
+    const loyaltySms = await buildSMS({
+      userId: booking!.user_id,
+      templateKey,
+      clientPhone: booking!.customer_phone,
+      vars: {
+        shop_name: shopName,
+        link,
+        cuts: String(closeout.cutCount),
+        next_cut: String(closeout.nextCut),
+        cuts_left: String(closeout.nextCut - closeout.cutCount),
+      },
+    });
+    if (!loyaltySms) return;
+    try {
+      await sendSMS({ to: booking!.customer_phone, from: barber.phone_number, body: loyaltySms.body, userId: booking!.user_id, templateKey, language: loyaltySms.language });
+      await markFirstMessageSent(booking!.user_id, booking!.customer_phone);
+    } catch (err) {
+      console.error("Loyalty SMS failed:", err);
+    }
+  }
+
   if (action === "complete") {
     if (booking.status !== "confirmed") {
       return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
@@ -149,7 +175,7 @@ export async function PATCH(
     if (!result) {
       return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
     }
-    const { projection, newCutCount, rewardedNow, visitFinished, visitRewarded, nextCut } = result;
+    const { projection, rewardedNow } = result;
 
     // Get client name for activity feed
     const { data: vipForName } = await supabase
@@ -187,59 +213,7 @@ export async function PATCH(
       });
     }
 
-    // A group is one visit: text and review request go out once, after its last person is done.
-    if (visitFinished && newCutCount !== null && nextCut !== null) {
-      const templateKey = visitRewarded ? "loyalty_earned" : "loyalty_progress";
-
-      if (barber?.phone_number) {
-        const loyaltySms = await buildSMS({
-          userId: booking.user_id,
-          templateKey,
-          clientPhone: booking.customer_phone,
-          vars: {
-            shop_name: shopName,
-            link,
-            cuts: String(newCutCount),
-            next_cut: String(nextCut),
-            cuts_left: String(nextCut - newCutCount),
-          },
-        });
-        if (loyaltySms) {
-          try {
-            await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: loyaltySms.body, userId: booking.user_id, templateKey, language: loyaltySms.language });
-            await markFirstMessageSent(booking.user_id, booking.customer_phone);
-          } catch (err) {
-            console.error("Loyalty SMS failed:", err);
-          }
-        }
-      }
-
-      // Schedule review request 3 hours after completion (30-day cooldown)
-      if (newCutCount >= 2 && barber?.google_review_url && barber.feature_reviews !== false) {
-        const { data: vipForReview } = await supabase
-          .from("vip_clients")
-          .select("last_review_request_at, is_opted_in, opted_out_at")
-          .eq("user_id", booking.user_id)
-          .eq("phone_number", booking.customer_phone)
-          .single();
-
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        const cooldownPassed = !vipForReview?.last_review_request_at ||
-          vipForReview.last_review_request_at < thirtyDaysAgo;
-
-        if (
-          vipForReview &&
-          cooldownPassed &&
-          vipForReview.is_opted_in &&
-          !vipForReview.opted_out_at
-        ) {
-          await supabase.from("booking_reminders").insert({
-            booking_id: id,
-            reminder_type: "review",
-          });
-        }
-      }
-    }
+    await closeOutVisit();
 
     return NextResponse.json({ success: true, status: "completed" });
   }
@@ -306,6 +280,9 @@ export async function PATCH(
         }
       }
     }
+
+    // Cancelling the last unresolved person of a partly-completed group finishes that visit.
+    await closeOutVisit();
 
     return NextResponse.json({ success: true, status: "cancelled" });
   }
