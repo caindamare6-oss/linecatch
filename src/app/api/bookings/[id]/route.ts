@@ -3,10 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sendSMS } from "@/lib/twilio";
 import { isSlotFree, withinBusinessHours } from "@/lib/availability";
-
-const CLIENT_CUTOFF_HOURS = 3;
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
+
+const CLIENT_CUTOFF_HOURS = 3;
 
 export async function GET(
   _request: Request,
@@ -17,7 +17,7 @@ export async function GET(
 
   const { data: booking } = await supabase
     .from("bookings")
-    .select("id, user_id, customer_phone, booking_time, service_id, status")
+    .select("id, user_id, customer_phone, booking_time, service_id, status, group_id")
     .eq("id", id)
     .single();
 
@@ -37,7 +37,18 @@ export async function GET(
     .eq("user_id", booking.user_id)
     .single();
 
+  let partySize = 1;
+  if (booking.group_id) {
+    const { count } = await supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("group_id", booking.group_id)
+      .eq("status", booking.status);
+    partySize = count || 1;
+  }
+
   return NextResponse.json({
+    partySize,
     id: booking.id,
     status: booking.status,
     bookingTime: booking.booking_time,
@@ -61,7 +72,7 @@ export async function PATCH(
 
   const { data: booking } = await supabase
     .from("bookings")
-    .select("id, user_id, customer_phone, booking_time, service_id, status")
+    .select("id, user_id, customer_phone, booking_time, service_id, status, group_id")
     .eq("id", id)
     .single();
 
@@ -74,6 +85,19 @@ export async function PATCH(
   const isOwner = !!user && user.id === booking.user_id;
   const source = isOwner ? "barber" : "client";
 
+  // A client acts on their whole group; the barber acts on the single row they tapped.
+  let members: { id: string; booking_time: string }[] = [{ id: booking.id, booking_time: booking.booking_time }];
+  if (!isOwner && booking.group_id) {
+    const { data: group } = await supabase
+      .from("bookings")
+      .select("id, booking_time")
+      .eq("group_id", booking.group_id)
+      .eq("status", "confirmed")
+      .order("booking_time", { ascending: true });
+    if (group && group.length > 0) members = group;
+  }
+  const memberIds = members.map((m) => m.id);
+
   if (!isOwner) {
     if (action !== "cancel" && action !== "reschedule") {
       return NextResponse.json({ error: "Not allowed" }, { status: 403 });
@@ -81,7 +105,7 @@ export async function PATCH(
     if (booking.status !== "confirmed") {
       return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
     }
-    const hoursUntil = (new Date(booking.booking_time).getTime() - Date.now()) / (60 * 60 * 1000);
+    const hoursUntil = (new Date(members[0].booking_time).getTime() - Date.now()) / (60 * 60 * 1000);
     if (hoursUntil <= CLIENT_CUTOFF_HOURS) {
       return NextResponse.json(
         { error: `Changes must be made at least ${CLIENT_CUTOFF_HOURS} hours before your appointment. Please call the shop.` },
@@ -267,7 +291,7 @@ export async function PATCH(
     const { error: cancelError } = await supabase
       .from("bookings")
       .update({ status: "cancelled" })
-      .eq("id", id);
+      .in("id", memberIds);
 
     if (cancelError) {
       return NextResponse.json(
@@ -301,7 +325,7 @@ export async function PATCH(
           .eq("phone_number", booking.customer_phone)
           .single();
 
-        const oldTime = new Date(booking.booking_time);
+        const oldTime = new Date(members[0].booking_time);
         const cancelNotifySms = await buildSMS({
           userId: booking.user_id,
           templateKey: "barber_cancel_notify",
@@ -326,24 +350,29 @@ export async function PATCH(
   }
 
   if (action === "reschedule" && newTime) {
-    const oldBookingTime = new Date(booking.booking_time);
+    const oldBookingTime = new Date(members[0].booking_time);
     const newBookingTime = new Date(newTime);
     const duration = service?.duration_minutes || 30;
+    const totalMinutes = duration * members.length;
 
     if (isNaN(newBookingTime.getTime()) || newBookingTime.getTime() <= Date.now()) {
       return NextResponse.json({ error: "Pick a time in the future" }, { status: 400 });
     }
-    if (!isOwner && !withinBusinessHours(barber?.business_hours ?? null, newBookingTime, duration, tz)) {
+    if (!isOwner && !withinBusinessHours(barber?.business_hours ?? null, newBookingTime, totalMinutes, tz)) {
       return NextResponse.json({ error: "That time is outside business hours" }, { status: 400 });
     }
-    if (!(await isSlotFree(supabase, booking.user_id, newBookingTime, duration, [booking.id]))) {
+    if (!(await isSlotFree(supabase, booking.user_id, newBookingTime, totalMinutes, memberIds))) {
       return NextResponse.json({ error: "That time slot was just taken. Please pick another." }, { status: 409 });
     }
 
-    const { error: rescheduleError } = await supabase
-      .from("bookings")
-      .update({ booking_time: newBookingTime.toISOString() })
-      .eq("id", id);
+    let rescheduleError: { message: string } | null = null;
+    for (const [i, m] of members.entries()) {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ booking_time: new Date(newBookingTime.getTime() + i * duration * 60 * 1000).toISOString() })
+        .eq("id", m.id);
+      if (error) { rescheduleError = error; break; }
+    }
 
     if (rescheduleError) {
       return NextResponse.json(

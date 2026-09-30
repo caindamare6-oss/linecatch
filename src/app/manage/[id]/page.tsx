@@ -14,6 +14,7 @@ type BookingData = {
   service: { name: string; price: number; duration_minutes: number } | null;
   businessName: string | null;
   timezone: string;
+  partySize: number;
 };
 
 export default function ManageBookingPage() {
@@ -53,7 +54,7 @@ export default function ManageBookingPage() {
   useEffect(() => {
     if (!selectedDate || !booking?.serviceId) return;
     setSlotsLoading(true);
-    fetch(`/api/bookings/slots?userId=${booking.userId}&date=${selectedDate}&serviceId=${booking.serviceId}`)
+    fetch(`/api/bookings/slots?userId=${booking.userId}&date=${selectedDate}&serviceId=${booking.serviceId}&partySize=${booking.partySize || 1}`)
       .then((r) => r.json())
       .then((data) => {
         setSlots(data.slots || []);
@@ -339,13 +340,16 @@ export default function ManageBookingPage() {
             {booking.service && (
               <div className="flex justify-between text-sm">
                 <span className="text-white/50">Service</span>
-                <span className="text-white/80">{booking.service.name}</span>
+                <span className="text-white/80">
+                  {booking.service.name}
+                  {booking.partySize > 1 && ` · party of ${booking.partySize}`}
+                </span>
               </div>
             )}
             {booking.service && booking.service.price > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-white/50">Price</span>
-                <span className="text-[var(--accent-color)]">${booking.service.price}</span>
+                <span className="text-[var(--accent-color)]">${booking.service.price * (booking.partySize || 1)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm">

@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
     const trackingUrl = callLog?.call_id
       ? `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${callLog.call_id}`
-      : barber.booking_link || "";
+      : barber.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${barber.user_id}?src=missed_call`;
 
     const sms = await buildSMS({
       userId: barber.user_id,

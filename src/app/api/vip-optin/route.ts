@@ -14,12 +14,16 @@ export async function GET(request: Request) {
   const supabase = createAdminClient();
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name, is_locked_out, accent_color, timezone")
+    .select("business_name, first_name, is_locked_out, accent_color, timezone, business_hours")
     .eq("user_id", barberId)
     .single();
 
+  const hours = (barber?.business_hours || {}) as Record<string, unknown>;
+  const openDays = Object.keys(hours).filter((d) => !!hours[d]);
+
   return NextResponse.json({
-    businessName: barber?.business_name || null,
+    businessName: barber?.business_name?.trim() || barber?.first_name?.trim() || null,
+    openDays,
     isLockedOut: barber?.is_locked_out || false,
     accentColor: barber?.accent_color || null,
     timezone: barber?.timezone || "America/New_York",

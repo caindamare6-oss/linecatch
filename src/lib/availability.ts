@@ -5,6 +5,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 export type BusinessHours = Record<string, { open: string; close: string } | null> | null;
 
 const MINUTE = 60 * 1000;
+export const MAX_PARTY_SIZE = 4;
 
 export function weekdayInTz(date: Date, tz: string): string {
   return date.toLocaleDateString("en-US", { weekday: "long", timeZone: tz }).toLowerCase();

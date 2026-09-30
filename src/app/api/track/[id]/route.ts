@@ -28,11 +28,14 @@ export async function GET(
       .eq("user_id", call.user_id)
       .single();
 
-    if (barber?.booking_link) {
-      const url = new URL(barber.booking_link);
-      url.searchParams.set("src", "missed_call");
-      return NextResponse.redirect(url.toString());
+    let url: URL;
+    try {
+      url = new URL(barber?.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${call.user_id}`);
+    } catch {
+      url = new URL(`${process.env.NEXT_PUBLIC_APP_URL}/book/${call.user_id}`);
     }
+    url.searchParams.set("src", "missed_call");
+    return NextResponse.redirect(url.toString());
   }
 
   return NextResponse.redirect(process.env.NEXT_PUBLIC_APP_URL || "/");

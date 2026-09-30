@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   const { data: upcomingBookings } = await supabase
     .from("bookings")
-    .select("id, user_id, customer_phone, booking_time, service_id")
+    .select("id, user_id, customer_phone, booking_time, service_id, group_id")
     .eq("status", "confirmed")
     .gte("booking_time", now.toISOString())
     .lte("booking_time", horizon.toISOString());
@@ -28,6 +28,18 @@ export async function GET(request: Request) {
   }
 
   for (const booking of upcomingBookings) {
+    // One reminder per group, keyed to the first person's slot.
+    if (booking.group_id) {
+      const { data: earlier } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("group_id", booking.group_id)
+        .lt("booking_time", booking.booking_time)
+        .limit(1)
+        .maybeSingle();
+      if (earlier) continue;
+    }
+
     const bookingTime = new Date(booking.booking_time);
     const hoursUntil = (bookingTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 

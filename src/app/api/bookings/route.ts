@@ -4,14 +4,19 @@ import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { normalizePhone } from "@/lib/phone";
 import { CONSENT_TEXT } from "@/lib/consent";
-import { formatCasualDate, formatCasualTime, minutesInTz } from "@/lib/format";
+import { formatCasualDate, formatCasualTime } from "@/lib/format";
+import { isSlotFree, withinBusinessHours, MAX_PARTY_SIZE } from "@/lib/availability";
 
 export async function POST(request: Request) {
   const body = await request.json();
   const { userId, serviceId, customerPhone, bookingTime, firstName, consentText, source } = body;
+  const partySize = Number(body.partySize ?? 1);
 
   if (!userId || !serviceId || !customerPhone || !bookingTime) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+  if (!Number.isInteger(partySize) || partySize < 1 || partySize > MAX_PARTY_SIZE) {
+    return NextResponse.json({ error: `Party size must be 1 to ${MAX_PARTY_SIZE}` }, { status: 400 });
   }
 
   const phoneResult = normalizePhone(customerPhone);
@@ -127,73 +132,66 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Service not found" }, { status: 404 });
   }
 
-  // Get barber timezone for overlap check
-  const { data: barberTz } = await supabase
+  const { data: barberHours } = await supabase
     .from("users")
-    .select("timezone")
+    .select("timezone, business_hours")
     .eq("user_id", userId)
     .single();
-  const tz = barberTz?.timezone || "America/New_York";
+  const tz = barberHours?.timezone || "America/New_York";
 
-  // Check slot is still available
   const bTime = new Date(bookingTime);
-  const startOfDay = new Date(bTime);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(bTime);
-  endOfDay.setHours(23, 59, 59, 999);
+  const totalMinutes = service.duration_minutes * partySize;
+  const TAKEN = "This time slot is no longer available";
 
-  const { data: existing } = await supabase
-    .from("bookings")
-    .select("id, booking_time, service_id")
-    .eq("user_id", userId)
-    .eq("status", "confirmed")
-    .gte("booking_time", startOfDay.toISOString())
-    .lte("booking_time", endOfDay.toISOString());
-
-  if (existing) {
-    const requestMinutes = minutesInTz(bTime, tz);
-    for (const b of existing) {
-      const { data: bs } = await supabase
-        .from("services")
-        .select("duration_minutes")
-        .eq("id", b.service_id)
-        .single();
-      const bt = new Date(b.booking_time);
-      const bm = minutesInTz(bt, tz);
-      const bd = bs?.duration_minutes || 30;
-      if (requestMinutes < bm + bd && requestMinutes + service.duration_minutes > bm) {
-        return NextResponse.json({ error: "This time slot is no longer available" }, { status: 409 });
-      }
-    }
+  if (isNaN(bTime.getTime()) || bTime.getTime() <= Date.now()) {
+    return NextResponse.json({ error: "Pick a time in the future" }, { status: 400 });
+  }
+  if (!withinBusinessHours(barberHours?.business_hours ?? null, bTime, totalMinutes, tz)) {
+    return NextResponse.json({ error: "That time is outside business hours" }, { status: 400 });
+  }
+  if (!(await isSlotFree(supabase, userId, bTime, totalMinutes))) {
+    return NextResponse.json({ error: TAKEN }, { status: 409 });
   }
 
-  // Create booking
-  const { data: booking, error: bookingError } = await supabase
-    .from("bookings")
-    .insert({
-      user_id: userId,
-      service_id: serviceId,
-      customer_phone: normalized,
-      booking_time: bTime.toISOString(),
-      status: "confirmed",
-      source: source || "direct",
-    })
-    .select("id")
-    .single();
+  const groupId = partySize > 1 ? crypto.randomUUID() : null;
+  const rows = Array.from({ length: partySize }, (_, i) => ({
+    user_id: userId,
+    service_id: serviceId,
+    customer_phone: normalized,
+    booking_time: new Date(bTime.getTime() + i * service.duration_minutes * 60 * 1000).toISOString(),
+    status: "confirmed",
+    source: source || "direct",
+    ...(groupId ? { group_id: groupId } : {}),
+  }));
 
-  if (bookingError || !booking) {
+  const { data: created, error: bookingError } = await supabase
+    .from("bookings")
+    .insert(rows)
+    .select("id, booking_time")
+    .order("booking_time", { ascending: true });
+
+  if (bookingError || !created || created.length === 0) {
     console.error("Booking creation error:", bookingError);
     return NextResponse.json({ error: `Failed to create booking: ${bookingError?.message || "unknown error"}` }, { status: 500 });
   }
+  const createdIds = created.map((b) => b.id);
 
+  // Two people can pass the check above at the same moment; re-check now that our rows exist.
+  if (!(await isSlotFree(supabase, userId, bTime, totalMinutes, createdIds))) {
+    await supabase.from("bookings").delete().in("id", createdIds);
+    return NextResponse.json({ error: TAKEN }, { status: 409 });
+  }
+
+  const booking = created[0];
+  const serviceLabel = partySize > 1 ? `${service.name} x${partySize}` : service.name;
   const clientName = firstName?.trim() || vipClient?.first_name || null;
   await supabase.from("activity_feed").insert({
     user_id: userId,
     event_type: "booking_created",
     client_name: clientName,
     client_phone: normalized,
-    description: `${clientName || "New client"} booked ${service.name}`,
-    metadata: { booking_id: booking.id, service_name: service.name, source: source || "direct" },
+    description: `${clientName || "New client"} booked ${serviceLabel}`,
+    metadata: { booking_id: booking.id, group_id: groupId, party_size: partySize, service_name: service.name, source: source || "direct" },
   });
 
   // Get barber info for confirmation SMS and barber notify
@@ -214,7 +212,14 @@ export async function POST(request: Request) {
       userId,
       templateKey: "booking_confirm",
       clientPhone: normalized,
-      vars: { shop_name: shopName, date: dateStr, time: timeStr, link: manageLink },
+      vars: {
+        shop_name: shopName,
+        date: dateStr,
+        time: timeStr,
+        link: manageLink,
+        party: partySize > 1 ? `, party of ${partySize}` : "",
+        party_es: partySize > 1 ? `, grupo de ${partySize}` : "",
+      },
     });
 
     if (confirmSms) {
@@ -250,7 +255,7 @@ export async function POST(request: Request) {
         clientPhone: normalized,
         vars: {
           customer_name: clientName || normalized,
-          service: service.name,
+          service: serviceLabel,
           time: timeStr,
         },
       });
@@ -265,5 +270,5 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ success: true, bookingId: booking.id });
+  return NextResponse.json({ success: true, bookingId: booking.id, bookingIds: createdIds, partySize });
 }
