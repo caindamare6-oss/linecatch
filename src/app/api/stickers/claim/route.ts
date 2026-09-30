@@ -74,10 +74,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // Unlock SMS for this barber
+  // Unlock SMS and move to Full: the QR sticker is the Full-plan feature.
   await admin
     .from("users")
-    .update({ is_locked_out: false })
+    .update({ is_locked_out: false, plan: "full" })
     .eq("user_id", user.id);
 
   return NextResponse.json({ success: true, code: data.code });
