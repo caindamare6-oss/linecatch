@@ -20,6 +20,10 @@ export function isTwilioEnabled(): boolean {
 
 const OPT_OUT = "\nReply STOP to opt out.";
 
+// ponytail: per-recipient cap stops SMS pumping and runaway loops to one number.
+// Rotating-number abuse is handled by the Vercel firewall rate limit on public routes.
+const MAX_CLIENT_SMS_PER_HOUR = 10;
+
 function withOptOut(body: string, audience: "client" | "barber"): string {
   if (audience === "barber") return body;
   return /\bSTOP\b/i.test(body) ? body : body + OPT_OUT;
@@ -42,6 +46,19 @@ export async function sendSMS(opts: {
   if (audience === "client" && (await isOptedOut(admin as unknown as Parameters<typeof isOptedOut>[0], userId, to))) {
     console.log(`[SMS Blocked] ${to} opted out, template ${templateKey} not sent`);
     return false;
+  }
+
+  if (audience === "client") {
+    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await admin
+      .from("sms_log")
+      .select("id", { count: "exact", head: true })
+      .eq("to_number", to)
+      .gte("created_at", since);
+    if ((count ?? 0) >= MAX_CLIENT_SMS_PER_HOUR) {
+      console.warn(`[SMS Capped] ${to} hit ${MAX_CLIENT_SMS_PER_HOUR}/hour, template ${templateKey} not sent`);
+      return false;
+    }
   }
 
   const { data: row } = await admin

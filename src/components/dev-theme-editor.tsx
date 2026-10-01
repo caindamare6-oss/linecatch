@@ -22,17 +22,17 @@ const NAV_LINKS = [
 ];
 
 const COLOR_FIELDS = [
-  { label: "Accent", cssVar: "--accent-color", fallback: "#00F5A0" },
-  { label: "Background", cssVar: "--background", fallback: "#111111" },
-  { label: "Card BG", cssVar: "--card", fallback: "#1e1e1e" },
-  { label: "Card Border", cssVar: "--border", fallback: "#1a1a1a" },
+  { label: "Accent", cssVar: "--accent-color", fallback: "#D4AF7A" },
+  { label: "Background", cssVar: "--background", fallback: "#121110" },
+  { label: "Card BG", cssVar: "--card", fallback: "#1F1D1B" },
+  { label: "Card Border", cssVar: "--border", fallback: "#1B1A18" },
   { label: "Text Primary", cssVar: "--foreground", fallback: "#ffffff" },
-  { label: "Text Secondary", cssVar: "--muted-foreground", fallback: "#888888" },
-  { label: "Text Muted", cssVar: "--muted", fallback: "#2a2a2a" },
+  { label: "Text Secondary", cssVar: "--muted-foreground", fallback: "#948C80" },
+  { label: "Text Muted", cssVar: "--muted", fallback: "#2C2A27" },
 ];
 
 const FONT_OPTIONS = [
-  { label: "Geist (default)", value: "", googleName: "" },
+  { label: "DM Sans (default)", value: "", googleName: "" },
   { label: "Inter", value: "Inter, sans-serif", googleName: "Inter" },
   { label: "Space Grotesk", value: "'Space Grotesk', sans-serif", googleName: "Space+Grotesk" },
   { label: "Plus Jakarta Sans", value: "'Plus Jakarta Sans', sans-serif", googleName: "Plus+Jakarta+Sans" },
@@ -60,13 +60,13 @@ interface ThemeState {
 
 const DEFAULT_THEME: ThemeState = {
   colors: {
-    "--accent-color": "#00F5A0",
-    "--background": "#111111",
-    "--card": "#1e1e1e",
-    "--border": "#1a1a1a",
+    "--accent-color": "#D4AF7A",
+    "--background": "#121110",
+    "--card": "#1F1D1B",
+    "--border": "#1B1A18",
     "--foreground": "#ffffff",
-    "--muted-foreground": "#888888",
-    "--muted": "#2a2a2a",
+    "--muted-foreground": "#948C80",
+    "--muted": "#2C2A27",
   },
   fontFamily: "",
   headingScale: 1.0,
@@ -81,7 +81,7 @@ function normalizeHex(val: string): string {
   val = val.trim();
   if (val.match(/^rgba?\(/)) {
     const match = val.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-    if (!match) return "#1a1a1a";
+    if (!match) return "#1B1A18";
     const r = parseInt(match[1]).toString(16).padStart(2, "0");
     const g = parseInt(match[2]).toString(16).padStart(2, "0");
     const b = parseInt(match[3]).toString(16).padStart(2, "0");
@@ -269,7 +269,7 @@ export default function DevThemeEditor() {
         textMuted: theme.colors["--muted"],
       },
       typography: {
-        fontFamily: FONT_OPTIONS.find((f) => f.value === theme.fontFamily)?.label || "Geist (default)",
+        fontFamily: FONT_OPTIONS.find((f) => f.value === theme.fontFamily)?.label || "DM Sans (default)",
         headingScale: theme.headingScale,
         bodySize: theme.bodySize,
         fontWeight: theme.fontWeight,
@@ -308,7 +308,7 @@ export default function DevThemeEditor() {
           cursor: text !important;
         }
         .dev-text-editable:focus {
-          outline-color: var(--accent-color, #00F5A0) !important;
+          outline-color: var(--accent-color, #D4AF7A) !important;
         }
       `}</style>
 
@@ -326,11 +326,11 @@ export default function DevThemeEditor() {
         <div
           ref={panelRef}
           data-dev-panel
-          className="fixed inset-y-0 right-0 w-80 z-[60] bg-[#0a0a0a] border-l border-white/[0.08] overflow-y-auto animate-slide-in"
+          className="fixed inset-y-0 right-0 w-80 z-[60] bg-[#0C0B0A] border-l border-white/[0.08] overflow-y-auto animate-slide-in"
           style={{ scrollbarWidth: "thin", scrollbarColor: "#333 transparent" }}
         >
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-white/[0.08] px-4 py-3 flex items-center justify-between">
+          <div className="sticky top-0 z-10 bg-[#0C0B0A]/95 backdrop-blur-sm border-b border-white/[0.08] px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
               <span className="text-xs font-bold text-white/80 uppercase tracking-wider">Theme Editor</span>
@@ -415,7 +415,7 @@ export default function DevThemeEditor() {
                     className="w-full text-[11px] bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1.5 text-white/70 focus:border-white/20 focus:outline-none appearance-none cursor-pointer"
                   >
                     {FONT_OPTIONS.map((f) => (
-                      <option key={f.value} value={f.value} className="bg-[#1a1a1a]">
+                      <option key={f.value} value={f.value} className="bg-[#1B1A18]">
                         {f.label}
                       </option>
                     ))}
@@ -435,7 +435,7 @@ export default function DevThemeEditor() {
                     value={theme.headingScale}
                     onChange={(e) => updateTheme({ headingScale: parseFloat(e.target.value) })}
                     className="w-full h-1 rounded-full appearance-none cursor-pointer"
-                    style={{ accentColor: "var(--accent-color, #00F5A0)" }}
+                    style={{ accentColor: "var(--accent-color, #D4AF7A)" }}
                   />
                 </div>
 
@@ -452,7 +452,7 @@ export default function DevThemeEditor() {
                     value={theme.bodySize}
                     onChange={(e) => updateTheme({ bodySize: parseInt(e.target.value) })}
                     className="w-full h-1 rounded-full appearance-none cursor-pointer"
-                    style={{ accentColor: "var(--accent-color, #00F5A0)" }}
+                    style={{ accentColor: "var(--accent-color, #D4AF7A)" }}
                   />
                 </div>
 
@@ -469,7 +469,7 @@ export default function DevThemeEditor() {
                         onClick={() => updateTheme({ fontWeight: w.value })}
                         className={`flex-1 text-[10px] py-1 rounded transition-colors ${
                           theme.fontWeight === w.value
-                            ? "bg-[var(--accent-color)] text-black font-medium"
+                            ? "bg-[var(--accent-color)] text-[var(--accent-fg)] font-medium"
                             : "bg-white/[0.04] text-white/40 hover:bg-white/[0.08]"
                         }`}
                       >
@@ -500,7 +500,7 @@ export default function DevThemeEditor() {
                     value={theme.borderRadius}
                     onChange={(e) => updateTheme({ borderRadius: parseInt(e.target.value) })}
                     className="w-full h-1 rounded-full appearance-none cursor-pointer"
-                    style={{ accentColor: "var(--accent-color, #00F5A0)" }}
+                    style={{ accentColor: "var(--accent-color, #D4AF7A)" }}
                   />
                 </div>
 
@@ -513,7 +513,7 @@ export default function DevThemeEditor() {
                         onClick={() => updateTheme({ shadow: s.value })}
                         className={`flex-1 text-[10px] py-1 rounded transition-colors ${
                           theme.shadow === s.value
-                            ? "bg-[var(--accent-color)] text-black font-medium"
+                            ? "bg-[var(--accent-color)] text-[var(--accent-fg)] font-medium"
                             : "bg-white/[0.04] text-white/40 hover:bg-white/[0.08]"
                         }`}
                       >
@@ -594,7 +594,7 @@ export default function DevThemeEditor() {
               <div className="space-y-2 pb-3">
                 <button
                   onClick={exportTheme}
-                  className="w-full text-[11px] py-2 rounded font-medium transition-colors flex items-center justify-center gap-1.5 bg-[var(--accent-color)] text-black hover:brightness-90"
+                  className="w-full text-[11px] py-2 rounded font-medium transition-colors flex items-center justify-center gap-1.5 bg-[var(--accent-color)] text-[var(--accent-fg)] hover:brightness-90"
                 >
                   {copied ? (
                     <>

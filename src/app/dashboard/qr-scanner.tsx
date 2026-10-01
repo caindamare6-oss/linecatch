@@ -21,7 +21,7 @@ function extractStickerCode(url: string): string | null {
   }
 }
 
-const CAMERA_FALLBACK = "Or use your phone’s Camera app to scan the sticker directly — it’ll open the activation page.";
+const CAMERA_FALLBACK = "Or use your phone’s Camera app to scan the sticker directly. It’ll open the activation page.";
 
 export function QRScanner({
   onClose,
@@ -263,7 +263,7 @@ export function QRScanner({
           </p>
           <button
             onClick={handleClose}
-            className="px-6 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[#0d0d0d] hover:brightness-90 transition-colors"
+            className="px-6 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[var(--accent-fg)] hover:brightness-90 transition-colors"
           >
             Got it
           </button>
@@ -292,7 +292,7 @@ export function QRScanner({
           </div>
           <button
             onClick={handleClose}
-            className="px-6 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[#0d0d0d] hover:brightness-90 transition-colors"
+            className="px-6 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[var(--accent-fg)] hover:brightness-90 transition-colors"
           >
             Go to Dashboard
           </button>

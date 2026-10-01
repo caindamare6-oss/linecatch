@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Copy, ExternalLink, ImagePlus, X } from "lucide-react";
-import { DEFAULT_THEME, THEMES, THEME_IDS, type ThemeId } from "@/lib/themes";
+import { ACCENT_COLORS, DEFAULT_THEME, THEMES, THEME_IDS, type ThemeId } from "@/lib/themes";
 
 type Photo = { id: string; url: string; thumb_url: string | null; width: number | null; height: number | null };
 
@@ -26,12 +26,13 @@ async function shrink(file: File, maxEdge: number, quality: number): Promise<{ b
   return { blob, width, height };
 }
 
-export default function PortfolioSection() {
+export default function PortfolioSection({ bare = false }: { bare?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [slug, setSlug] = useState("");
   const [savedSlug, setSavedSlug] = useState("");
   const [theme, setTheme] = useState<ThemeId>(DEFAULT_THEME);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [accent, setAccent] = useState<string | null>(null);
   const [uploading, setUploading] = useState(0);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -48,6 +49,7 @@ export default function PortfolioSection() {
         setSavedSlug(d.slug || "");
         if (d.theme) setTheme(d.theme);
         setAvatarUrl(d.avatarUrl || null);
+        setAccent(d.accentColor || null);
         setPhotos(d.photos || []);
       })
       .finally(() => setLoading(false));
@@ -83,6 +85,19 @@ export default function PortfolioSection() {
       await patch({ theme: id });
     } catch (e) {
       setTheme(previous);
+      setMessage({ kind: "error", text: (e as Error).message });
+    }
+  }
+
+  async function pickAccent(hex: string) {
+    const previous = accent;
+    setAccent(hex);
+    document.documentElement.style.setProperty("--accent-color", hex);
+    try {
+      await patch({ accentColor: hex });
+    } catch (e) {
+      setAccent(previous);
+      if (previous) document.documentElement.style.setProperty("--accent-color", previous);
       setMessage({ kind: "error", text: (e as Error).message });
     }
   }
@@ -165,11 +180,13 @@ export default function PortfolioSection() {
   if (loading) return null;
 
   return (
-    <div id="portfolio" className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5 scroll-mt-4 space-y-5">
-      <div>
-        <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium mb-1">Portfolio page</h3>
-        <p className="text-xs text-white/30">Share this link on Instagram. Clients see your cuts, then tap Continue to Booking.</p>
-      </div>
+    <div id="portfolio" className={bare ? "space-y-5" : "bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5 scroll-mt-4 space-y-5"}>
+      {!bare && (
+        <div>
+          <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium mb-1">Portfolio page</h3>
+          <p className="text-xs text-white/30">Share this link on Instagram. Clients see your cuts, then tap Continue to Booking.</p>
+        </div>
+      )}
 
       {/* Barber's photo: leads the page header */}
       <div className="flex items-center gap-4">
@@ -235,9 +252,26 @@ export default function PortfolioSection() {
         </div>
       </div>
 
+      {/* Accent: also colors the booking, VIP and dashboard pages */}
+      <div>
+        <div className="text-xs text-white/25 mb-2">Accent color</div>
+        <div className="flex flex-wrap gap-2.5">
+          {ACCENT_COLORS.map((c) => (
+            <button
+              key={c.hex}
+              onClick={() => pickAccent(c.hex)}
+              aria-label={c.name}
+              aria-pressed={accent === c.hex}
+              className="w-10 h-10 rounded-xl transition-transform hover:scale-105"
+              style={{ backgroundColor: c.hex, boxShadow: accent === c.hex ? `0 0 0 2px #0F0E0D, 0 0 0 4px ${c.hex}` : "none" }}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* Theme */}
       <div>
-        <div className="text-xs text-white/25 mb-2">Page theme</div>
+        <div className="text-xs text-white/25 mb-2">Background</div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {THEME_IDS.map((id) => {
             const t = THEMES[id];
@@ -267,38 +301,41 @@ export default function PortfolioSection() {
           <span className="text-xs text-white/25">Photos</span>
           <span className={`text-xs ${photos.length >= 6 ? "text-[var(--accent-color)]" : "text-white/35"}`}>{photos.length} of {MAX_PHOTOS}</span>
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          {photos.map((p, i) => (
-            <div key={p.id} className="relative aspect-square rounded-xl overflow-hidden bg-white/[0.04]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.thumb_url ?? p.url} alt={`Portfolio photo ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
-              <span className="absolute left-1.5 top-1.5 min-w-5 h-5 px-1 rounded-md bg-black/70 text-[11px] font-semibold text-white/80 flex items-center justify-center">{i + 1}</span>
-              <button onClick={() => removePhoto(p.id)} aria-label={`Remove photo ${i + 1}`} className="absolute right-1.5 top-1.5 w-7 h-7 rounded-lg bg-black/70 text-white/80 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors">
-                <X className="w-3.5 h-3.5" />
-              </button>
-              <div className="absolute inset-x-1.5 bottom-1.5 flex justify-between">
-                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move photo ${i + 1} earlier`} className="w-7 h-7 rounded-lg bg-black/70 text-white/80 flex items-center justify-center disabled:opacity-0 hover:bg-black/90">
-                  <ArrowLeft className="w-3.5 h-3.5" />
+        {/* Same layout as the live page: 2 columns, photos 1 and 4 tall. Every empty slot is tap-to-add. */}
+        <div className="grid grid-cols-2 auto-rows-[110px] gap-2">
+          {Array.from({ length: MAX_PHOTOS }).map((_, i) => {
+            const p = photos[i];
+            const tall = i === 0 || i === 3 ? "row-span-2" : "";
+            if (p) return (
+              <div key={p.id} className={`${tall} relative rounded-xl overflow-hidden bg-white/[0.04]`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.thumb_url ?? p.url} alt={`Portfolio photo ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                <span className="absolute left-1.5 top-1.5 min-w-5 h-5 px-1 rounded-md bg-black/70 text-[11px] font-semibold text-white/80 flex items-center justify-center">{i + 1}</span>
+                <button onClick={() => removePhoto(p.id)} aria-label={`Remove photo ${i + 1}`} className="absolute right-1.5 top-1.5 w-7 h-7 rounded-lg bg-black/70 text-white/80 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors">
+                  <X className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => move(i, 1)} disabled={i === photos.length - 1} aria-label={`Move photo ${i + 1} later`} className="w-7 h-7 rounded-lg bg-black/70 text-white/80 flex items-center justify-center disabled:opacity-0 hover:bg-black/90">
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                <div className="absolute inset-x-1.5 bottom-1.5 flex justify-between">
+                  <button onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move photo ${i + 1} earlier`} className="w-7 h-7 rounded-lg bg-black/70 text-white/80 flex items-center justify-center disabled:opacity-0 hover:bg-black/90">
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => move(i, 1)} disabled={i === photos.length - 1} aria-label={`Move photo ${i + 1} later`} className="w-7 h-7 rounded-lg bg-black/70 text-white/80 flex items-center justify-center disabled:opacity-0 hover:bg-black/90">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-          {Array.from({ length: uploading }).map((_, i) => (
-            <div key={`up-${i}`} className="aspect-square rounded-xl bg-white/[0.04] flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-white/10 border-t-[var(--accent-color)] rounded-full animate-spin" />
-            </div>
-          ))}
-          {photos.length + uploading < MAX_PHOTOS && (
-            <button
-              onClick={() => fileInput.current?.click()}
-              className="aspect-square rounded-xl border-[1.5px] border-dashed border-[var(--accent-color)]/40 bg-[var(--accent-color)]/[0.03] text-[var(--accent-color)] hover:bg-[var(--accent-color)]/[0.08] flex flex-col items-center justify-center gap-1 text-xs font-semibold transition"
-            >
-              <ImagePlus className="w-5 h-5" /> Add photo
-            </button>
-          )}
+            );
+            if (i < photos.length + uploading) return <div key={`up-${i}`} className={`${tall} rounded-xl bg-white/[0.06] animate-pulse`} />;
+            return (
+              <button
+                key={`empty-${i}`}
+                onClick={() => fileInput.current?.click()}
+                aria-label={`Add photo ${i + 1}`}
+                className={`${tall} rounded-xl border-[1.5px] border-dashed border-[var(--accent-color)]/40 bg-[var(--accent-color)]/[0.03] text-[var(--accent-color)] hover:bg-[var(--accent-color)]/[0.08] flex flex-col items-center justify-center gap-1 text-xs font-semibold transition`}
+              >
+                <ImagePlus className="w-5 h-5" /> Add
+              </button>
+            );
+          })}
         </div>
         <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={(e) => addPhotos(e.target.files)} />
         <p className="text-xs text-white/30 mt-2">Show 6–8 of your best cuts. Photo 1 shows first and biggest.</p>

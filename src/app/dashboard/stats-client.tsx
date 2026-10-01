@@ -360,7 +360,7 @@ export function StatsClient({
                     <button
                       onClick={addClient}
                       disabled={addingClient || newClientPhone.replace(/\D/g, "").length < 10}
-                      className="flex-1 bg-[var(--accent-color)] text-[#0d0d0d] text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[var(--accent-color)] disabled:opacity-30 transition-colors"
+                      className="flex-1 bg-[var(--accent-color)] text-[var(--accent-fg)] text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[var(--accent-color)] disabled:opacity-30 transition-colors"
                     >
                       {addingClient ? "Adding..." : "Add"}
                     </button>
@@ -450,7 +450,7 @@ export function StatsClient({
                           <button
                             onClick={() => saveContactName(phone)}
                             disabled={savingName}
-                            className="bg-[var(--accent-color)] text-[#0d0d0d] text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[var(--accent-color)] disabled:opacity-30 transition-colors shrink-0"
+                            className="bg-[var(--accent-color)] text-[var(--accent-fg)] text-xs font-semibold px-3 py-2 rounded-lg hover:bg-[var(--accent-color)] disabled:opacity-30 transition-colors shrink-0"
                           >
                             {savingName ? "..." : "Save"}
                           </button>
@@ -490,7 +490,7 @@ export function StatsClient({
 
       {/* Sticker Activation Banner */}
       {!hasActiveSticker && !stickerActivated && !stickerBannerDismissed && (
-        <div className="relative bg-gradient-to-r from-[var(--accent-color)]/10 to-[var(--accent-color)]/5 border border-[var(--accent-color)]/20 rounded-2xl p-5">
+        <div className="relative bg-[#161616] border border-white/10 rounded-2xl p-5">
           <button
             onClick={() => setStickerBannerDismissed(true)}
             className="absolute top-3 right-3 text-white/20 hover:text-white/40 transition-colors"
@@ -515,7 +515,7 @@ export function StatsClient({
                 <button
                   onClick={() => setShowScanner(true)}
                   className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors w-fit"
-                  style={{ backgroundColor: 'var(--accent-color)', color: '#0d0d0d' }}
+                  style={{ backgroundColor: 'var(--accent-color)', color: 'var(--accent-fg)' }}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.04l-.821 1.315z" />
@@ -674,7 +674,7 @@ export function StatsClient({
             Missed calls without consent ({suppressedCalls.length})
           </h3>
           <p className="text-[11px] text-white/25 mb-3">
-            These callers aren&apos;t on your VIP list yet — ask them to scan your QR sticker.
+            These callers aren&apos;t on your VIP list yet. Ask them to scan your QR sticker.
           </p>
           <div className="space-y-2">
             {suppressedCalls.slice(0, 5).map((call) => (

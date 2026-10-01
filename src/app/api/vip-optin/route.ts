@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     if (updateError) {
       console.error("VIP opt-in update error:", updateError);
       return NextResponse.json(
-        { error: `Failed to update opt-in: ${updateError.message}` },
+        { error: "Failed to update opt-in" },
         { status: 500 }
       );
     }
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
   if (error) {
     console.error("VIP opt-in insert error:", error);
     return NextResponse.json(
-      { error: `Failed to save opt-in: ${error.message}` },
+      { error: "Failed to save opt-in" },
       { status: 500 }
     );
   }

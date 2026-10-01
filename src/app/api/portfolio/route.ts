@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSlug } from "@/lib/portfolio";
 import { checkSlug } from "@/lib/slug";
-import { DEFAULT_THEME, THEME_IDS, type ThemeId } from "@/lib/themes";
+import { DEFAULT_THEME, THEME_IDS, isAccent, type ThemeId } from "@/lib/themes";
 
 async function currentUserId() {
   const supabase = await createClient();
@@ -18,10 +18,10 @@ export async function GET() {
   const db = createAdminClient();
   const slug = await ensureSlug(db, userId);
   const [{ data: user }, { data: photos }] = await Promise.all([
-    db.from("users").select("theme, avatar_url").eq("user_id", userId).single(),
+    db.from("users").select("theme, avatar_url, accent_color").eq("user_id", userId).single(),
     db.from("portfolio_photos").select("id, url, thumb_url, width, height, sort_order").eq("user_id", userId).order("sort_order"),
   ]);
-  return NextResponse.json({ slug, theme: user?.theme ?? DEFAULT_THEME, avatarUrl: user?.avatar_url ?? null, photos: photos || [] });
+  return NextResponse.json({ slug, theme: user?.theme ?? DEFAULT_THEME, avatarUrl: user?.avatar_url ?? null, accentColor: user?.accent_color ?? null, photos: photos || [] });
 }
 
 export async function PATCH(request: Request) {
@@ -51,6 +51,12 @@ export async function PATCH(request: Request) {
     }
     const { error } = await db.from("users").update({ theme: body.theme }).eq("user_id", userId);
     if (error) return NextResponse.json({ error: "Could not save the theme." }, { status: 500 });
+  }
+
+  if (body.accentColor !== undefined) {
+    if (!isAccent(body.accentColor)) return NextResponse.json({ error: "Unknown color." }, { status: 400 });
+    const { error } = await db.from("users").update({ accent_color: body.accentColor }).eq("user_id", userId);
+    if (error) return NextResponse.json({ error: "Could not save the color." }, { status: 500 });
   }
 
   if (Array.isArray(body.order)) {

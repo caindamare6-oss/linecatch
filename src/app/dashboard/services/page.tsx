@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Plus, GripVertical, Trash2 } from "lucide-react";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 type Service = {
   id: string;
@@ -135,8 +136,8 @@ export default function ServicesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+      <div className="flex items-center justify-center py-16 px-4">
+        <PageSkeleton />
       </div>
     );
   }
@@ -153,7 +154,7 @@ export default function ServicesPage() {
         <button
           onClick={seedPresets}
           disabled={saving}
-          className="bg-[var(--accent-color)] text-[#0d0d0d] font-semibold px-6 py-3 rounded-xl hover:brightness-90 disabled:opacity-50 transition text-sm"
+          className="bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold px-6 py-3 rounded-xl hover:brightness-90 disabled:opacity-50 transition text-sm"
         >
           {saving ? "Setting up..." : "Load preset services"}
         </button>
@@ -211,7 +212,7 @@ export default function ServicesPage() {
             <button
               onClick={addService}
               disabled={!newName.trim() || saving}
-              className="flex-1 bg-[var(--accent-color)] text-[#0d0d0d] font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 transition"
+              className="flex-1 bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold py-2.5 rounded-xl text-sm disabled:opacity-50 transition"
             >
               {saving ? "Adding..." : "Add Service"}
             </button>

@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Calendar, Check, ChevronLeft, ChevronRight, MessageSquare, Scissors, User, Users, Wallet } from "lucide-react";
 import { normalizePhone } from "@/lib/phone";
 import { formatBarberDate, barberLocalToUTC } from "@/lib/format";
 import { CONSENT_TEXT } from "@/lib/consent";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 type Service = {
   id: string;
@@ -51,8 +53,8 @@ export default function BookingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+        <div className="min-h-screen bg-[#0C0B0A] flex items-center justify-center px-4">
+          <PageSkeleton />
         </div>
       }
     >
@@ -106,7 +108,7 @@ function BookingContent() {
         if (data.businessName) setShopName(data.businessName);
         if (data.timezone) setTimezone(data.timezone);
         if (Array.isArray(data.openDays) && data.openDays.length) setOpenDays(data.openDays);
-        document.documentElement.style.setProperty("--accent-color", data.accentColor || "#00F5A0");
+        document.documentElement.style.setProperty("--accent-color", data.accentColor || "#D4AF7A");
       }
       setLoading(false);
     }
@@ -184,18 +186,15 @@ function BookingContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div
-          className="w-5 h-5 border-2 rounded-full animate-spin"
-          style={{ borderColor: "color-mix(in srgb, var(--accent-color) 30%, transparent)", borderTopColor: "var(--accent-color)" }}
-        />
+      <div className="min-h-screen bg-[#0C0B0A] flex items-center justify-center px-4">
+        <PageSkeleton />
       </div>
     );
   }
 
   if (step === "done") {
     return (
-      <div className={`${BODY} min-h-screen bg-[#0A0A0A] text-white flex flex-col items-center justify-center text-center px-6 py-10`}>
+      <div className={`${BODY} min-h-screen bg-[#0C0B0A] text-white flex flex-col items-center justify-center text-center px-6 py-10`}>
         <div
           className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
           style={{ background: "color-mix(in srgb, var(--accent-color) 10%, transparent)", animation: "ob-scale-in 600ms cubic-bezier(0.34,1.56,0.64,1) both" }}
@@ -246,7 +245,7 @@ function BookingContent() {
   const progress = step === "service" ? 1 : step === "time" ? 2 : 3;
 
   return (
-    <div className={`${BODY} min-h-screen bg-[#0A0A0A] text-white flex flex-col`}>
+    <div className={`${BODY} min-h-screen bg-[#0C0B0A] text-white flex flex-col`}>
       <div className="w-full max-w-[440px] mx-auto flex-1 flex flex-col">
         {/* Header */}
         <div className="px-6 pt-5" style={fadeUp()}>
@@ -318,7 +317,7 @@ function BookingContent() {
                     }}
                     className={`tap-spring ${HEADING} h-12 rounded-xl text-[15px] font-semibold border-[1.5px] flex items-center justify-center gap-1.5 ${
                       partySize === n
-                        ? "border-[var(--accent-color)] bg-[var(--accent-color)] text-[#04130D] shadow-[0_0_18px_color-mix(in_srgb,var(--accent-color)_35%,transparent)]"
+                        ? "border-[var(--accent-color)] bg-[var(--accent-color)] text-[var(--accent-fg)]"
                         : "border-white/[0.06] bg-white/[0.02] text-white/60 hover:border-[var(--accent-color)]/25 hover:text-white"
                     }`}
                   >
@@ -357,7 +356,7 @@ function BookingContent() {
                             picked ? "border-[var(--accent-color)] bg-[var(--accent-color)]" : "border-white/15"
                           }`}
                         >
-                          <span className={`w-2 h-2 rounded-full bg-[#0A0A0A] transition-opacity ${picked ? "opacity-100" : "opacity-0"}`} />
+                          <span className={`w-2 h-2 rounded-full bg-[#0C0B0A] transition-opacity ${picked ? "opacity-100" : "opacity-0"}`} />
                         </span>
                         <span className="flex-1">
                           <span className="block text-[15px] font-semibold">{s.name}</span>
@@ -431,7 +430,7 @@ function BookingContent() {
                                 onClick={() => setSelectedTime(t)}
                                 className={`pill-slide tap-spring ${HEADING} shrink-0 h-11 px-4 rounded-xl border-[1.5px] text-[13px] font-semibold ${
                                   selectedTime === t
-                                    ? "border-[var(--accent-color)] bg-[var(--accent-color)] text-[#04130D] shadow-[0_0_18px_color-mix(in_srgb,var(--accent-color)_35%,transparent)]"
+                                    ? "border-[var(--accent-color)] bg-[var(--accent-color)] text-[var(--accent-fg)]"
                                     : "border-white/[0.08] bg-white/[0.04] text-white/70 hover:border-[var(--accent-color)]/30 hover:text-white"
                                 }`}
                                 style={{ animationDelay: `${i * 35}ms` }}
@@ -514,13 +513,13 @@ function BookingContent() {
                       consentChecked ? "bg-[var(--accent-color)] border-[var(--accent-color)]" : "border-white/15"
                     }`}
                   >
-                    {consentChecked && <Check className="w-3 h-3 text-[#0A0A0A]" strokeWidth={3} />}
+                    {consentChecked && <Check className="w-3 h-3 text-[#0C0B0A]" strokeWidth={3} />}
                   </span>
                   <span className="text-xs text-white/30 leading-relaxed">
                     {CONSENT_TEXT}{" "}
-                    <a href="/privacy" className="text-[var(--accent-color)]/70 hover:underline">Privacy</a>
+                    <Link href="/privacy" className="text-[var(--accent-color)]/70 hover:underline">Privacy</Link>
                     {" & "}
-                    <a href="/terms" className="text-[var(--accent-color)]/70 hover:underline">Terms</a>
+                    <Link href="/terms" className="text-[var(--accent-color)]/70 hover:underline">Terms</Link>
                   </span>
                 </label>
 
@@ -547,7 +546,7 @@ function BookingContent() {
 function PayInPerson() {
   return (
     <div className="rounded-xl px-4 py-3 flex items-center gap-3 text-left bg-emerald-500/15 border-[1.5px] border-emerald-400/60 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-      <div className="w-9 h-9 rounded-lg bg-emerald-400 text-[#0A0A0A] flex items-center justify-center shrink-0">
+      <div className="w-9 h-9 rounded-lg bg-emerald-400 text-[#0C0B0A] flex items-center justify-center shrink-0">
         <Wallet className="w-5 h-5" strokeWidth={2.25} />
       </div>
       <div>
@@ -593,11 +592,11 @@ function DetailRow({ icon, title, sub }: { icon: React.ReactNode; title: string;
 
 function BottomCta({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <div className="px-6 pt-3 pb-9 sticky bottom-0 border-t border-white/[0.08] bg-[#070908]/80 backdrop-blur-md">
+    <div className="px-6 pt-3 pb-9 sticky bottom-0 border-t border-white/[0.08] bg-[#121110]">
       <button
         onClick={onClick}
         disabled={disabled}
-        className="w-full h-[58px] rounded-2xl bg-[var(--accent-color)] text-[#04130D] text-base font-bold flex items-center justify-center gap-2 shadow-[0_0_28px_color-mix(in_srgb,var(--accent-color)_35%,transparent)] transition-[transform,box-shadow,opacity] duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0 disabled:cursor-not-allowed"
+        className="w-full h-[58px] rounded-2xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-base font-bold flex items-center justify-center gap-2 transition-[transform,box-shadow,opacity] duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-40 disabled:shadow-none disabled:hover:translate-y-0 disabled:cursor-not-allowed"
       >
         {children}
       </button>
@@ -676,7 +675,7 @@ function CalendarGrid({
               onClick={() => onPick(dateStr)}
               className={`${HEADING} aspect-square rounded-[10px] text-sm font-semibold flex items-center justify-center transition-all duration-200 ${
                 isPicked
-                  ? "bg-[var(--accent-color)] text-[#0A0A0A] shadow-[0_4px_16px_color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
+                  ? "bg-[var(--accent-color)] text-[#0C0B0A] shadow-[0_4px_16px_color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
                   : disabled
                     ? isClosed && !isPast ? "text-white/[0.12] line-through cursor-not-allowed" : "text-white/10 cursor-not-allowed"
                     : isToday

@@ -68,6 +68,11 @@
     "review_url_placeholder": "https://g.page/your-shop/review",
     "review_url_hint": "Find this in Google Business Profile under \"Get more reviews.\""
   },
+  "step6": {
+    "badge": "6",
+    "title": "Your portfolio",
+    "subtitle": "Add your best cuts. Tap any empty spot to add a photo. You can change this anytime from the Portfolio tab."
+  },
   "done": {
     "title": "You're all set!",
     "subtitle": "Your booking page is live. Head to your dashboard to start catching calls.",

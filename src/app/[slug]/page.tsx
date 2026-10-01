@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Fraunces } from "next/font/google";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getTheme, themeVars } from "@/lib/themes";
+import { getTheme, isAccent, themeVars } from "@/lib/themes";
 import { PORTFOLIO_COPY, pickLang, type Lang } from "@/lib/portfolio-copy";
 import { weekdayInTz } from "@/lib/availability";
 import { checkSlug } from "@/lib/slug";
@@ -20,7 +20,7 @@ const loadBarber = cache(async (slug: string) => {
   const db = createAdminClient();
   const { data: barber } = await db
     .from("users")
-    .select("user_id, business_name, first_name, avatar_url, theme, timezone, business_hours, is_active")
+    .select("user_id, business_name, first_name, avatar_url, theme, accent_color, timezone, business_hours, is_active")
     .eq("slug", slug)
     .maybeSingle();
   if (!barber || barber.is_active === false) return null;
@@ -87,7 +87,11 @@ export default async function PortfolioPage({
   const { barber, shopName, photos, lowestPrice } = data;
   const lang: Lang = pickLang(sp.lang, (await headers()).get("accept-language"));
   const copy = PORTFOLIO_COPY[lang];
-  const theme = getTheme(barber.theme);
+  const base = getTheme(barber.theme);
+  // The barber's accent wins on dark themes (every accent pick is light, so it reads on dark and takes dark text).
+  const theme = base.dark && isAccent(barber.accent_color)
+    ? { ...base, accent: barber.accent_color, ctaBg: barber.accent_color, ctaText: "#121110", accentGlow: `color-mix(in srgb, ${barber.accent_color} 30%, transparent)` }
+    : base;
   const tz = barber.timezone || "America/New_York";
 
   const today = barber.business_hours?.[weekdayInTz(new Date(), tz)] as { open: string; close: string } | null | undefined;
@@ -245,10 +249,10 @@ export default async function PortfolioPage({
         </p>
       </div>
 
-      {/* Pinned CTA (the only other blurred surface) */}
+      {/* Pinned CTA */}
       <div
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--t-border)] backdrop-blur-md"
-        style={{ background: "color-mix(in srgb, var(--t-bg) 80%, transparent)" }}
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--t-border)]"
+        style={{ background: "var(--t-bg)" }}
       >
         <div className="mx-auto max-w-[520px] px-5 pt-3.5 pb-7">
           <a

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-[#111111] text-white/80 px-4 py-8">
+    <div className="min-h-screen bg-[#121110] text-white/80 px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <Link
           href="/"

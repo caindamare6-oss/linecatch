@@ -17,12 +17,12 @@ export type Theme = {
   tileIcon: string;
 };
 
-// "mint" is the LineCatch brand look (dark + green) and the default for every barber.
-export const DEFAULT_THEME: ThemeId = "mint";
+// "gold" (champagne on warm black) is the LineCatch brand look and the default for every barber.
+export const DEFAULT_THEME: ThemeId = "gold";
 
 export const THEMES: Record<ThemeId, Theme> = {
   mint: {
-    id: "mint", name: "LineCatch", dark: true,
+    id: "mint", name: "Mint", dark: true,
     bg: "#070908", surface: "rgba(255,255,255,0.045)", border: "rgba(255,255,255,0.09)", text: "#F2F5F3", muted: "#9BA8A2",
     accent: "#00F5A0", accentGlow: "rgba(0,245,160,0.35)", ctaBg: "#00F5A0", ctaText: "#04130D", tile: "#141A17", tileIcon: "#4E5B55",
   },
@@ -32,9 +32,9 @@ export const THEMES: Record<ThemeId, Theme> = {
     accent: "#FFFFFF", accentGlow: "rgba(255,255,255,0.18)", ctaBg: "#FFFFFF", ctaText: "#0B0B0B", tile: "#1C1C1C", tileIcon: "#5C5C5C",
   },
   gold: {
-    id: "gold", name: "Gold", dark: true,
-    bg: "#0E0D0B", surface: "rgba(255,240,200,0.05)", border: "rgba(255,240,200,0.1)", text: "#FAF7F0", muted: "#A8A196",
-    accent: "#D4A62A", accentGlow: "rgba(212,166,42,0.35)", ctaBg: "#D4A62A", ctaText: "#0E0D0B", tile: "#221F19", tileIcon: "#6B6456",
+    id: "gold", name: "LineCatch Champagne", dark: true,
+    bg: "#121110", surface: "rgba(250,247,242,0.045)", border: "rgba(250,247,242,0.09)", text: "#FAF7F2", muted: "#A89F92",
+    accent: "#D4AF7A", accentGlow: "rgba(212,175,122,0.3)", ctaBg: "#D4AF7A", ctaText: "#121110", tile: "#1C1A17", tileIcon: "#5E574D",
   },
   midnight: {
     id: "midnight", name: "Midnight", dark: true,
@@ -49,6 +49,17 @@ export const THEMES: Record<ThemeId, Theme> = {
 };
 
 export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
+
+// Barber accent picks. All light enough for dark (#121110) text on buttons.
+export const ACCENT_COLORS = [
+  { name: "Champagne", hex: "#D4AF7A" },
+  { name: "Copper", hex: "#E0926A" },
+  { name: "Rose", hex: "#E3A4A4" },
+  { name: "Sage", hex: "#A8C49A" },
+  { name: "Sky", hex: "#8FB8DE" },
+  { name: "Pearl", hex: "#E0D9CD" },
+];
+export const isAccent = (hex: unknown) => ACCENT_COLORS.some((c) => c.hex === hex);
 
 export function getTheme(id: unknown): Theme {
   return THEMES[id as ThemeId] ?? THEMES[DEFAULT_THEME];

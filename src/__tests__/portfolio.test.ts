@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { slugify, checkSlug, RESERVED_SLUGS } from "@/lib/slug";
-import { getTheme, THEMES, THEME_IDS } from "@/lib/themes";
+import { getTheme, THEMES, THEME_IDS, isAccent } from "@/lib/themes";
 import { pickLang, PORTFOLIO_COPY } from "@/lib/portfolio-copy";
 
 describe("slugs", () => {
@@ -32,12 +32,18 @@ describe("themes", () => {
     expect(THEMES.cream.bg).toBe("#F6F1E7");
     expect(THEMES.cream.accent).toBe("#A8762A");
   });
-  it("defaults to the LineCatch dark + green look", () => {
-    expect(getTheme(undefined).id).toBe("mint");
-    expect(getTheme("nope").id).toBe("mint");
-    expect(THEMES.mint.name).toBe("LineCatch");
+  it("defaults to the LineCatch champagne look", () => {
+    expect(getTheme(undefined).id).toBe("gold");
+    expect(getTheme("nope").id).toBe("gold");
+    expect(THEMES.gold.name).toBe("LineCatch Champagne");
+    expect(THEMES.gold.accent).toBe("#D4AF7A");
     expect(THEMES.mint.accent).toBe("#00F5A0");
     expect(THEME_IDS).toEqual(["mint", "classic", "gold", "midnight", "cream"]);
+  });
+  it("only accepts accents from the picker", () => {
+    expect(isAccent("#D4AF7A")).toBe(true);
+    expect(isAccent("#00F5A0")).toBe(false);
+    expect(isAccent("red; background:url(x)")).toBe(false);
   });
 });
 

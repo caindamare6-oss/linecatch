@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Clock, User, Scissors, X, Check, Gift, ChevronLeft, ChevronRight } from "lucide-react";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 type Booking = {
   id: string;
@@ -63,7 +64,7 @@ function formatPhone(phone: string) {
 
 export default function SchedulePage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center py-16"><div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center py-16 px-4"><PageSkeleton /></div>}>
       <ScheduleContent />
     </Suspense>
   );
@@ -310,8 +311,8 @@ function ScheduleContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+      <div className="flex items-center justify-center py-16 px-4">
+        <PageSkeleton />
       </div>
     );
   }
@@ -466,7 +467,7 @@ function ScheduleContent() {
                           </div>
                         )}
                         {booking.loyalty_badge && (booking.loyalty_due ? (
-                          <div className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-md bg-yellow-400 text-[#0d0d0d]">
+                          <div className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-1 rounded-md bg-yellow-400 text-[#0F0E0D]">
                             <Gift className="w-3.5 h-3.5 flex-shrink-0" />
                             <span className="text-[11px] font-bold">{booking.loyalty_badge}</span>
                           </div>
@@ -485,7 +486,7 @@ function ScheduleContent() {
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
                             style={{
                               backgroundColor: 'var(--accent-color)',
-                              color: '#0A0A0A',
+                              color: '#0C0B0A',
                               animation: 'pulse 2s infinite',
                             }}
                           >

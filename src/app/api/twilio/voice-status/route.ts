@@ -149,7 +149,7 @@ export async function POST(request: Request) {
       event_type: "missed_call_caught",
       client_name: vipForActivity?.first_name || null,
       client_phone: from,
-      description: `Missed call from ${vipForActivity?.first_name || "client"} — auto-text sent`,
+      description: `Missed call from ${vipForActivity?.first_name || "client"}, auto-text sent`,
       metadata: { call_sid: callSid },
     });
 
