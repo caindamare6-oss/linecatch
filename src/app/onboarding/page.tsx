@@ -14,7 +14,7 @@ const LANGUAGES = [
   { code: "es" as const, label: "Español" },
 ];
 
-const HEARD_FROM = ["barber", "instagram", "tiktok", "google", "youtube", "event", "other"] as const;
+const HEARD_FROM = ["in_person", "barber", "instagram", "tiktok", "google", "youtube", "event", "other"] as const;
 
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -61,6 +61,7 @@ export default function OnboardingPage() {
     googleEmail: string;
     pendingCode?: string | null;
     referral?: { code: string; name: string | null } | null;
+    sticker?: { code: string; shop: string | null } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -111,6 +112,7 @@ function OnboardingFlow({
     googleEmail: string;
     pendingCode?: string | null;
     referral?: { code: string; name: string | null } | null;
+    sticker?: { code: string; shop: string | null } | null;
   } | null;
 }) {
   const router = useRouter();
@@ -128,7 +130,7 @@ function OnboardingFlow({
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  const [heardFrom, setHeardFrom] = useState("");
+  const [heardFrom, setHeardFrom] = useState(initialData?.sticker ? "in_person" : "");
   const appliedRef = initialData?.referral ?? null;
   const [referralCode, setReferralCode] = useState(appliedRef?.code || initialData?.pendingCode || "");
   const [refResult, setRefResult] = useState<{ code: string; valid: boolean; name: string | null } | null>(null);
@@ -169,7 +171,10 @@ function OnboardingFlow({
   const [featureWednesday, setFeatureWednesday] = useState(true);
   const [featureReviews, setFeatureReviews] = useState(false);
   // SMS marketing is off by default; turning it on means shipping a QR sticker to the shop.
-  const [featureMarketing, setFeatureMarketing] = useState(false);
+  // A sticker handed out in person: a two-step setup, marketing on, nothing to ship.
+  const handed = initialData?.sticker ?? null;
+  const quick = !!handed;
+  const [featureMarketing, setFeatureMarketing] = useState(quick);
   const [wantsSticker, setWantsSticker] = useState(false);
   const [shipping, setShipping] = useState({ name: "", line1: "", line2: "", city: "", state: "", zip: "" });
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
@@ -189,6 +194,7 @@ function OnboardingFlow({
     }
     if (p.avatar_url) setAvatarUrl(p.avatar_url as string);
     if (p.business_name) setBusinessName(p.business_name as string);
+    else if (initialData.sticker?.shop) setBusinessName(initialData.sticker.shop);
     if (p.forwarding_number) setPhone(p.forwarding_number as string);
     if (p.email) setEmail(p.email as string);
     if (p.business_hours) setBusinessHours(p.business_hours as BusinessHours);
@@ -333,7 +339,25 @@ function OnboardingFlow({
         return;
       }
     }
-    else if (step === 2) result = await saveStep("business", { businessName, phone, email });
+    else if (step === 2) {
+      result = await saveStep("business", { businessName, phone, email });
+      if (result.ok && quick) {
+        // Quick setup: sensible defaults for the rest; everything is editable in Settings.
+        result = await saveStep("services", { services });
+        if (result.ok) result = await saveStep("hours", { businessHours, timezone });
+        if (result.ok) result = await saveStep("preferences", { featureAutotext: true, featureMarketing: true, featureWednesday: true, featureReviews: false, googleReviewUrl: "", wantsSticker: false });
+        if (!result.ok) {
+          setError(result.error || "Failed to save");
+          return;
+        }
+        setFeatureMarketing(true);
+        setFeatureAutotext(true);
+        setError(null);
+        setAnimKey((k) => k + 1);
+        setStep(DONE);
+        return;
+      }
+    }
     else if (step === 3) {
       result = await saveStep("services", { services });
       const ids = result.body?.ids;
@@ -482,7 +506,7 @@ function OnboardingFlow({
     return () => { running = false; window.removeEventListener("resize", sizeCanvas); };
   }, [step, confettiDone]);
 
-  const STEP_PROGRESS = [0, 17, 33, 50, 67, 83, 100, 100];
+  const STEP_PROGRESS = quick ? [0, 33, 67, 100, 100, 100, 100, 100] : [0, 17, 33, 50, 67, 83, 100, 100];
   const progress = STEP_PROGRESS[step] ?? 0;
 
   return (
@@ -578,6 +602,11 @@ function OnboardingFlow({
           {/* Step 1: Who you are */}
           {step === 1 && (
             <StepContainer title={t("step1.title")} subtitle={t("step1.subtitle")} stepNum={1}>
+              {handed && (
+                <p className="mb-5 text-[13px] rounded-xl px-3.5 py-3 leading-relaxed" style={{ backgroundColor: "rgba(168,196,154,0.1)", color: "#A8C49A", border: "1px solid rgba(168,196,154,0.25)" }}>
+                  ✓ {t("step1.quick_banner", { code: handed.code })}
+                </p>
+              )}
               <div className="flex flex-col items-center mb-6">
                 <button
                   onClick={() => avatarInputRef.current?.click()}
@@ -655,7 +684,7 @@ function OnboardingFlow({
                 </div>
               </div>
 
-              <div className="mt-5">
+              {!quick && <div className="mt-5">
                 {appliedRef ? (
                   <p className="text-[13px] rounded-xl px-3.5 py-3" style={{ backgroundColor: "var(--ob-accent-glow)", color: "var(--ob-accent)" }}>
                     ✓ {t("step1.ref_applied", { code: appliedRef.code, percent: REFERRED_PERCENT_OFF })}
@@ -680,7 +709,7 @@ function OnboardingFlow({
                     </p>
                   </>
                 )}
-              </div>
+              </div>}
             </StepContainer>
           )}
 
@@ -939,9 +968,10 @@ function OnboardingFlow({
                 </div>
                 <div className="flex items-center justify-between mt-1.5">
                   <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>{t("done.sticker")}</span>
-                  <span className="text-[11px]" style={{ color: "var(--ob-text-secondary)" }}>{wantsSticker ? t("done.sticker_on") : t("done.sticker_off")}</span>
+                  <span className="text-[11px]" style={{ color: handed ? "#A8C49A" : "var(--ob-text-secondary)" }}>{handed ? t("done.sticker_connect", { code: handed.code }) : wantsSticker ? t("done.sticker_on") : t("done.sticker_off")}</span>
                 </div>
               </div>
+              {quick && <p className="text-[12px] max-w-xs" style={{ color: "var(--ob-text-muted)" }}>{t("done.quick_note")}</p>}
             </div>
           )}
         </div>

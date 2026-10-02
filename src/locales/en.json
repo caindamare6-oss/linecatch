@@ -26,7 +26,8 @@
       "google": "Google",
       "youtube": "YouTube",
       "event": "Event or expo",
-      "other": "Other"
+      "other": "Other",
+      "in_person": "LineCatch came to my shop"
     },
     "ref_label": "Referral code",
     "ref_optional": "optional",
@@ -39,7 +40,9 @@
     "err_not_found": "We couldn't find that code.",
     "err_own_code": "That's your own code. Use a code from the barber who invited you.",
     "err_already_referred": "Your account already has a referral code.",
-    "err_too_late": "Referral codes can only be added during setup."
+    "err_too_late": "Referral codes can only be added during setup.",
+    "quick_banner": "QR sticker {code} connects to your shop when you finish. Two quick steps, no address.",
+    "quick_note": "Services and hours start with common defaults. Change them anytime in Settings."
   },
   "step2": {
     "badge": "2",
@@ -83,8 +86,8 @@
     "subtitle": "Pick what LineCatch does for you. You can change this anytime in Settings.",
     "autotext_label": "Auto-text missed calls",
     "autotext_desc": "When a client's call goes unanswered, LineCatch sends them a booking link automatically.",
-    "wednesday_label": "Wednesday re-engagement",
-    "wednesday_desc": "When a client is due for a cut, a Wednesday check-in, win-backs if they stay quiet, then a check-in every 4 weeks until they book or reply STOP.",
+    "wednesday_label": "Wednesday reminders",
+    "wednesday_desc": "Only on Wednesdays at noon: the first Wednesday 2–3 weeks after a cut, then every 3 weeks until they book or reply STOP.",
     "reviews_label": "Google review requests",
     "reviews_desc": "2–3 hours after a visit, ask the client for a Google review.",
     "review_url_label": "Google review link",
@@ -128,7 +131,9 @@
     "marketing_off": "Off",
     "sticker": "QR sticker",
     "sticker_on": "On its way",
-    "sticker_off": "Not added"
+    "sticker_off": "Not added",
+    "sticker_connect": "{code} · connects now",
+    "quick_note": "Services and hours use defaults for now. Edit them anytime in Settings."
   },
   "days": {
     "monday": "Mon",
@@ -252,7 +257,8 @@
     "sticker_request": "QR sticker ordered",
     "referral_qualified": "A barber you referred finished signing up. You earned a free month.",
     "client": "Client",
-    "new_client": "New client"
+    "new_client": "New client",
+    "sticker_activated": "QR sticker {code} connected. Walk-ins who scan it land on your VIP page."
   },
   "messages": {
     "title": "Messages",
@@ -455,13 +461,13 @@
     "marketing_on": "On. Texts go only to clients who opted in. Anyone can reply STOP.",
     "marketing_off": "Off. Check-ins, win-backs, broadcasts and review requests don't go out.",
     "marketing_desc": "Wednesday check-ins, win-back texts, broadcasts and Google review requests.",
-    "wednesday": "Wednesday re-engagement",
-    "wednesday_hint": "A midweek check-in when a client is due, win-backs if they stay quiet, then a check-in every 4 weeks until they book or reply STOP.",
+    "wednesday": "Wednesday reminders",
+    "wednesday_hint": "Only on Wednesdays at noon: the first Wednesday 2–3 weeks after a cut, then every 3 weeks until they book or reply STOP.",
     "reviews": "Google review requests",
     "reviews_hint": "2–3 hours after a visit, ask clients for a review.",
     "reviews_need_link": "Add your Google review link above first.",
     "winback": "Win-back offer",
-    "winback_hint": "Included once in the last win-back text. Leave empty for none.",
+    "winback_hint": "Added once to the Wednesday text for clients gone 8+ weeks. Leave empty for none.",
     "winback_placeholder": "{reward} off",
     "missed_text": "Missed-call text",
     "preset_casual": "Casual",
@@ -551,7 +557,10 @@
     "invited": "Invited by {name}",
     "invite_deal": "{percent}% off your first month",
     "invite_code": "Code {code} is applied when you sign up.",
-    "email_placeholder": "you@example.com"
+    "email_placeholder": "you@example.com",
+    "sticker_banner": "QR sticker {code} is ready",
+    "sticker_banner_shop": "QR sticker {code} for {shop} is ready",
+    "sticker_sub": "Sign up and it connects to your shop. No address needed."
   },
   "book": {
     "morning": "Morning",
@@ -859,7 +868,16 @@
     "err_code_barber": "Code and barber are required.",
     "err_not_unclaimed": "That code isn't unclaimed or doesn't exist.",
     "err_action": "Invalid action.",
-    "err_generic": "Something went wrong. Try again."
+    "err_generic": "Something went wrong. Try again.",
+    "field_title": "Door to door",
+    "field_how": "Scan a fresh sticker with your phone camera, type the shop's name, hand it over. The barber scans it and sets up in 2 minutes, no address.",
+    "field_code": "Sticker code",
+    "field_shop": "Shop name",
+    "field_save": "Mark handed out",
+    "field_saved": "{code} handed to {shop}",
+    "field_none": "No stickers handed out yet.",
+    "field_waiting": "Waiting for setup",
+    "field_live": "Set up"
   },
   "vip": {
     "your_barber": "your barber",
@@ -929,7 +947,23 @@
     "err_not_found": "Code not found.",
     "err_own": "You already own this code.",
     "err_taken": "This code has already been claimed.",
-    "err_retired": "This code has been retired."
+    "err_retired": "This code has been retired.",
+    "setup_title": "Set up {shop} in 2 minutes",
+    "setup_title_generic": "Set up your shop in 2 minutes",
+    "setup_body": "This sticker connects to your shop when you finish. No address, nothing to ship.",
+    "setup_points": "Missed calls get your booking link by text|Clients book in a few taps|Walk-ins scan this sticker to join your text list",
+    "setup_cta": "Set up my shop",
+    "setup_signin": "Already have an account? Sign in",
+    "handout_title": "Hand out this sticker",
+    "handout_body": "Write down which shop gets it. When the barber scans it, setup starts with the shop name filled in.",
+    "handout_shop": "Shop name",
+    "handout_shop_placeholder": "e.g. Kings Cuts",
+    "handout_save": "Save & hand it over",
+    "handout_saving": "Saving…",
+    "handout_done": "Saved. Hand {code} to {shop}. They scan it and set up in 2 minutes.",
+    "handout_next": "Scan the next sticker",
+    "handout_mine": "Use it for my own shop instead",
+    "handout_admin": "Admin: stickers"
   },
   "shop": {
     "with": "with {name}",

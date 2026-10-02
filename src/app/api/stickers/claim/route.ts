@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { claimSticker } from "@/lib/sticker-claim";
 import { getT } from "@/lib/i18n-server";
 
 export async function POST(request: Request) {
@@ -19,69 +20,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("claim.err_required") }, { status: 400 });
   }
 
-  const normalized = code.trim().toUpperCase();
-  const admin = createAdminClient();
-
-  // Check if barber already has an active sticker
-  const { data: existing } = await admin
-    .from("sticker_codes")
-    .select("code")
-    .eq("owner_user_id", user.id)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-
-  if (existing) {
-    return NextResponse.json(
-      { error: t("claim.err_have_one"), existingCode: existing.code },
-      { status: 409 }
-    );
-  }
-
-  // Atomic claim: only succeeds if status is still 'unclaimed'
-  const { data, error } = await admin
-    .from("sticker_codes")
-    .update({
-      owner_user_id: user.id,
-      status: "active",
-      claimed_at: new Date().toISOString(),
-    })
-    .eq("code", normalized)
-    .eq("status", "unclaimed")
-    .select("code")
-    .single();
-
-  if (error || !data) {
-    const { data: check } = await admin
-      .from("sticker_codes")
-      .select("status, owner_user_id")
-      .eq("code", normalized)
-      .single();
-
-    if (!check) {
-      return NextResponse.json({ error: t("claim.err_not_found") }, { status: 404 });
-    }
-    if (check.status === "active") {
-      if (check.owner_user_id === user.id) {
-        return NextResponse.json({ error: t("claim.err_own") }, { status: 409 });
-      }
-      return NextResponse.json({ error: t("claim.err_taken") }, { status: 409 });
-    }
-    if (check.status === "retired") {
-      return NextResponse.json({ error: t("claim.err_retired") }, { status: 410 });
-    }
-    return NextResponse.json(
-      { error: t("claim.err_failed") },
-      { status: 500 }
-    );
-  }
-
-  // Placeholder until Stripe (Phase 8): plan must come from the subscription, and Basic
-  // barbers won't be allowed to claim a sticker at all.
-  await admin
-    .from("users")
-    .update({ is_locked_out: false, plan: "full", feature_marketing: true })
-    .eq("user_id", user.id);
-
-  return NextResponse.json({ success: true, code: data.code });
+  const result = await claimSticker(createAdminClient(), user.id, code);
+  if (result.ok) return NextResponse.json({ success: true, code: result.code });
+  const status = { not_found: 404, have_one: 409, own: 409, taken: 409, retired: 410, failed: 500 }[result.error];
+  return NextResponse.json({ error: t(`claim.err_${result.error}`), existingCode: result.existingCode }, { status });
 }

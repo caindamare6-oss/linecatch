@@ -16,6 +16,8 @@ type StickerCode = {
   batch_label: string | null;
   tracking_number: string | null;
   shipped_at: string | null;
+  handed_out_at: string | null;
+  handed_to: string | null;
 };
 
 /** Group key for codes without a batch label (shown translated). */
@@ -298,6 +300,8 @@ export default function AdminStickersPage() {
       <h2 className="text-lg font-bold text-white">{t("admin.title")}</h2>
       {error && <p className="text-sm text-red-400">{error}</p>}
 
+      <FieldCard codes={codes} barbers={barbers} onSaved={loadCodes} />
+
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
         <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium mb-3">{t("admin.to_ship", { n: toShip.length })}</h3>
         {toShip.length === 0 ? (
@@ -450,6 +454,62 @@ export default function AdminStickersPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Handing stickers out in person: record the shop, then watch who finishes setup. */
+function FieldCard({ codes, barbers, onSaved }: { codes: StickerCode[]; barbers: Record<string, string>; onSaved: () => void }) {
+  const t = useT();
+  const f = useFormat();
+  const [code, setCode] = useState("");
+  const [shop, setShop] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const handed = codes.filter((c) => c.handed_out_at).sort((a, b) => (b.handed_out_at! > a.handed_out_at! ? 1 : -1));
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    setMsg("");
+    const res = await fetch("/api/admin/stickers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "hand_out", code: code.trim().toUpperCase(), shop }) });
+    const d = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) return setErr(t(d.error || "common.try_again"));
+    setMsg(t("admin.field_saved", { code: code.trim().toUpperCase(), shop: shop.trim() }));
+    setCode("");
+    setShop("");
+    onSaved();
+  }
+
+  const field = "h-11 rounded-xl bg-white/[0.06] border border-white/[0.1] px-3 text-sm text-white placeholder-white/25 outline-none focus:border-[var(--accent-color)]/50";
+  return (
+    <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5 space-y-3">
+      <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium">{t("admin.field_title")}</h3>
+      <p className="text-[13px] text-white/50 leading-relaxed">{t("admin.field_how")}</p>
+      <form onSubmit={save} className="grid grid-cols-[110px_1fr] gap-2">
+        <input aria-label={t("admin.field_code")} placeholder={t("admin.field_code")} value={code} onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 12))} className={`${field} font-mono`} required />
+        <input aria-label={t("admin.field_shop")} placeholder={t("admin.field_shop")} value={shop} onChange={(e) => setShop(e.target.value.slice(0, 60))} className={field} required />
+        <button type="submit" disabled={busy} className="col-span-2 h-11 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-sm font-semibold disabled:opacity-50">{t("admin.field_save")}</button>
+      </form>
+      {msg && <p className="text-[13px] text-[#A8C49A]">{msg}</p>}
+      {err && <p className="text-[13px] text-red-400" role="alert">{err}</p>}
+      {handed.length === 0 ? (
+        <p className="text-sm text-white/40">{t("admin.field_none")}</p>
+      ) : (
+        <ul className="divide-y divide-white/[0.06]">
+          {handed.map((c) => (
+            <li key={c.code} className="py-2.5 flex items-center gap-3 text-sm">
+              <span className="font-mono text-white/70 w-[72px] shrink-0">{c.code}</span>
+              <span className="flex-1 min-w-0 truncate text-white/85">{c.status === "active" && c.owner_user_id ? barbers[c.owner_user_id] || c.handed_to : c.handed_to}</span>
+              <span className="text-[11px] text-white/35 shrink-0">{f.date(c.handed_out_at!, { month: "short", day: "numeric" })}</span>
+              <span className={`text-[11px] font-semibold shrink-0 ${c.status === "active" ? "text-[#A8C49A]" : "text-[#E0926A]"}`}>{c.status === "active" ? t("admin.field_live") : t("admin.field_waiting")}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

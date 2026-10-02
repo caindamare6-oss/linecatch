@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   const admin = createAdminClient();
   let query = admin
     .from("sticker_codes")
-    .select("code, owner_user_id, status, claimed_at, created_at, batch_label, tracking_number, shipped_at")
+    .select("code, owner_user_id, status, claimed_at, created_at, batch_label, tracking_number, shipped_at, handed_out_at, handed_to")
     .order("created_at", { ascending: false })
     .limit(500);
 
@@ -152,6 +152,26 @@ export async function POST(request: Request) {
       );
     }
 
+    return NextResponse.json({ success: true });
+  }
+
+  // Door to door: note which shop got the sticker so their setup starts with the name filled in.
+  if (action === "hand_out") {
+    const { code, shop } = body;
+    const name = typeof shop === "string" ? shop.trim().slice(0, 60) : "";
+    if (!code || !name) {
+      return NextResponse.json({ error: "Code and shop name are required" }, { status: 400 });
+    }
+    const { data, error } = await admin
+      .from("sticker_codes")
+      .update({ handed_out_at: new Date().toISOString(), handed_to: name, handed_out_by: user.id })
+      .eq("code", String(code).trim().toUpperCase())
+      .eq("status", "unclaimed")
+      .select("code")
+      .maybeSingle();
+    if (error || !data) {
+      return NextResponse.json({ error: "This sticker is already set up or doesn't exist" }, { status: 400 });
+    }
     return NextResponse.json({ success: true });
   }
 

@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { monthBounds, monthRevenue, greetingFor } from "@/lib/revenue";
 import { HomeClient } from "@/app/dashboard/home-client";
 import { marketingState } from "@/lib/marketing";
-import { nextRung } from "@/lib/retention";
+import { wednesdayText, nextWednesdayNoon } from "@/lib/retention";
 import { getT } from "@/lib/i18n-server";
 import { appUrl, DEFAULT_TZ } from "@/lib/config";
 
@@ -15,7 +15,7 @@ export default async function DashboardPage() {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("first_name, business_name, timezone, google_review_url, feature_wednesday, feature_autotext, feature_marketing, is_locked_out, rebook_interval_days, sticker_requested_at")
+    .select("first_name, business_name, timezone, google_review_url, feature_wednesday, feature_autotext, feature_marketing, is_locked_out, winback_offer, sticker_requested_at")
     .eq("user_id", user.id)
     .single();
 
@@ -40,7 +40,7 @@ export default async function DashboardPage() {
     // Same rules as the Wednesday cron (lib/retention).
     supabase
       .from("vip_clients")
-      .select("phone_number, last_cut_date, reengagement_stage, reengagement_index, last_reengagement_sent_at, has_claimed_winback")
+      .select("phone_number, last_cut_date, reengagement_index, last_reengagement_sent_at, has_claimed_winback")
       .eq("user_id", user.id)
       .eq("is_opted_in", true)
       .is("opted_out_at", null)
@@ -66,11 +66,12 @@ export default async function DashboardPage() {
   const revenue = monthRevenue(completed.data || [], prices, tz, now);
 
   const booked = new Set((upcoming.data || []).map((b) => b.customer_phone));
+  // Who gets a text at the coming Wednesday noon (same rules as the cron).
+  const wed = nextWednesdayNoon(now, tz);
   const wednesdayTargeted = (wedCandidates.data || []).filter((c) =>
-    nextRung(
+    wednesdayText(
       {
         lastCutDate: c.last_cut_date,
-        stage: c.reengagement_stage ?? 0,
         lastSentAt: c.last_reengagement_sent_at,
         variantIndex: c.reengagement_index ?? 0,
         claimedOffer: !!c.has_claimed_winback,
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
         hasFutureBooking: booked.has(c.phone_number),
         lastInboundAt: null,
       },
-      { now, rebookDays: barber?.rebook_interval_days || 18, offer: null }
+      { now: wed, offer: barber?.winback_offer ?? null }
     )
   ).length;
 

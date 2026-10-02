@@ -39,6 +39,7 @@ const EVENTS: Record<string, { icon: React.ReactNode; tone: string; tag?: string
   qr_scan: { icon: I.qr, tone: "#A8C49A", tag: "home.tag_vip" },
   referral_qualified: { icon: I.gift, tone: "#A8C49A", tag: "home.tag_referral" },
   sticker_request: { icon: I.qr, tone: "var(--accent-color)" },
+  sticker_activated: { icon: I.qr, tone: "#A8C49A", tag: "home.tag_vip" },
 };
 
 type T = (k: string, v?: Record<string, string | number>) => string;
@@ -60,9 +61,9 @@ function activityText(e: FeedEvent, t: T, reward: string) {
   const m = (e.metadata || {}) as Record<string, unknown>;
   const name = e.client_name || t(e.event_type === "booking_created" ? "activity.new_client" : "activity.client");
   const service = typeof m.service_name === "string" ? m.service_name : "";
-  const known = ["booking_created", "booking_completed", "booking_cancelled", "missed_call_caught", "loyalty_claimed", "review_sent", "cron_reengagement", "qr_scan", "sticker_request", "referral_qualified"];
+  const known = ["booking_created", "booking_completed", "booking_cancelled", "missed_call_caught", "loyalty_claimed", "review_sent", "cron_reengagement", "qr_scan", "sticker_request", "referral_qualified", "sticker_activated"];
   if (!known.includes(e.event_type) || ((e.event_type === "booking_created" || e.event_type === "booking_completed") && !service)) return e.description;
-  return t(`activity.${e.event_type}`, { name, service, reward });
+  return t(`activity.${e.event_type}`, { name, service, reward, code: typeof m.code === "string" ? m.code : "" });
 }
 
 

@@ -3,11 +3,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { marketingAllowedIds } from "@/lib/marketing";
-import { nextRung, inWednesdayWindow, cronNow } from "@/lib/retention";
+import { wednesdayText, inWednesdayWindow, cronNow } from "@/lib/retention";
 import { issueToken } from "@/lib/client-session";
-import { DEFAULT_TZ } from "@/lib/config";
+import { DEFAULT_TZ, appUrl } from "@/lib/config";
 
-/** Wednesday Engine: check-ins, then the win-back ladder (see lib/retention). Runs hourly. */
+/** Wednesday Engine: runs hourly, texts only in the Wednesday-noon window (see lib/retention). */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, business_name, first_name, booking_link, timezone, rebook_interval_days, winback_offer")
+    .select("user_id, phone_number, business_name, first_name, booking_link, timezone, winback_offer")
     .eq("is_active", true)
     .eq("is_locked_out", false)
     .neq("feature_wednesday", false);
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ sent: 0, checked: 0 });
   }
 
-  // Marketing texts: only barbers who turned SMS marketing on and activated their QR sticker.
+  // Marketing texts: only barbers who turned SMS marketing on (texts still only reach opted-in clients).
   const allowed = await marketingAllowedIds(supabase, barbers.map((b) => b.user_id));
 
   for (const barber of barbers) {
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     const [{ data: clients }, { data: upcoming }, { data: optOuts }, { data: inbound }] = await Promise.all([
       supabase
         .from("vip_clients")
-        .select("id, phone_number, first_name, last_cut_date, reengagement_stage, reengagement_index, last_reengagement_sent_at, has_claimed_winback")
+        .select("id, phone_number, first_name, last_cut_date, reengagement_index, last_reengagement_sent_at, has_claimed_winback")
         .eq("user_id", barber.user_id)
         .eq("is_opted_in", true)
         .is("opted_out_at", null)
@@ -61,10 +61,9 @@ export async function GET(request: Request) {
     const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
 
     for (const client of clients || []) {
-      const rung = nextRung(
+      const rung = wednesdayText(
         {
           lastCutDate: client.last_cut_date,
-          stage: client.reengagement_stage ?? 0,
           lastSentAt: client.last_reengagement_sent_at,
           variantIndex: client.reengagement_index ?? 0,
           claimedOffer: !!client.has_claimed_winback,
@@ -72,7 +71,7 @@ export async function GET(request: Request) {
           hasFutureBooking: booked.has(client.phone_number),
           lastInboundAt: lastInbound.get(client.phone_number) ?? null,
         },
-        { now, rebookDays: barber.rebook_interval_days || 18, offer: barber.winback_offer }
+        { now, offer: barber.winback_offer }
       );
       if (!rung) continue;
 
@@ -84,7 +83,7 @@ export async function GET(request: Request) {
         link = u.toString();
       } else {
         const token = await issueToken(supabase, { userId: barber.user_id, phone: client.phone_number, kind: "link", verified: true });
-        link = `${process.env.NEXT_PUBLIC_APP_URL}/book/${barber.user_id}?src=cron_reengagement${token ? `&t=${token}` : ""}`;
+        link = `${appUrl()}/book/${barber.user_id}?src=cron_reengagement${token ? `&t=${token}` : ""}`;
       }
 
       const sms = await buildSMS({
@@ -102,7 +101,7 @@ export async function GET(request: Request) {
         await supabase
           .from("vip_clients")
           .update({
-            reengagement_stage: rung.stage,
+            reengagement_stage: rung.first ? 1 : 2,
             reengagement_index: rung.nextVariantIndex,
             last_reengagement_sent_at: now.toISOString(),
             ...(rung.usesOffer ? { has_claimed_winback: true } : {}),
@@ -113,8 +112,8 @@ export async function GET(request: Request) {
           event_type: "cron_reengagement",
           client_name: client.first_name || null,
           client_phone: client.phone_number,
-          description: `${rung.stage === 1 ? "Check-in" : rung.stage === 4 ? "Last win-back" : "Win-back"} text sent to ${client.first_name || "client"}`,
-          metadata: { stage: rung.stage, template: rung.templateKey },
+          description: `${rung.first ? "Check-in" : "Wednesday reminder"} text sent to ${client.first_name || "client"}`,
+          metadata: { first: rung.first, template: rung.templateKey },
         });
         sent++;
       } catch (err) {

@@ -4,6 +4,7 @@ import { applyReferral, ensureReferralCode, qualifyReferral, HEARD_FROM, REF_COO
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanAddress, requestSticker } from "@/lib/sticker-request";
+import { claimSticker, pendingSticker, STICKER_COOKIE } from "@/lib/sticker-claim";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
 
 export async function POST(request: Request) {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
       const r = await applyReferral(admin, user.id, data.referralCode);
       if (!r.ok) return NextResponse.json({ error: r.error, field: "referralCode" }, { status: 400 });
     }
-    if (["en", "es", "pt"].includes(data.language)) update.barber_language = data.language;
+    if (["en", "es"].includes(data.language)) update.barber_language = data.language;
     if (data.firstName !== undefined) update.first_name = cleanText(data.firstName, 40);
     // Only the offered accents are saved; a stale pick is ignored rather than failing the step.
     const accent = cleanAccent(data.accentColor);
@@ -175,7 +176,18 @@ export async function POST(request: Request) {
     // Their own code for referring others, and the referral (if any) now counts.
     await ensureReferralCode(admin, user.id);
     await qualifyReferral(admin, user.id);
-    return NextResponse.json({ ok: true });
+
+    // A sticker handed to them in person connects now. If it can't (someone else set it up first),
+    // setup still finishes; the sticker is optional.
+    const jar = await cookies();
+    let sticker: string | null = null;
+    const pending = jar.get(STICKER_COOKIE)?.value;
+    if (pending) {
+      const claimed = await claimSticker(admin, user.id, pending);
+      if (claimed.ok) sticker = claimed.code;
+      jar.delete(STICKER_COOKIE);
+    }
+    return NextResponse.json({ ok: true, sticker });
   }
 
   return NextResponse.json({ error: "Invalid step" }, { status: 400 });
@@ -208,7 +220,10 @@ export async function GET() {
   const googleEmail = user.email || "";
 
   // A code from a share link (/join/CODE) waits in a cookie until signup.
-  const pendingCode = normalizeCode((await cookies()).get(REF_COOKIE)?.value);
+  const jar = await cookies();
+  const pendingCode = normalizeCode(jar.get(REF_COOKIE)?.value);
+  // A sticker handed out in person (/s/CODE → "Set up my shop"): shorter setup, no address.
+  const sticker = await pendingSticker(admin, jar.get(STICKER_COOKIE)?.value);
   let referral: { code: string; name: string | null } | null = null;
   if (profile?.referred_by) {
     const [{ data: ref }, { data: who }] = await Promise.all([
@@ -225,6 +240,7 @@ export async function GET() {
     googleEmail,
     pendingCode,
     referral,
+    sticker,
   });
 }
 

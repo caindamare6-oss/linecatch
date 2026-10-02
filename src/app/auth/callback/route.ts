@@ -3,8 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTemplate } from "@/lib/messages";
 import { cookies } from "next/headers";
-import { ensureReferralCode } from "@/lib/referrals";
 import { LANG_COOKIE } from "@/lib/i18n-shared";
+import { ensureReferralCode, normalizeCode, REF_COOKIE } from "@/lib/referrals";
+import { normalizeSticker, STICKER_COOKIE } from "@/lib/sticker-claim";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -53,9 +54,19 @@ export async function GET(request: Request) {
         }
       }
 
-      return NextResponse.redirect(`${origin}/dashboard`);
+      return carryCodes(NextResponse.redirect(`${origin}/dashboard`), searchParams);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return carryCodes(NextResponse.redirect(`${origin}/login?error=auth`), searchParams);
+}
+
+/** Codes passed through the sign-in link become cookies again (see /join/CODE and /s/CODE/start). */
+function carryCodes(res: NextResponse, params: URLSearchParams) {
+  const ref = normalizeCode(params.get("ref"));
+  const sticker = normalizeSticker(params.get("sticker"));
+  const opts = { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax" as const };
+  if (ref) res.cookies.set(REF_COOKIE, ref, opts);
+  if (sticker) res.cookies.set(STICKER_COOKIE, sticker, opts);
+  return res;
 }

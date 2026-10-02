@@ -26,7 +26,8 @@
       "google": "Google",
       "youtube": "YouTube",
       "event": "Evento o expo",
-      "other": "Otro"
+      "other": "Otro",
+      "in_person": "LineCatch vino a mi barbería"
     },
     "ref_label": "Código de referido",
     "ref_optional": "opcional",
@@ -39,7 +40,9 @@
     "err_not_found": "No encontramos ese código.",
     "err_own_code": "Ese es tu propio código. Usa el código del barbero que te invitó.",
     "err_already_referred": "Tu cuenta ya tiene un código de referido.",
-    "err_too_late": "Los códigos de referido solo se pueden agregar durante la configuración."
+    "err_too_late": "Los códigos de referido solo se pueden agregar durante la configuración.",
+    "quick_banner": "El sticker QR {code} se conecta a tu barbería al terminar. Dos pasos rápidos, sin dirección.",
+    "quick_note": "Los servicios y el horario empiezan con valores comunes. Cámbialos cuando quieras en Ajustes."
   },
   "step2": {
     "badge": "2",
@@ -83,8 +86,8 @@
     "subtitle": "Elige lo que LineCatch hace por ti. Puedes cambiarlo cuando quieras en Ajustes.",
     "autotext_label": "Auto-texto en llamadas perdidas",
     "autotext_desc": "Cuando un cliente no te encuentra, LineCatch le envía un enlace de reserva.",
-    "wednesday_label": "Reactivación de miércoles",
-    "wednesday_desc": "Cuando a un cliente le toca corte, un mensaje el miércoles, mensajes para recuperarlo si no responde y luego uno cada 4 semanas hasta que reserve o responda STOP.",
+    "wednesday_label": "Recordatorios de los miércoles",
+    "wednesday_desc": "Solo los miércoles al mediodía: el primer miércoles 2–3 semanas después del corte y luego cada 3 semanas hasta que reserve o responda STOP.",
     "reviews_label": "Solicitar reseñas en Google",
     "reviews_desc": "2–3 horas después de una visita, pide al cliente una reseña en Google.",
     "review_url_label": "Enlace de reseña de Google",
@@ -128,7 +131,9 @@
     "marketing_off": "Apagado",
     "sticker": "Sticker QR",
     "sticker_on": "En camino",
-    "sticker_off": "No agregado"
+    "sticker_off": "No agregado",
+    "sticker_connect": "{code} · se conecta ahora",
+    "quick_note": "Los servicios y el horario usan valores comunes por ahora. Edítalos cuando quieras en Ajustes."
   },
   "days": {
     "monday": "Lun",
@@ -252,7 +257,8 @@
     "sticker_request": "Sticker QR pedido",
     "referral_qualified": "Un barbero que referiste terminó su registro. Ganaste un mes gratis.",
     "client": "Cliente",
-    "new_client": "Cliente nuevo"
+    "new_client": "Cliente nuevo",
+    "sticker_activated": "Sticker QR {code} conectado. Quien lo escanee llega a tu página VIP."
   },
   "messages": {
     "title": "Mensajes",
@@ -455,13 +461,13 @@
     "marketing_on": "Activado. Los textos solo van a clientes que aceptaron. Cualquiera puede responder STOP.",
     "marketing_off": "Desactivado. No se envían recordatorios, mensajes para recuperar clientes, difusiones ni pedidos de reseña.",
     "marketing_desc": "Recordatorios de los miércoles, mensajes para recuperar clientes, difusiones y pedidos de reseña en Google.",
-    "wednesday": "Recordatorio de los miércoles",
-    "wednesday_hint": "Un mensaje a mitad de semana cuando a un cliente le toca corte, mensajes para recuperarlo si no responde y luego uno cada 4 semanas hasta que reserve o responda STOP.",
+    "wednesday": "Recordatorios de los miércoles",
+    "wednesday_hint": "Solo los miércoles al mediodía: el primer miércoles 2–3 semanas después del corte y luego cada 3 semanas hasta que reserve o responda STOP.",
     "reviews": "Pedidos de reseña en Google",
     "reviews_hint": "2–3 horas después de una visita, pide a tus clientes una reseña.",
     "reviews_need_link": "Primero agrega tu enlace de reseñas de Google arriba.",
     "winback": "Oferta para recuperar clientes",
-    "winback_hint": "Se incluye una vez en el último mensaje para recuperar clientes. Déjalo vacío si no hay oferta.",
+    "winback_hint": "Se agrega una vez al mensaje del miércoles para clientes que no vienen hace 8+ semanas. Déjalo vacío si no hay oferta.",
     "winback_placeholder": "{reward} de descuento",
     "missed_text": "Texto de llamada perdida",
     "preset_casual": "Casual",
@@ -551,7 +557,10 @@
     "invited": "Te invitó {name}",
     "invite_deal": "{percent}% de descuento en tu primer mes",
     "invite_code": "El código {code} se aplica al registrarte.",
-    "email_placeholder": "tu@correo.com"
+    "email_placeholder": "tu@correo.com",
+    "sticker_banner": "El sticker QR {code} está listo",
+    "sticker_banner_shop": "El sticker QR {code} para {shop} está listo",
+    "sticker_sub": "Regístrate y se conecta a tu barbería. No necesitas dirección."
   },
   "book": {
     "morning": "Mañana",
@@ -859,7 +868,16 @@
     "err_code_barber": "El código y el barbero son obligatorios.",
     "err_not_unclaimed": "Ese código no está sin reclamar o no existe.",
     "err_action": "Acción no válida.",
-    "err_generic": "Algo salió mal. Inténtalo de nuevo."
+    "err_generic": "Algo salió mal. Inténtalo de nuevo.",
+    "field_title": "Puerta a puerta",
+    "field_how": "Escanea un sticker nuevo con la cámara del teléfono, escribe el nombre de la barbería y entrégalo. El barbero lo escanea y se configura en 2 minutos, sin dirección.",
+    "field_code": "Código del sticker",
+    "field_shop": "Nombre de la barbería",
+    "field_save": "Marcar entregado",
+    "field_saved": "{code} entregado a {shop}",
+    "field_none": "Aún no has entregado stickers.",
+    "field_waiting": "Esperando configuración",
+    "field_live": "Configurado"
   },
   "errors": {
     "Unauthorized": "Inicia sesión para continuar.",
@@ -912,7 +930,9 @@
     "Must be multipart/form-data": "No se pudo leer la foto. Inténtalo de nuevo.",
     "No file provided": "No se envió ninguna foto.",
     "Invalid file type. Allowed: JPEG, PNG, WebP, GIF": "Tipo de archivo no válido. Usa JPEG, PNG, WebP o GIF.",
-    "File too large. Maximum 5MB": "El archivo es muy grande. Máximo 5 MB."
+    "File too large. Maximum 5MB": "El archivo es muy grande. Máximo 5 MB.",
+    "Code and shop name are required": "Se necesitan el código y el nombre de la barbería.",
+    "This sticker is already set up or doesn't exist": "Este sticker ya está configurado o no existe."
   },
   "vip": {
     "your_barber": "tu barbero",
@@ -982,7 +1002,23 @@
     "err_not_found": "No se encontró el código.",
     "err_own": "Este código ya es tuyo.",
     "err_taken": "Este código ya fue reclamado.",
-    "err_retired": "Este código fue retirado."
+    "err_retired": "Este código fue retirado.",
+    "setup_title": "Configura {shop} en 2 minutos",
+    "setup_title_generic": "Configura tu barbería en 2 minutos",
+    "setup_body": "Este sticker se conecta a tu barbería al terminar. Sin dirección, no hay nada que enviar.",
+    "setup_points": "Las llamadas perdidas reciben tu enlace para reservar|Tus clientes reservan en pocos toques|Los clientes sin cita escanean este sticker para unirse a tu lista",
+    "setup_cta": "Configurar mi barbería",
+    "setup_signin": "¿Ya tienes cuenta? Inicia sesión",
+    "handout_title": "Entregar este sticker",
+    "handout_body": "Anota a qué barbería se lo das. Cuando el barbero lo escanee, la configuración empieza con el nombre ya puesto.",
+    "handout_shop": "Nombre de la barbería",
+    "handout_shop_placeholder": "ej. Kings Cuts",
+    "handout_save": "Guardar y entregar",
+    "handout_saving": "Guardando…",
+    "handout_done": "Guardado. Entrega {code} a {shop}. Lo escanean y se configuran en 2 minutos.",
+    "handout_next": "Escanea el siguiente sticker",
+    "handout_mine": "Usarlo para mi propia barbería",
+    "handout_admin": "Admin: stickers"
   },
   "shop": {
     "with": "con {name}",

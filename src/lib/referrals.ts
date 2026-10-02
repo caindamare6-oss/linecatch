@@ -4,7 +4,7 @@ import { REFERRED_PERCENT_OFF, REFERRER_FREE_MONTHS, appUrl } from "@/lib/config
 type Admin = ReturnType<typeof createAdminClient>;
 
 export const REF_COOKIE = "lc_ref";
-export const HEARD_FROM = ["barber", "instagram", "tiktok", "google", "youtube", "event", "other"] as const;
+export const HEARD_FROM = ["in_person", "barber", "instagram", "tiktok", "google", "youtube", "event", "other"] as const;
 export type HeardFrom = (typeof HEARD_FROM)[number];
 
 /** Codes are letters and digits, 4–12 long, case-insensitive. */
