@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -20,15 +21,15 @@ export default async function StickerPage({
 
   if (!sticker || sticker.status === "retired") {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
           <div className="text-3xl font-bold mb-4 text-white">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
-          <p className="text-gray-400 mb-2">
+          <p className="text-stone-400 mb-2">
             This barber isn&apos;t available here anymore.
           </p>
-          <p className="text-gray-500 text-sm">
+          <p className="text-stone-500 text-sm">
             The sticker may have been moved or retired.
           </p>
         </div>
@@ -79,23 +80,23 @@ export default async function StickerPage({
 
   // Not signed in
   return (
-    <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
+    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
         <div className="text-3xl font-bold mb-4 text-white">
           Line<span className="text-[var(--accent-color)]">Catch</span>
         </div>
-        <p className="text-gray-400 mb-4">
+        <p className="text-stone-400 mb-4">
           This sticker isn&apos;t set up yet.
         </p>
-        <p className="text-gray-500 text-sm mb-6">
+        <p className="text-stone-500 text-sm mb-6">
           If you&apos;re a barber, sign up to claim this sticker and start catching missed calls.
         </p>
-        <a
+        <Link
           href="/login"
-          className="inline-block bg-[var(--accent-color)] text-black font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
+          className="inline-block bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
         >
           Sign Up as a Barber
-        </a>
+        </Link>
       </div>
     </div>
   );

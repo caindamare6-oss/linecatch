@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { PhoneIcon, MegaphoneIcon, MessageIcon } from "../icons";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 type TwilioMessage = {
   sid: string;
@@ -135,7 +136,7 @@ export default function MessagesPage() {
       case "Auto-text": return "text-[var(--accent-color)] bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)]";
       case "Loyalty": return "text-yellow-400 bg-yellow-400/10";
       case "Review request": return "text-blue-400 bg-blue-400/10";
-      case "Reminder": return "text-purple-400 bg-purple-400/10";
+      case "Reminder": return "text-stone-300 bg-stone-300/10";
       case "Booking confirmed": return "text-[var(--accent-color)] bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)]";
       case "Reschedule": return "text-orange-400 bg-orange-400/10";
       case "Cancellation": return "text-red-400 bg-red-400/10";
@@ -209,8 +210,8 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+      <div className="flex items-center justify-center py-16 px-4">
+        <PageSkeleton />
       </div>
     );
   }
@@ -223,22 +224,22 @@ export default function MessagesPage() {
           onClick={() => { setView("conversations"); setSelectedPhone(null); }}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
             view === "conversations"
-              ? "bg-[var(--accent-color)] text-[#0d0d0d]"
+              ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
               : "bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
           }`}
         >
-          <MessageIcon className={view === "conversations" ? "text-[#0d0d0d]" : ""} />
+          <MessageIcon className={view === "conversations" ? "text-[var(--accent-fg)]" : ""} />
           Conversations
         </button>
         <button
           onClick={() => { setView("broadcast"); setSelectedPhone(null); }}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
             view === "broadcast"
-              ? "bg-[var(--accent-color)] text-[#0d0d0d]"
+              ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
               : "bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
           }`}
         >
-          <MegaphoneIcon className={view === "broadcast" ? "text-[#0d0d0d]" : ""} />
+          <MegaphoneIcon className={view === "broadcast" ? "text-[var(--accent-fg)]" : ""} />
           Broadcast
         </button>
       </div>
@@ -403,7 +404,7 @@ export default function MessagesPage() {
               <button
                 onClick={handleBroadcast}
                 disabled={!broadcastMessage.trim() || broadcastSending || recipientCount === 0}
-                className="bg-[var(--accent-color)] text-[#0d0d0d] text-sm font-semibold px-4 py-2 rounded-lg hover:brightness-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+                className="bg-[var(--accent-color)] text-[var(--accent-fg)] text-sm font-semibold px-4 py-2 rounded-lg hover:brightness-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
               >
                 {broadcastSending ? "Sending..." : broadcastSent ? "Sent!" : "Send to all"}
               </button>

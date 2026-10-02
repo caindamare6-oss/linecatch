@@ -57,7 +57,7 @@ export default function LoginPage() {
       return;
     }
 
-    setMessage("Check your inbox — we sent you a sign-in link.");
+    setMessage("Check your inbox. We sent you a sign-in link.");
     setLoading(false);
   }
 
@@ -115,24 +115,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold">
             <span className="text-white">Line</span>
             <span className="text-[var(--accent-color)]">Catch</span>
           </h1>
-          <p className="text-gray-400 mt-2">
+          <p className="text-stone-400 mt-2">
             Never lose a customer to a missed call
           </p>
         </div>
 
-        <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+        <div className="bg-[#1B1A18] border border-white/10 rounded-2xl p-6">
           <button
             type="button"
             onClick={handleGoogleLogin}
             disabled={googleLoading}
-            className="w-full flex items-center justify-center gap-3 rounded-lg border border-white/10 bg-[#111111] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#222222] transition-colors disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 rounded-lg border border-white/10 bg-[#121110] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#222222] transition-colors disabled:opacity-50"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -145,7 +145,7 @@ export default function LoginPage() {
 
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-white/10" />
-            <span className="text-xs text-gray-500 uppercase">or</span>
+            <span className="text-xs text-stone-500 uppercase">or</span>
             <div className="flex-1 h-px bg-white/10" />
           </div>
 
@@ -157,8 +157,8 @@ export default function LoginPage() {
                   onClick={() => { setMethod("email"); setError(""); setMessage(""); }}
                   className={`flex-1 py-2 text-sm font-medium transition-colors ${
                     method === "email"
-                      ? "bg-[var(--accent-color)] text-black"
-                      : "bg-[#111111] text-gray-400 hover:text-white"
+                      ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
+                      : "bg-[#121110] text-stone-400 hover:text-white"
                   }`}
                 >
                   Email
@@ -168,8 +168,8 @@ export default function LoginPage() {
                   onClick={() => { setMethod("phone"); setError(""); setMessage(""); }}
                   className={`flex-1 py-2 text-sm font-medium transition-colors ${
                     method === "phone"
-                      ? "bg-[var(--accent-color)] text-black"
-                      : "bg-[#111111] text-gray-400 hover:text-white"
+                      ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
+                      : "bg-[#121110] text-stone-400 hover:text-white"
                   }`}
                 >
                   Phone
@@ -179,7 +179,7 @@ export default function LoginPage() {
               {method === "email" ? (
                 <form onSubmit={handleSendEmailLink} className="space-y-4">
                   <div>
-                    <Label htmlFor="email" className="text-gray-300">
+                    <Label htmlFor="email" className="text-stone-300">
                       Email address
                     </Label>
                     <Input
@@ -189,9 +189,9 @@ export default function LoginPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
                       required
-                      className="mt-1.5 bg-[#111111] border-white/10 text-white placeholder:text-gray-500"
+                      className="mt-1.5 bg-[#121110] border-white/10 text-white placeholder:text-stone-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1.5">
+                    <p className="text-xs text-stone-500 mt-1.5">
                       We&apos;ll send you a sign-in link
                     </p>
                   </div>
@@ -202,7 +202,7 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[var(--accent-color)] text-black font-semibold hover:brightness-90 disabled:opacity-50"
+                    className="w-full bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold hover:brightness-90 disabled:opacity-50"
                   >
                     {loading ? "Sending..." : "Send sign-in link"}
                   </Button>
@@ -210,7 +210,7 @@ export default function LoginPage() {
               ) : (
                 <form onSubmit={handleSendCode} className="space-y-4">
                   <div>
-                    <Label htmlFor="phone" className="text-gray-300">
+                    <Label htmlFor="phone" className="text-stone-300">
                       Phone number
                     </Label>
                     <Input
@@ -220,9 +220,9 @@ export default function LoginPage() {
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="(857) 505-2551"
                       required
-                      className="mt-1.5 bg-[#111111] border-white/10 text-white placeholder:text-gray-500"
+                      className="mt-1.5 bg-[#121110] border-white/10 text-white placeholder:text-stone-500"
                     />
-                    <p className="text-xs text-gray-500 mt-1.5">
+                    <p className="text-xs text-stone-500 mt-1.5">
                       We&apos;ll text you a verification code
                     </p>
                   </div>
@@ -232,7 +232,7 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[var(--accent-color)] text-black font-semibold hover:brightness-90 disabled:opacity-50"
+                    className="w-full bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold hover:brightness-90 disabled:opacity-50"
                   >
                     {loading ? "Sending..." : "Send verification code"}
                   </Button>
@@ -242,7 +242,7 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleVerifyCode} className="space-y-4">
               <div className="text-center mb-2">
-                <p className="text-sm text-gray-300">
+                <p className="text-sm text-stone-300">
                   Enter the 6-digit code sent to
                 </p>
                 <p className="text-white font-medium">{phone}</p>
@@ -257,7 +257,7 @@ export default function LoginPage() {
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   placeholder="000000"
                   required
-                  className="text-center text-2xl tracking-[0.5em] bg-[#111111] border-white/10 text-white placeholder:text-gray-500"
+                  className="text-center text-2xl tracking-[0.5em] bg-[#121110] border-white/10 text-white placeholder:text-stone-500"
                 />
               </div>
 
@@ -266,7 +266,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading || otp.length < 6}
-                className="w-full bg-[var(--accent-color)] text-black font-semibold hover:brightness-90 disabled:opacity-50"
+                className="w-full bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold hover:brightness-90 disabled:opacity-50"
               >
                 {loading ? "Verifying..." : "Verify & sign in"}
               </Button>
@@ -274,7 +274,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={resetToInput}
-                className="w-full text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                className="w-full text-sm text-stone-500 hover:text-stone-300 transition-colors"
               >
                 Use a different number
               </button>

@@ -68,6 +68,11 @@
     "review_url_placeholder": "https://g.page/tu-local/review",
     "review_url_hint": "Encuéntralo en tu Perfil de Negocio de Google, en \"Obtener más reseñas\"."
   },
+  "step6": {
+    "badge": "6",
+    "title": "Tu portafolio",
+    "subtitle": "Agrega tus mejores cortes. Toca cualquier espacio vacío para subir una foto. Puedes cambiarlo cuando quieras desde la pestaña Portafolio."
+  },
   "done": {
     "title": "¡Todo listo!",
     "subtitle": "Tu página de reservas está activa. Ve al panel para empezar a captar llamadas.",

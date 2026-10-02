@@ -184,9 +184,13 @@ export async function POST(request: Request) {
     .select("id, booking_time")
     .order("booking_time", { ascending: true });
 
+  if (bookingError?.code === "23505") {
+    // Unique index on (user_id, booking_time): double tap or two people grabbing the same slot
+    return NextResponse.json({ error: TAKEN }, { status: 409 });
+  }
   if (bookingError || !created || created.length === 0) {
     console.error("Booking creation error:", bookingError);
-    return NextResponse.json({ error: `Failed to create booking: ${bookingError?.message || "unknown error"}` }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
   }
   const createdIds = created.map((b) => b.id);
 

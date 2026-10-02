@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formatBarberDate, formatBarberTime, barberLocalToUTC } from "@/lib/format";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 type BookingData = {
   id: string;
@@ -43,6 +44,7 @@ export default function ManageBookingPage() {
           setError(data.error);
         } else {
           setBooking(data);
+          if (data.accentColor) document.documentElement.style.setProperty("--accent-color", data.accentColor);
         }
         setLoading(false);
       })
@@ -168,7 +170,7 @@ export default function ManageBookingPage() {
                 onClick={() => { setSelectedDate(dateStr); setSelectedTime(""); }}
                 className={`py-2 text-sm rounded-lg transition-all ${
                   isPast ? "text-white/10 cursor-default"
-                    : isSelected ? "bg-[var(--accent-color)] text-[#0d0d0d] font-semibold"
+                    : isSelected ? "bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold"
                     : "text-white/60 hover:bg-white/[0.06]"
                 }`}
               >
@@ -183,15 +185,15 @@ export default function ManageBookingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center">
-        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center">
+        <PageSkeleton />
       </div>
     );
   }
 
   if (error && !booking) {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-red-400 mb-2">{error}</p>
           <p className="text-white/30 text-sm">This booking may not exist or the link may have expired.</p>
@@ -209,8 +211,8 @@ export default function ManageBookingPage() {
 
   if (view === "done") {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl p-8 border border-[#2a2a2a] text-center">
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' }}>
             <svg className="w-8 h-8 text-[var(--accent-color)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -219,7 +221,7 @@ export default function ManageBookingPage() {
           <h2 className="text-xl font-bold text-white mb-2">
             {actionResult === "cancelled" ? "Booking Cancelled" : "Booking Rescheduled"}
           </h2>
-          <p className="text-gray-400 text-sm">
+          <p className="text-stone-400 text-sm">
             {actionResult === "cancelled"
               ? `Your appointment with ${displayName} has been cancelled. Your barber has been notified.`
               : `Your appointment has been moved. Your barber has been notified.`}
@@ -231,10 +233,10 @@ export default function ManageBookingPage() {
 
   if (view === "confirm-cancel") {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl p-6 border border-[#2a2a2a]">
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-6 border border-[#2C2A27]">
           <h2 className="text-lg font-bold text-white mb-2">Cancel this appointment?</h2>
-          <p className="text-gray-400 text-sm mb-6">
+          <p className="text-stone-400 text-sm mb-6">
             {booking.service?.name} with {displayName} on{" "}
             {formatBarberDate(bt, booking.timezone)} at{" "}
             {formatBarberTime(bt, booking.timezone)}
@@ -262,7 +264,7 @@ export default function ManageBookingPage() {
 
   if (view === "reschedule") {
     return (
-      <div className="min-h-screen bg-[#111111] px-4 py-8">
+      <div className="min-h-screen bg-[#121110] px-4 py-8">
         <div className="max-w-md mx-auto">
           <button
             onClick={() => { setView("details"); setSelectedDate(""); setSelectedTime(""); setError(""); }}
@@ -295,7 +297,7 @@ export default function ManageBookingPage() {
                         onClick={() => setSelectedTime(t)}
                         className={`py-2 px-1 rounded-lg text-sm transition-all ${
                           selectedTime === t
-                            ? "bg-[var(--accent-color)] text-[#0d0d0d] font-semibold"
+                            ? "bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold"
                             : "bg-white/[0.04] text-white/50 hover:bg-white/[0.08]"
                         }`}
                       >
@@ -307,7 +309,7 @@ export default function ManageBookingPage() {
                     <button
                       onClick={handleReschedule}
                       disabled={submitting}
-                      className="w-full mt-4 bg-[var(--accent-color)] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:brightness-90 disabled:opacity-50 transition"
+                      className="w-full mt-4 bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold py-3 rounded-xl hover:brightness-90 disabled:opacity-50 transition"
                     >
                       {submitting ? "Rescheduling..." : "Confirm new time"}
                     </button>
@@ -323,16 +325,16 @@ export default function ManageBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <div className="text-2xl font-bold text-white mb-1">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
-          <p className="text-gray-400 text-sm">Manage your appointment</p>
+          <p className="text-stone-400 text-sm">Manage your appointment</p>
         </div>
 
-        <div className="bg-[#1a1a1a] rounded-2xl p-6 border border-[#2a2a2a]">
+        <div className="bg-[#1B1A18] rounded-2xl p-6 border border-[#2C2A27]">
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm">
               <span className="text-white/50">Barber</span>
@@ -404,7 +406,7 @@ export default function ManageBookingPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setView("reschedule")}
-                className="flex-1 py-3 rounded-xl bg-[var(--accent-color)] text-[#0d0d0d] font-semibold text-sm hover:brightness-90 transition"
+                className="flex-1 py-3 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold text-sm hover:brightness-90 transition"
               >
                 Reschedule
               </button>

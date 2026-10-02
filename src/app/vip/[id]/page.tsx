@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { CONSENT_TEXT } from "@/lib/consent";
 import { normalizePhone } from "@/lib/phone";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 export default function VIPOptIn() {
   const params = useParams();
@@ -29,6 +31,7 @@ export default function VIPOptIn() {
           const data = await res.json();
           if (data.businessName) setBusinessName(data.businessName);
           if (data.isLockedOut) setIsLockedOut(true);
+          if (data.accentColor) document.documentElement.style.setProperty("--accent-color", data.accentColor);
         }
       } catch {}
       setPageLoading(false);
@@ -91,23 +94,23 @@ export default function VIPOptIn() {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center">
-        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center">
+        <PageSkeleton />
       </div>
     );
   }
 
   if (isLockedOut) {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
           <div className="text-3xl font-bold mb-4 text-white">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
-          <p className="text-gray-400 mb-2">
+          <p className="text-stone-400 mb-2">
             {displayName} is currently offline.
           </p>
-          <p className="text-gray-500 text-sm">
+          <p className="text-stone-500 text-sm">
             Please check back later or contact the business directly.
           </p>
         </div>
@@ -116,15 +119,15 @@ export default function VIPOptIn() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {!submitted ? (
-          <div className="bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a]">
+          <div className="bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27]">
             <div className="text-center mb-8">
               <div className="text-3xl font-bold mb-2 text-white">
                 Line<span className="text-[var(--accent-color)]">Catch</span> VIP
               </div>
-              <p className="text-gray-400">
+              <p className="text-stone-400">
                 Join {displayName}&apos;s text list for exclusive perks
               </p>
             </div>
@@ -133,19 +136,19 @@ export default function VIPOptIn() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-start gap-2">
                   <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
-                  <span className="text-gray-300">
+                  <span className="text-stone-300">
                     Appointment reminders &amp; confirmations
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
-                  <span className="text-gray-300">
+                  <span className="text-stone-300">
                     Exclusive member-only offers
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
-                  <span className="text-gray-300">
+                  <span className="text-stone-300">
                     Quick booking &amp; rescheduling
                   </span>
                 </div>
@@ -156,7 +159,7 @@ export default function VIPOptIn() {
               <div>
                 <label
                   htmlFor="firstName"
-                  className="block text-sm font-medium text-gray-300 mb-2"
+                  className="block text-sm font-medium text-stone-300 mb-2"
                 >
                   First Name
                 </label>
@@ -167,14 +170,14 @@ export default function VIPOptIn() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50"
+                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="phone"
-                  className="block text-sm font-medium text-gray-300 mb-2"
+                  className="block text-sm font-medium text-stone-300 mb-2"
                 >
                   Phone Number
                 </label>
@@ -185,7 +188,7 @@ export default function VIPOptIn() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50"
+                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50"
                 />
               </div>
 
@@ -196,7 +199,7 @@ export default function VIPOptIn() {
                 </div>
               )}
 
-              <div className="flex items-start gap-3 p-4 bg-[#1e1e1e] rounded-lg border border-[#2a2a2a]">
+              <div className="flex items-start gap-3 p-4 bg-[#1F1D1B] rounded-lg border border-[#2C2A27]">
                 <input
                   id="consent"
                   type="checkbox"
@@ -206,49 +209,49 @@ export default function VIPOptIn() {
                 />
                 <label
                   htmlFor="consent"
-                  className="text-sm text-gray-400 cursor-pointer"
+                  className="text-sm text-stone-400 cursor-pointer"
                 >
                   {CONSENT_TEXT}{" "}
-                  <a href="/privacy" className="text-[var(--accent-color)] hover:underline">Privacy Policy</a>
+                  <Link href="/privacy" className="text-[var(--accent-color)] hover:underline">Privacy Policy</Link>
                   {" & "}
-                  <a href="/terms" className="text-[var(--accent-color)] hover:underline">Terms</a>
+                  <Link href="/terms" className="text-[var(--accent-color)] hover:underline">Terms</Link>
                 </label>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[var(--accent-color)] hover:brightness-90 text-black font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[var(--accent-color)] hover:brightness-90 text-[var(--accent-fg)] font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Joining..." : "Join VIP List"}
               </button>
             </form>
 
-            <p className="text-xs text-gray-500 text-center mt-6">
+            <p className="text-xs text-stone-500 text-center mt-6">
               By joining, you agree to our{" "}
-              <a href="/privacy" className="text-[var(--accent-color)] hover:underline">
+              <Link href="/privacy" className="text-[var(--accent-color)] hover:underline">
                 Privacy Policy
-              </a>{" "}
+              </Link>{" "}
               and{" "}
-              <a href="/terms" className="text-[var(--accent-color)] hover:underline">
+              <Link href="/terms" className="text-[var(--accent-color)] hover:underline">
                 Terms of Service
-              </a>
+              </Link>
             </p>
           </div>
         ) : (
-          <div className="bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
+          <div className="bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
             <CheckCircle2 className="w-16 h-16 text-[var(--accent-color)] mx-auto mb-4" />
             {consented ? (
               <>
                 <h2 className="text-2xl font-bold text-white mb-2">
                   You&apos;re In!
                 </h2>
-                <p className="text-gray-400 mb-6">
+                <p className="text-stone-400 mb-6">
                   You&apos;ve been added to {displayName}&apos;s VIP text list.
                   You&apos;ll receive appointment reminders and exclusive offers.
                 </p>
-                <p className="text-sm text-gray-500">
-                  Reply <strong className="text-gray-300">STOP</strong> to any
+                <p className="text-sm text-stone-500">
+                  Reply <strong className="text-stone-300">STOP</strong> to any
                   message to unsubscribe.
                 </p>
               </>
@@ -257,7 +260,7 @@ export default function VIPOptIn() {
                 <h2 className="text-2xl font-bold text-white mb-2">
                   Thanks, you&apos;re on the list!
                 </h2>
-                <p className="text-gray-400 mb-6">
+                <p className="text-stone-400 mb-6">
                   You won&apos;t receive text messages. Check the consent box
                   next time to unlock your $5 off and booking reminders.
                 </p>
@@ -269,14 +272,14 @@ export default function VIPOptIn() {
         {/* Modal 1: Nudge to check the box */}
         {modal === 1 && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-            <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-6 max-w-sm w-full space-y-4 text-center">
+            <div className="bg-[#1B1A18] rounded-2xl border border-[#2C2A27] p-6 max-w-sm w-full space-y-4 text-center">
               <p className="text-white text-base font-medium leading-relaxed">
                 Check the box to get your $5 off and more VIP perks like booking reminders and rewards!
               </p>
               <div className="space-y-2">
                 <button
                   onClick={() => setModal(0)}
-                  className="w-full bg-[var(--accent-color)] text-black font-semibold py-3 rounded-lg hover:brightness-90 transition"
+                  className="w-full bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold py-3 rounded-lg hover:brightness-90 transition"
                 >
                   Go Back &amp; Check the Box
                 </button>
@@ -294,14 +297,14 @@ export default function VIPOptIn() {
         {/* Modal 2: Final confirmation */}
         {modal === 2 && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-            <div className="bg-[#1a1a1a] rounded-2xl border border-[#2a2a2a] p-6 max-w-sm w-full space-y-4 text-center">
+            <div className="bg-[#1B1A18] rounded-2xl border border-[#2C2A27] p-6 max-w-sm w-full space-y-4 text-center">
               <p className="text-white text-base font-medium leading-relaxed">
                 Are you sure? You&apos;ll miss out on your $5 off, booking reminders, and rewards.
               </p>
               <div className="space-y-2">
                 <button
                   onClick={() => setModal(0)}
-                  className="w-full bg-[var(--accent-color)] text-black font-semibold py-3 rounded-lg hover:brightness-90 transition"
+                  className="w-full bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold py-3 rounded-lg hover:brightness-90 transition"
                 >
                   Go Back &amp; Check the Box
                 </button>

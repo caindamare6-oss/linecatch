@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export function ClaimSticker({
@@ -40,8 +41,8 @@ export function ClaimSticker({
   // Barber already has an active sticker
   if (existingCode) {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
           <div className="text-3xl font-bold mb-6 text-white">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
@@ -51,18 +52,18 @@ export function ClaimSticker({
             </svg>
           </div>
           <h2 className="text-xl font-bold text-white mb-2">You already have a sticker</h2>
-          <p className="text-gray-400 text-sm mb-2">
+          <p className="text-stone-400 text-sm mb-2">
             Your active code is <span className="font-mono text-white">{existingCode}</span>.
           </p>
-          <p className="text-gray-500 text-sm mb-6">
-            Each barber gets one code — all your stickers point clients to the same place. Need more copies of your sticker? Request them from your dashboard.
+          <p className="text-stone-500 text-sm mb-6">
+            Each barber gets one code, so all your stickers point clients to the same place. Need more copies of your sticker? Request them from your dashboard.
           </p>
-          <a
+          <Link
             href="/dashboard"
-            className="inline-block bg-[var(--accent-color)] text-black font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
+            className="inline-block bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
           >
             Go to Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -71,26 +72,26 @@ export function ClaimSticker({
   // Successfully activated
   if (claimed) {
     return (
-      <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
+      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
           <div className="w-16 h-16 rounded-full bg-[var(--accent-color)]/15 flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Sticker Activated!</h2>
-          <p className="text-gray-400 mb-1">
+          <p className="text-stone-400 mb-1">
             Code <span className="font-mono text-white">{code}</span> is yours.
           </p>
-          <p className="text-gray-400 text-sm mb-6">
-            SMS is now live — missed-call auto-replies, booking confirmations, reminders, and review requests are all turned on.
+          <p className="text-stone-400 text-sm mb-6">
+            SMS is now live. Missed-call auto-replies, booking confirmations, reminders, and review requests are all turned on.
           </p>
-          <a
+          <Link
             href="/dashboard"
-            className="inline-block bg-[var(--accent-color)] text-black font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
+            className="inline-block bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
           >
             Go to Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -98,8 +99,8 @@ export function ClaimSticker({
 
   // Activate screen
   return (
-    <div className="min-h-screen bg-[#111111] flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-[#1a1a1a] rounded-2xl shadow-lg p-8 border border-[#2a2a2a] text-center">
+    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
         <div className="text-3xl font-bold mb-6 text-white">
           Line<span className="text-[var(--accent-color)]">Catch</span>
         </div>
@@ -110,10 +111,10 @@ export function ClaimSticker({
           </svg>
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Activate your sticker</h2>
-        <p className="text-gray-400 mb-3">
+        <p className="text-stone-400 mb-3">
           Code <span className="font-mono text-white text-lg">{code}</span>
         </p>
-        <p className="text-gray-500 text-sm mb-6">
+        <p className="text-stone-500 text-sm mb-6">
           This turns on all SMS features: missed-call auto-replies, booking confirmations, reminders, and review requests. Clients who scan your sticker will go to your VIP sign-up page.
         </p>
 
@@ -126,7 +127,7 @@ export function ClaimSticker({
         <button
           onClick={handleClaim}
           disabled={claiming}
-          className="w-full bg-[var(--accent-color)] text-black font-semibold py-3 rounded-lg hover:brightness-90 transition disabled:opacity-50"
+          className="w-full bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold py-3 rounded-lg hover:brightness-90 transition disabled:opacity-50"
         >
           {claiming ? "Activating..." : "Activate"}
         </button>

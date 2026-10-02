@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 type BusinessHours = Record<
   string,
@@ -276,8 +277,8 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+      <div className="flex items-center justify-center py-16 px-4">
+        <PageSkeleton />
       </div>
     );
   }
@@ -298,6 +299,7 @@ export default function SettingsPage() {
           className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)] transition-colors"
         />
       </div>
+
 
       {/* Booking Link */}
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
@@ -466,7 +468,7 @@ export default function SettingsPage() {
                   </button>
                 )}
                 <p className="text-[11px] text-white/15 mt-2">
-                  All your stickers use the same code — clients always land on your VIP page.
+                  All your stickers use the same code, so clients always land on your VIP page.
                 </p>
               </div>
             </div>
@@ -515,7 +517,7 @@ export default function SettingsPage() {
                     isSelected ? "border-[var(--accent-color)] bg-[var(--accent-color)]" : "border-white/15"
                   }`}>
                     {isSelected && (
-                      <svg className="w-2 h-2 text-[#0d0d0d]" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-2 h-2 text-[var(--accent-fg)]" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     )}
@@ -607,7 +609,7 @@ export default function SettingsPage() {
                 onChange={(e) => setFollowupMessage(e.target.value)}
                 rows={2}
                 className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[var(--accent-color)] transition-colors"
-                placeholder="Just following up — did you still want to book an appointment? {link}"
+                placeholder="Just following up, did you still want to book an appointment? {link}"
               />
             </div>
 
@@ -669,7 +671,7 @@ export default function SettingsPage() {
                 onClick={() => toggleDay(day)}
                 className={`w-5 h-5 rounded shrink-0 flex items-center justify-center text-xs transition-colors ${
                   businessHours[day]
-                    ? "bg-[var(--accent-color)] text-[#0d0d0d]"
+                    ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
                     : "border border-white/10 text-transparent"
                 }`}
               >
@@ -706,7 +708,7 @@ export default function SettingsPage() {
       <button
         onClick={handleSave}
         disabled={saving}
-        className="w-full bg-[var(--accent-color)] text-[#0d0d0d] font-semibold py-3 rounded-xl hover:brightness-90 disabled:opacity-30 transition-all duration-200 text-sm"
+        className="w-full bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold py-3 rounded-xl hover:brightness-90 disabled:opacity-30 transition-all duration-200 text-sm"
       >
         {saving ? "Saving..." : saved ? "Saved!" : "Save settings"}
       </button>

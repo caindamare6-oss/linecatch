@@ -74,7 +74,8 @@ export async function POST(request: Request) {
     .from("avatars")
     .getPublicUrl(fileName);
 
-  const avatarUrl = urlData.publicUrl;
+  // Same file path on every upload, so bust the CDN/browser cache or the old photo keeps showing.
+  const avatarUrl = `${urlData.publicUrl}?v=${Date.now()}`;
 
   const { error: updateError } = await admin
     .from("users")

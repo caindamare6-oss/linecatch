@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import QRCode from "qrcode";
 import JSZip from "jszip";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 type StickerCode = {
   code: string;
@@ -26,12 +27,12 @@ async function renderStickerPNG(code: string): Promise<Blob> {
   const ctx = canvas.getContext("2d")!;
 
   // Background
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = "#121110";
   ctx.fillRect(0, 0, PNG_W, PNG_H);
 
   // Outer border with accent
   const borderInset = 60;
-  ctx.strokeStyle = "#00F5A0";
+  ctx.strokeStyle = "#B8914F";
   ctx.lineWidth = 6;
   ctx.roundRect(borderInset, borderInset, PNG_W - borderInset * 2, PNG_H - borderInset * 2, 40);
   ctx.stroke();
@@ -41,11 +42,11 @@ async function renderStickerPNG(code: string): Promise<Blob> {
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 120px sans-serif";
   ctx.fillText("Line", PNG_W / 2 - 135, 280);
-  ctx.fillStyle = "#00F5A0";
+  ctx.fillStyle = "#B8914F";
   ctx.fillText("Catch", PNG_W / 2 + 145, 280);
 
   // Tagline
-  ctx.fillStyle = "#888888";
+  ctx.fillStyle = "#948C80";
   ctx.font = "44px sans-serif";
   ctx.fillText("Never miss a client again", PNG_W / 2, 360);
 
@@ -82,7 +83,7 @@ async function renderStickerPNG(code: string): Promise<Blob> {
   ctx.fillText("Scan to book", PNG_W / 2, 1540);
 
   // Code display
-  ctx.fillStyle = "#00F5A0";
+  ctx.fillStyle = "#B8914F";
   ctx.font = "bold 64px monospace";
   ctx.fillText(code, PNG_W / 2, 1660);
 
@@ -266,8 +267,8 @@ export default function AdminStickersPage() {
 
   if (authorized === null) {
     return (
-      <div className="flex items-center justify-center py-16">
-        <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+      <div className="flex items-center justify-center py-16 px-4">
+        <PageSkeleton />
       </div>
     );
   }
@@ -300,7 +301,7 @@ export default function AdminStickersPage() {
           <button
             onClick={handleGenerate}
             disabled={generating || !genLabel.trim()}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[#0d0d0d] hover:brightness-90 disabled:opacity-30 transition-all"
+            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[var(--accent-fg)] hover:brightness-90 disabled:opacity-30 transition-all"
           >
             {generating ? "..." : "Generate"}
           </button>
@@ -330,7 +331,7 @@ export default function AdminStickersPage() {
 
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+            <PageSkeleton />
           </div>
         ) : (
           <div className="space-y-5 max-h-[600px] overflow-y-auto">

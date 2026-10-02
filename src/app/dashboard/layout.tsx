@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, lazy, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Settings, X } from "lucide-react";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
 const SettingsPage = lazy(() => import("./settings/page"));
 
@@ -13,6 +14,7 @@ const tabs = [
   { label: "Messages", href: "/dashboard/messages" },
   { label: "Schedule", href: "/dashboard/schedule" },
   { label: "Services", href: "/dashboard/services" },
+  { label: "Portfolio", href: "/dashboard/portfolio" },
 ];
 
 export default function DashboardLayout({
@@ -71,13 +73,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d0d] relative overflow-hidden">
-      {/* Subtle gradient background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full blur-[120px]" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 3%, transparent)' }} />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full blur-[100px]" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 2%, transparent)' }} />
-      </div>
-
+    <div className="min-h-screen bg-[#0F0E0D] relative">
       <div className="relative z-10 max-w-md mx-auto px-4 py-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
@@ -135,7 +131,7 @@ export default function DashboardLayout({
                 href={tab.href}
                 className={`flex-1 text-center py-2 px-2 rounded-lg text-[12px] font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-[var(--accent-color)] text-[#0d0d0d]"
+                    ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
                     : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
                 }`}
                 style={isActive ? { boxShadow: '0 0 12px color-mix(in srgb, var(--accent-color) 20%, transparent)' } : undefined}
@@ -157,8 +153,8 @@ export default function DashboardLayout({
             className="fixed inset-0 bg-black/60 z-40 transition-opacity"
             onClick={closeSettings}
           />
-          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-[#0d0d0d] border-l border-white/[0.06] z-50 overflow-y-auto animate-slide-in">
-            <div className="sticky top-0 z-10 bg-[#0d0d0d] border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
+          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-[#0F0E0D] border-l border-white/[0.06] z-50 overflow-y-auto animate-slide-in">
+            <div className="sticky top-0 z-10 bg-[#0F0E0D] border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-white/70">Settings</h2>
               <button
                 onClick={closeSettings}
@@ -170,8 +166,8 @@ export default function DashboardLayout({
             <div className="px-4 py-4">
               <Suspense
                 fallback={
-                  <div className="flex items-center justify-center py-16">
-                    <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
+                  <div className="flex items-center justify-center py-16 px-4">
+                    <PageSkeleton />
                   </div>
                 }
               >
@@ -184,7 +180,7 @@ export default function DashboardLayout({
 
       <style jsx global>{`
         :root {
-          --accent-color: #00F5A0;
+          --accent-color: #D4AF7A;
         }
         @keyframes slideIn {
           from { transform: translateX(100%); }

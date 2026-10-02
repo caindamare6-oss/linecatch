@@ -34,7 +34,7 @@ export async function GET(
 
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name, timezone")
+    .select("business_name, timezone, accent_color")
     .eq("user_id", booking.user_id)
     .single();
 
@@ -51,6 +51,7 @@ export async function GET(
   const loyalty = booking.status === "confirmed" ? await projectVisit(supabase, booking.id) : null;
 
   return NextResponse.json({
+    accentColor: barber?.accent_color ?? null,
     partySize,
     rewardDue: !!loyalty?.due,
     id: booking.id,
@@ -169,8 +170,8 @@ export async function PATCH(
     try {
       result = await completeBookingLoyalty(supabase, id, tz);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return NextResponse.json({ error: `Failed to complete booking: ${message}` }, { status: 500 });
+      console.error("[bookings/complete]", err);
+      return NextResponse.json({ error: "Couldn't complete this booking. Please try again." }, { status: 500 });
     }
     if (!result) {
       return NextResponse.json({ error: "Booking is not active" }, { status: 400 });

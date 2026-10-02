@@ -8,8 +8,9 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-display);
+  --color-white: #F2EEE6;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,69 +47,70 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --color-mint: var(--accent-color, #00F5A0);
-  --color-mint-dim: #00D68A;
-  --color-obsidian: #111111;
-  --color-obsidian-light: #1a1a1a;
-  --color-obsidian-card: #1e1e1e;
+  --color-mint: var(--accent-color, #D4AF7A);
+  --color-mint-dim: #C29A62;
+  --color-obsidian: #121110;
+  --color-obsidian-light: #1B1A18;
+  --color-obsidian-card: #1F1D1B;
 }
 
 :root {
-  --accent-color: #00F5A0;
-  --background: #111111;
-  --foreground: #ffffff;
-  --card: #1e1e1e;
-  --card-foreground: #ffffff;
-  --popover: #1e1e1e;
-  --popover-foreground: #ffffff;
-  --primary: var(--accent-color, #00F5A0);
-  --primary-foreground: #000000;
-  --secondary: #1e1e1e;
-  --secondary-foreground: #ffffff;
-  --muted: #2a2a2a;
-  --muted-foreground: #888888;
-  --accent: #1e1e1e;
-  --accent-foreground: #ffffff;
+  --accent-color: #D4AF7A;
+  --accent-fg: #121110;
+  --background: #121110;
+  --foreground: #F2EEE6;
+  --card: #1B1A18;
+  --card-foreground: #F2EEE6;
+  --popover: #1B1A18;
+  --popover-foreground: #F2EEE6;
+  --primary: var(--accent-color, #D4AF7A);
+  --primary-foreground: #121110;
+  --secondary: #1B1A18;
+  --secondary-foreground: #F2EEE6;
+  --muted: #2C2A27;
+  --muted-foreground: #948C80;
+  --accent: #1B1A18;
+  --accent-foreground: #F2EEE6;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: var(--accent-color, #00F5A0);
-  --chart-1: var(--accent-color, #00F5A0);
-  --chart-2: #00D68A;
-  --chart-3: #00B874;
-  --chart-4: #009A5E;
-  --chart-5: #007C48;
-  --radius: 0.75rem;
-  --sidebar: #1a1a1a;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: var(--accent-color, #00F5A0);
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: #2a2a2a;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: var(--accent-color, #00F5A0);
+  --border: rgba(242, 238, 230, 0.1);
+  --input: rgba(242, 238, 230, 0.1);
+  --ring: var(--accent-color, #D4AF7A);
+  --chart-1: var(--accent-color, #D4AF7A);
+  --chart-2: #C29A62;
+  --chart-3: #E0926A;
+  --chart-4: #948C80;
+  --chart-5: #5E5850;
+  --radius: 0.375rem;
+  --sidebar: #1B1A18;
+  --sidebar-foreground: #F2EEE6;
+  --sidebar-primary: var(--accent-color, #D4AF7A);
+  --sidebar-primary-foreground: #121110;
+  --sidebar-accent: #2C2A27;
+  --sidebar-accent-foreground: #F2EEE6;
+  --sidebar-border: rgba(242, 238, 230, 0.1);
+  --sidebar-ring: var(--accent-color, #D4AF7A);
 }
 
 /* Onboarding design tokens */
 :root {
-  --ob-bg: #0A0A0A;
-  --ob-surface: #141414;
-  --ob-surface-hover: #1A1A1A;
-  --ob-border: rgba(255, 255, 255, 0.08);
-  --ob-accent: var(--accent-color, #00F5A0);
+  --ob-bg: #0F0E0D;
+  --ob-surface: #1B1A18;
+  --ob-surface-hover: #22201E;
+  --ob-border: rgba(242, 238, 230, 0.08);
+  --ob-accent: var(--accent-color, #D4AF7A);
   --ob-accent-hover: color-mix(in srgb, var(--ob-accent) 85%, black);
   --ob-accent-glow: color-mix(in srgb, var(--ob-accent) 15%, transparent);
   --ob-border-focus: color-mix(in srgb, var(--ob-accent) 40%, transparent);
-  --ob-text: #FFFFFF;
-  --ob-text-secondary: #999999;
-  --ob-text-muted: #666666;
+  --ob-text: #F2EEE6;
+  --ob-text-secondary: #A39B8F;
+  --ob-text-muted: #6F685F;
   --ob-danger: #FF4D4D;
   --ob-input-bg: #1A1A1A;
-  --ob-radius: 12px;
-  --ob-radius-sm: 8px;
-  --ob-radius-lg: 16px;
-  --ob-font-heading: var(--font-space-grotesk, 'Space Grotesk', sans-serif);
-  --ob-font-body: var(--font-dm-sans, 'DM Sans', sans-serif);
+  --ob-radius: 6px;
+  --ob-radius-sm: 4px;
+  --ob-radius-lg: 8px;
+  --ob-font-heading: var(--font-display);
+  --ob-font-body: var(--font-sans);
   --ob-header-height: 56px;
   --ob-footer-height: 80px;
   --ob-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -141,6 +143,39 @@
   }
 }
 
+/* ── Portfolio + booking motion: CSS only ─────────────────────────────── */
+
+@keyframes pf-float-a { 0%, 100% { transform: rotate(-8deg) translateY(0); } 50% { transform: rotate(-6deg) translateY(-9px); } }
+@keyframes pf-float-b { 0%, 100% { transform: rotate(-1deg) translateY(0); } 50% { transform: rotate(1.5deg) translateY(-7px); } }
+@keyframes pf-float-c { 0%, 100% { transform: rotate(6deg) translateY(0); } 50% { transform: rotate(8deg) translateY(-11px); } }
+.pf-float-a { animation: pf-float-a 6s ease-in-out infinite; }
+.pf-float-b { animation: pf-float-b 5s ease-in-out infinite; }
+.pf-float-c { animation: pf-float-c 7s ease-in-out infinite; }
+
+/* Photos fade up as they enter and fly off their own side as they leave. No scroll listeners:
+   browsers without scroll-driven animations simply show the photos still. */
+@keyframes pf-reveal { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+@keyframes pf-fly-left { to { opacity: 0.1; transform: translateX(-120%) rotate(-20deg) scale(0.85); } }
+@keyframes pf-fly-right { to { opacity: 0.1; transform: translateX(120%) rotate(20deg) scale(0.85); } }
+@supports (animation-timeline: view()) {
+  .pf-reveal { animation: pf-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 70%; }
+  .pf-fly-left { animation: pf-fly-left linear both; animation-timeline: view(); animation-range: exit 10% exit 100%; }
+  .pf-fly-right { animation: pf-fly-right linear both; animation-timeline: view(); animation-range: exit 10% exit 100%; }
+}
+
+/* Spring-style tap: overshooting ease on press and on becoming selected. */
+.tap-spring { transition: transform 0.45s cubic-bezier(0.3, 1.6, 0.5, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease, color 0.2s ease; }
+.tap-spring:active { transform: scale(0.93); transition-duration: 0.12s; }
+.tap-spring[aria-pressed="true"] { transform: scale(1.03); }
+
+@keyframes pill-slide { from { opacity: 0; transform: translateX(32px); } to { opacity: 1; transform: none; } }
+.pill-slide { animation: pill-slide 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-float-a, .pf-float-b, .pf-float-c, .pf-reveal, .pf-fly-left, .pf-fly-right, .pill-slide { animation: none !important; }
+  .tap-spring, .tap-spring:active, .tap-spring[aria-pressed="true"] { transition: none; transform: none; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -150,5 +185,9 @@
   }
   html {
     @apply font-sans;
+  }
+  h1, h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
   }
 }

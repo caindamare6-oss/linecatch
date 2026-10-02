@@ -25,7 +25,8 @@ export async function POST(request: Request) {
       .eq("user_id", user.id);
 
     if (error) {
-      return NextResponse.json({ error: `Failed to save: ${error.message}` }, { status: 500 });
+      console.error("[onboarding]", error);
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
   }
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
       .eq("user_id", user.id);
 
     if (error) {
-      return NextResponse.json({ error: `Failed to save: ${error.message}` }, { status: 500 });
+      console.error("[onboarding]", error);
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
   }
@@ -60,7 +62,8 @@ export async function POST(request: Request) {
           .eq("id", svc.id);
 
         if (error) {
-          return NextResponse.json({ error: `Failed to update service "${svc.name}": ${error.message}` }, { status: 500 });
+          console.error("[onboarding]", error);
+          return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
         }
       } else {
         const { error } = await admin.from("services").insert({
@@ -73,7 +76,8 @@ export async function POST(request: Request) {
         });
 
         if (error) {
-          return NextResponse.json({ error: `Failed to create service "${svc.name}": ${error.message}` }, { status: 500 });
+          console.error("[onboarding]", error);
+          return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
         }
       }
     }
@@ -95,7 +99,8 @@ export async function POST(request: Request) {
       .eq("user_id", user.id);
 
     if (error) {
-      return NextResponse.json({ error: `Failed to save: ${error.message}` }, { status: 500 });
+      console.error("[onboarding]", error);
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
   }
@@ -113,7 +118,8 @@ export async function POST(request: Request) {
       .eq("user_id", user.id);
 
     if (error) {
-      return NextResponse.json({ error: `Failed to save: ${error.message}` }, { status: 500 });
+      console.error("[onboarding]", error);
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
   }
@@ -125,7 +131,8 @@ export async function POST(request: Request) {
       .eq("user_id", user.id);
 
     if (error) {
-      return NextResponse.json({ error: `Failed to complete onboarding: ${error.message}` }, { status: 500 });
+      console.error("[onboarding]", error);
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });

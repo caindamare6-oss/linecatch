@@ -3,20 +3,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { I18nProvider, useT } from "@/lib/i18n";
+import { ACCENT_COLORS } from "@/lib/themes";
+import PortfolioSection from "@/app/dashboard/settings/portfolio-section";
+import { PageSkeleton } from "@/components/ui/skeleton";
 
-const ACCENT_COLORS = [
-  { name: "Mint", hex: "#00F5A0" },
-  { name: "Gold", hex: "#FFD700" },
-  { name: "Sky", hex: "#38BDF8" },
-  { name: "Coral", hex: "#FF6B6B" },
-  { name: "Violet", hex: "#A78BFA" },
-  { name: "Orange", hex: "#FB923C" },
-];
 
 const LANGUAGES = [
-  { code: "en" as const, label: "English", flag: "🇺🇸" },
-  { code: "es" as const, label: "Español", flag: "🇲🇽" },
-  { code: "other" as const, label: "Other", flag: "🌐" },
+  { code: "en" as const, label: "English" },
+  { code: "es" as const, label: "Español" },
+  { code: "other" as const, label: "Other" },
 ];
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -48,7 +43,8 @@ function getDefaultServices(lang: string): Service[] {
   ];
 }
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
+const DONE = TOTAL_STEPS - 1;
 
 export default function OnboardingPage() {
   const [language, setLanguage] = useState<string>("en");
@@ -88,8 +84,8 @@ export default function OnboardingPage() {
 
   if (!loaded) {
     return (
-      <div className="h-[100dvh] flex items-center justify-center" style={{ backgroundColor: "var(--ob-bg)" }}>
-        <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "var(--ob-accent-glow)", borderTopColor: "var(--ob-accent)" }} />
+      <div className="h-[100dvh] flex items-center justify-center px-4" style={{ backgroundColor: "var(--ob-bg)" }}>
+        <PageSkeleton />
       </div>
     );
   }
@@ -133,7 +129,7 @@ function OnboardingFlow({
   const [animKey, setAnimKey] = useState(0);
 
   const [firstName, setFirstName] = useState("");
-  const [accentColor, setAccentColor] = useState("#00F5A0");
+  const [accentColor, setAccentColor] = useState("#D4AF7A");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -384,7 +380,7 @@ function OnboardingFlow({
 
   // Confetti
   useEffect(() => {
-    if (step !== 6 || confettiDone || !canvasRef.current) return;
+    if (step !== DONE || confettiDone || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -397,7 +393,7 @@ function OnboardingFlow({
     window.addEventListener("resize", sizeCanvas);
 
     const particles: { x: number; y: number; vx: number; vy: number; color: string; size: number; rotation: number; rotationSpeed: number }[] = [];
-    const colors = [accentColor, "#FFD700", "#FF6B6B", "#38BDF8", "#A78BFA", "#FB923C"];
+    const colors = [accentColor, "#D4AF7A", "#FAF7F2", "#C29A62"];
     for (let i = 0; i < 120; i++) {
       particles.push({
         x: Math.random() * canvas.width, y: -10 - Math.random() * canvas.height * 0.5,
@@ -429,12 +425,12 @@ function OnboardingFlow({
     return () => { running = false; window.removeEventListener("resize", sizeCanvas); };
   }, [step, confettiDone]);
 
-  const STEP_PROGRESS = [0, 20, 40, 60, 80, 100, 100];
+  const STEP_PROGRESS = [0, 17, 33, 50, 67, 83, 100, 100];
   const progress = STEP_PROGRESS[step] ?? 0;
 
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden" style={{ backgroundColor: "var(--ob-bg)", fontFamily: "var(--ob-font-body)" }}>
-      {step === 6 && (
+      {step === DONE && (
         <canvas ref={canvasRef} className="fixed inset-0 z-50 pointer-events-none" />
       )}
 
@@ -446,7 +442,7 @@ function OnboardingFlow({
               <span style={{ color: "var(--ob-text)" }}>Line</span>
               <span style={{ color: "var(--ob-accent)" }}>Catch</span>
             </span>
-            {step > 0 && step < 6 && (
+            {step > 0 && step < DONE && (
               <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>
                 {t("nav.progress_pct", { pct: progress })}
               </span>
@@ -496,7 +492,6 @@ function OnboardingFlow({
                         border: language === l.code ? "none" : "1px solid var(--ob-border)",
                       }}
                     >
-                      <span>{l.flag}</span>
                       <span>{l.label}</span>
                     </button>
                   ))}
@@ -582,7 +577,7 @@ function OnboardingFlow({
                       title={c.name}
                     >
                       {accentColor === c.hex && (
-                        <svg className="w-4 h-4 absolute inset-0 m-auto text-black/60" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-4 h-4 absolute inset-0 m-auto text-[var(--accent-fg)]" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
@@ -627,7 +622,7 @@ function OnboardingFlow({
                           }}
                         >
                           {svc.enabled && (
-                            <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-3 h-3 text-[var(--accent-fg)]" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           )}
@@ -699,7 +694,7 @@ function OnboardingFlow({
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => setShowAddCustom(false)} className="flex-1 py-2 rounded-lg text-xs" style={{ color: "var(--ob-text-muted)", backgroundColor: "var(--ob-surface-hover)" }}>{t("step3.cancel")}</button>
-                    <button onClick={addCustomService} disabled={!customName.trim()} className="flex-1 py-2 rounded-lg text-xs font-semibold text-black disabled:opacity-30" style={{ backgroundColor: "var(--ob-accent)" }}>{t("step3.add")}</button>
+                    <button onClick={addCustomService} disabled={!customName.trim()} className="flex-1 py-2 rounded-lg text-xs font-semibold text-[var(--accent-fg)] disabled:opacity-30" style={{ backgroundColor: "var(--ob-accent)" }}>{t("step3.add")}</button>
                   </div>
                 </div>
               )}
@@ -766,11 +761,18 @@ function OnboardingFlow({
             </StepContainer>
           )}
 
-          {/* Done */}
+          {/* Step 6: Portfolio (saves as they go; skippable, editable later from the Portfolio tab) */}
           {step === 6 && (
+            <StepContainer title={t("step6.title")} subtitle={t("step6.subtitle")} stepNum={6}>
+              <PortfolioSection bare />
+            </StepContainer>
+          )}
+
+          {/* Done */}
+          {step === DONE && (
             <div className="flex flex-col items-center text-center pt-8 space-y-6">
               <div className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: "var(--ob-accent-glow)", animation: "ob-scale-in 500ms ease-out" }}>
-                {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-3xl">🎉</span>}
+                {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> : <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="var(--ob-accent)"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
               </div>
               <div style={{ animation: "ob-fade-up 500ms ease-out 200ms both" }}>
                 <h1 className="text-3xl font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("done.title")}</h1>
@@ -817,23 +819,23 @@ function OnboardingFlow({
             </div>
           )}
           <div className="flex gap-3">
-            {step > 0 && step < 6 && (
+            {step > 0 && step < DONE && (
               <button onClick={goBack} disabled={saving} className="flex-none px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 disabled:opacity-30" style={{ color: "var(--ob-text-secondary)", backgroundColor: "var(--ob-surface)", border: "1px solid var(--ob-border)" }}>
                 {t("nav.back")}
               </button>
             )}
             {step === 0 && (
-              <button onClick={goNext} disabled={saving} className="flex-1 py-3.5 rounded-xl text-sm font-bold text-black transition-all duration-200 hover:brightness-110 disabled:opacity-30" style={{ backgroundColor: "var(--ob-accent)", fontFamily: "var(--ob-font-heading)" }}>
+              <button onClick={goNext} disabled={saving} className="flex-1 py-3.5 rounded-xl text-sm font-bold text-[var(--accent-fg)] transition-all duration-200 hover:brightness-110 disabled:opacity-30" style={{ backgroundColor: "var(--ob-accent)", fontFamily: "var(--ob-font-heading)" }}>
                 {saving ? t("nav.saving") : t("welcome.cta")}
               </button>
             )}
-            {step > 0 && step < 6 && (
-              <button onClick={goNext} disabled={saving || (step === 3 && !services.some((s) => s.enabled))} className="flex-1 py-3 rounded-xl text-sm font-semibold text-black disabled:opacity-30 transition-all duration-200 hover:brightness-110" style={{ backgroundColor: "var(--ob-accent)" }}>
+            {step > 0 && step < DONE && (
+              <button onClick={goNext} disabled={saving || (step === 3 && !services.some((s) => s.enabled))} className="flex-1 py-3 rounded-xl text-sm font-semibold text-[var(--accent-fg)] disabled:opacity-30 transition-all duration-200 hover:brightness-110" style={{ backgroundColor: "var(--ob-accent)" }}>
                 {saving ? t("nav.saving") : t("nav.continue")}
               </button>
             )}
-            {step === 6 && (
-              <button onClick={handleFinish} disabled={saving} className="flex-1 py-3.5 rounded-xl text-sm font-bold text-black disabled:opacity-30 transition-all duration-200 hover:brightness-110" style={{ backgroundColor: "var(--ob-accent)", fontFamily: "var(--ob-font-heading)" }}>
+            {step === DONE && (
+              <button onClick={handleFinish} disabled={saving} className="flex-1 py-3.5 rounded-xl text-sm font-bold text-[var(--accent-fg)] disabled:opacity-30 transition-all duration-200 hover:brightness-110" style={{ backgroundColor: "var(--ob-accent)", fontFamily: "var(--ob-font-heading)" }}>
                 {saving ? t("nav.setting_up") : t("done.cta")}
               </button>
             )}
