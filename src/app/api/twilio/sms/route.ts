@@ -5,7 +5,7 @@ import { keyword } from "@/lib/opt-out";
 import { barberLocalToUTC } from "@/lib/format";
 import { localParts } from "@/lib/revenue";
 import { issueToken } from "@/lib/client-session";
-import { SUPPORT_EMAIL, DEFAULT_TZ } from "@/lib/config";
+import { SUPPORT_EMAIL, DEFAULT_TZ, appUrl } from "@/lib/config";
 
 const AUTO_REPLY_COOLDOWN_HOURS = 12;
 
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   const params = Object.fromEntries(formData.entries()) as Record<string, string>;
 
   const signature = request.headers.get("x-twilio-signature") || "";
-  const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/sms`;
+  const url = `${appUrl()}/api/twilio/sms`;
 
   if (!validateTwilioRequest(signature, url, params)) {
     return new NextResponse("Forbidden", { status: 403 });
@@ -243,7 +243,7 @@ async function autoReply(supabase: ReturnType<typeof createAdminClient>, userId:
   ]);
   if (optOut || vip?.opted_out_at || (recent ?? 0) > 0) return null;
 
-  const app = process.env.NEXT_PUBLIC_APP_URL;
+  const app = appUrl();
   const { data: next } = await supabase
     .from("bookings")
     .select("id")

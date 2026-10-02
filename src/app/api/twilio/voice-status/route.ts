@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS, validateTwilioRequest } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { issueToken } from "@/lib/client-session";
+import { appUrl } from "@/lib/config";
 
 const COOLDOWN_HOURS = 3;
 
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
   const params = Object.fromEntries(formData.entries()) as Record<string, string>;
 
   const signature = request.headers.get("x-twilio-signature") || "";
-  const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/voice-status`;
+  const url = `${appUrl()}/api/twilio/voice-status`;
 
   if (!validateTwilioRequest(signature, url, params)) {
     return new NextResponse("Forbidden", { status: 403 });
@@ -127,8 +128,8 @@ export async function POST(request: Request) {
     });
     const tokenParam = linkToken ? `t=${linkToken}` : "";
     const trackingUrl = callLog?.call_id
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${callLog.call_id}${tokenParam ? `?${tokenParam}` : ""}`
-      : barber.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${barber.user_id}?src=missed_call${tokenParam ? `&${tokenParam}` : ""}`;
+      ? `${appUrl()}/api/track/${callLog.call_id}${tokenParam ? `?${tokenParam}` : ""}`
+      : barber.booking_link || `${appUrl()}/book/${barber.user_id}?src=missed_call${tokenParam ? `&${tokenParam}` : ""}`;
 
     const sms = await buildSMS({
       userId: barber.user_id,

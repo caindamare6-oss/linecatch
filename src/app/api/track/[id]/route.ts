@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { appUrl } from "@/lib/config";
 
 export async function GET(
   request: Request,
@@ -28,21 +29,21 @@ export async function GET(
       .eq("user_id", call.user_id)
       .single();
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
+    const base = appUrl();
     let url: URL;
     try {
-      url = new URL(barber?.booking_link || `${appUrl}/book/${call.user_id}`);
+      url = new URL(barber?.booking_link || `${base}/book/${call.user_id}`);
     } catch {
-      url = new URL(`${appUrl}/book/${call.user_id}`);
+      url = new URL(`${base}/book/${call.user_id}`);
     }
     url.searchParams.set("src", "missed_call");
     // Only hand the client token to our own booking page, never a third-party link.
     const token = new URL(request.url).searchParams.get("t");
-    if (token && url.origin === new URL(appUrl).origin && url.pathname.startsWith("/book/")) {
+    if (token && url.origin === new URL(base).origin && url.pathname.startsWith("/book/")) {
       url.searchParams.set("t", token);
     }
     return NextResponse.redirect(url.toString());
   }
 
-  return NextResponse.redirect(process.env.NEXT_PUBLIC_APP_URL || "/");
+  return NextResponse.redirect(appUrl());
 }

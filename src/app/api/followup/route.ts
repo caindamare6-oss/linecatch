@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
+import { appUrl } from "@/lib/config";
 
 const FOLLOWUP_DELAY_HOURS = 2;
 
@@ -111,7 +112,7 @@ export async function GET(request: Request) {
 
     try {
       // Always the tracked link: it forwards to the barber's booking page or their outside booking site.
-      const trackingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${call.call_id}`;
+      const trackingUrl = `${appUrl()}/api/track/${call.call_id}`;
 
       const sms = await buildSMS({
         userId: call.user_id,

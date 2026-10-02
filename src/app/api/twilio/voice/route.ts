@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateTwilioRequest } from "@/lib/twilio";
+import { appUrl } from "@/lib/config";
 
 export async function POST(request: Request) {
   const formData = await request.formData();
   const params = Object.fromEntries(formData.entries()) as Record<string, string>;
 
   const signature = request.headers.get("x-twilio-signature") || "";
-  const url = `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/voice`;
+  const url = `${appUrl()}/api/twilio/voice`;
 
   if (!validateTwilioRequest(signature, url, params)) {
     return new NextResponse("Forbidden", { status: 403 });
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const statusCallbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/twilio/voice-status`;
+  const statusCallbackUrl = `${appUrl()}/api/twilio/voice-status`;
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>

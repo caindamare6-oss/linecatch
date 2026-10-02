@@ -8,7 +8,7 @@ import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualTime } from "@/lib/format";
 import { projectVisit, rewardVars } from "@/lib/loyalty";
-import { DEFAULT_TZ } from "@/lib/config";
+import { DEFAULT_TZ, appUrl } from "@/lib/config";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
       vars: {
         shop_name: shopName,
         time: timeStr,
-        link: `${process.env.NEXT_PUBLIC_APP_URL}/manage/${booking.id}`,
+        link: `${appUrl()}/manage/${booking.id}`,
         ...rewardVars(!!loyalty?.due),
       },
     });
