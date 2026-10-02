@@ -43,12 +43,14 @@ function clearToken(barberId: string) {
   } catch {}
 }
 
-export function useClientSession(barberId: string, linkToken: string | null) {
-  const [session, setSession] = useState<ClientSession>({ status: "checking" });
+export function useClientSession(barberId: string, linkToken: string | null, disabled = false) {
+  const [session, setSession] = useState<ClientSession>({ status: disabled ? "anonymous" : "checking" });
   // Read once: stripping ?t= below updates useSearchParams, which must not restart the lookup.
   const [urlToken] = useState(linkToken);
 
   useEffect(() => {
+    // A barber booking on a client's behalf must never pick up (or overwrite) a saved client on this device.
+    if (disabled) return;
     // Strip ?t= so the token isn't left in history, bookmarks, or a shared screenshot.
     if (urlToken) {
       const url = new URL(window.location.href);
@@ -86,7 +88,7 @@ export function useClientSession(barberId: string, linkToken: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [barberId, urlToken]);
+  }, [barberId, urlToken, disabled]);
 
   const forget = useCallback(() => {
     const token = readToken(barberId);

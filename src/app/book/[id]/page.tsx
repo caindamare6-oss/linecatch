@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, Suspense } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Calendar, Check, ChevronLeft, ChevronRight, MessageSquare, Scissors, User, Users, Wallet } from "lucide-react";
 import { normalizePhone } from "@/lib/phone";
 import { formatBarberDate, barberLocalToUTC } from "@/lib/format";
@@ -21,8 +21,8 @@ type Step = "service" | "time" | "confirm" | "done";
 
 const PARTY_SIZES = [1, 2, 3, 4];
 const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-const HEADING = "font-[family-name:var(--font-space-grotesk)]";
-const BODY = "font-[family-name:var(--font-dm-sans)]";
+const HEADING = "font-heading";
+const BODY = "font-sans";
 const fadeUp = (delayMs = 0) => ({ animation: `ob-fade-up 400ms ease-out ${delayMs}ms both` });
 
 function todayInTz(tz: string) {
@@ -67,9 +67,12 @@ export default function BookingPage() {
 function BookingContent() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const barberId = params.id as string;
   const bookingSource = searchParams.get("src") || "direct";
-  const { session, forget } = useClientSession(barberId, searchParams.get("t"));
+  // The barber booking someone in from their dashboard: no device recognition, no consent box (only the client can consent).
+  const forBarber = bookingSource === "barber";
+  const { session, forget } = useClientSession(barberId, searchParams.get("t"), forBarber);
   const known = session.status === "recognized" ? session : null;
 
   const [step, setStep] = useState<Step>("service");
@@ -80,8 +83,8 @@ function BookingContent() {
   const [selectedTime, setSelectedTime] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState(() => (forBarber ? (searchParams.get("name") || "").slice(0, 40) : ""));
+  const [phone, setPhone] = useState(() => (forBarber ? (searchParams.get("phone") || "").replace(/[^\d]/g, "").slice(0, 11) : ""));
   const [consentChecked, setConsentChecked] = useState(false);
   const [shopName, setShopName] = useState("");
   const [openDays, setOpenDays] = useState<string[]>(DAY_NAMES);
@@ -180,7 +183,7 @@ function BookingContent() {
           sessionToken: known?.token,
           bookingTime: bookingDate.toISOString(),
           firstName: known ? undefined : firstName.trim() || undefined,
-          consentText: consentChecked ? CONSENT_TEXT : undefined,
+          consentText: consentChecked && !forBarber ? CONSENT_TEXT : undefined,
           source: bookingSource,
         }),
       });
@@ -194,7 +197,7 @@ function BookingContent() {
         }
         return;
       }
-      if (data.sessionToken) saveToken(barberId, data.sessionToken);
+      if (data.sessionToken && !forBarber) saveToken(barberId, data.sessionToken);
       setBookingId(data.bookingId);
       setRewardDue(!!data.rewardDue);
       setStep("done");
@@ -225,10 +228,13 @@ function BookingContent() {
           <Check className="w-10 h-10 text-[var(--accent-color)]" strokeWidth={2.5} />
         </div>
         <div style={fadeUp(300)}>
-          <h1 className={`${HEADING} text-[28px] font-bold tracking-tight`}>You&apos;re Booked!</h1>
-          <p className="text-sm text-white/35 mt-2 leading-relaxed">
-            Your appointment is confirmed.
-            {getsTexts && <><br />A confirmation text is on its way.</>}
+          <h1 className={`${HEADING} text-[34px] font-semibold tracking-[-0.8px]`}>
+            {forBarber ? "Booked " : "You're "}
+            <em className="text-[var(--accent-color)]">{forBarber ? "in." : "booked."}</em>
+          </h1>
+          <p className="text-sm text-white/45 mt-2 leading-relaxed">
+            {service?.name}{partySize > 1 ? ` · party of ${partySize}` : ""} · {dateLabel}, {formatSlot(selectedTime)}
+            {getsTexts && !forBarber && <><br />A confirmation text is on its way.</>}
           </p>
         </div>
 
@@ -255,7 +261,13 @@ function BookingContent() {
           </a>
         )}
 
-        {!getsTexts && (
+        {forBarber && (
+          <Link href="/dashboard/schedule" className="mt-6 h-12 px-6 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold flex items-center" style={fadeUp(500)}>
+            Back to schedule
+          </Link>
+        )}
+
+        {!getsTexts && !forBarber && (
           <div className="mt-8 w-full max-w-[340px] rounded-xl bg-white/[0.02] border border-white/[0.04] px-4 py-3 text-xs text-white/30 flex items-center gap-2" style={fadeUp(500)}>
             <MessageSquare className="w-3.5 h-3.5 shrink-0" />
             Save your manage link. You won&apos;t get text reminders for this booking.
@@ -272,60 +284,49 @@ function BookingContent() {
       <div className="w-full max-w-[440px] mx-auto flex-1 flex flex-col">
         {/* Header */}
         <div className="px-6 pt-5" style={fadeUp()}>
-          {step === "service" ? (
-            <>
-              <div className="flex items-center gap-2.5 mb-4">
-                <Scissors className="w-5 h-5 text-[var(--accent-color)]" />
-                <span className={`${HEADING} text-lg font-bold text-[var(--accent-color)]`}>LineCatch</span>
-              </div>
-              <h1 className={`${HEADING} text-[22px] font-bold tracking-tight`}>
-                {known ? known.greeting : "Book an Appointment"}
-              </h1>
-              {shopName && <p className="text-[13px] text-white/30 mt-1">{shopName}</p>}
-              {known && (
-                <NotMe name={known.client.firstName} onClick={notMe} />
-              )}
-            </>
-          ) : (
-            <div className="flex items-center gap-2 mb-1">
-              <button
-                onClick={() => {
-                  setError("");
-                  setStep(step === "confirm" ? "time" : "service");
-                }}
-                className="p-1 -ml-1 text-white/40 hover:text-white/70 transition-colors"
-                aria-label="Back"
-              >
-                <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
-              </button>
-              <div>
-                <h1 className={`${HEADING} text-lg font-bold tracking-tight`}>
-                  {step === "time" ? "Pick a Date & Time" : "Confirm Booking"}
-                </h1>
-                {step === "time" && service && (
-                  <p className="text-xs text-white/25 mt-0.5">
-                    {service.name} · {partyLabel.toLowerCase()} · {totalMinutes} min{total > 0 && ` · $${total}`}
-                  </p>
-                )}
-              </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setError("");
+                if (step === "service") {
+                  if (forBarber) router.push("/dashboard/schedule");
+                  else window.history.back();
+                } else setStep(step === "confirm" ? "time" : "service");
+              }}
+              className="w-11 h-11 shrink-0 rounded-xl border border-white/[0.1] bg-white/[0.03] text-white/70 hover:text-white flex items-center justify-center transition-colors"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-[18px] h-[18px]" strokeWidth={2.4} />
+            </button>
+            <div className="min-w-0">
+              <p className="text-[12px] text-white/45">{forBarber ? "Booking a client for" : "Booking with"}</p>
+              <p className="text-[15px] font-bold truncate">{shopName || "your barber"}</p>
             </div>
-          )}
+          </div>
 
-          <div className="flex gap-1.5 mt-3.5">
+          <div className="flex gap-1.5 mt-4" aria-label={`Step ${progress} of 3`}>
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="flex-1 h-1 rounded-full transition-colors duration-300"
-                style={{ background: i <= progress ? "var(--accent-color)" : "rgba(255,255,255,0.08)" }}
+                className="flex-1 h-[3px] rounded-full transition-colors duration-300"
+                style={{ background: i <= progress ? "var(--accent-color)" : "rgba(242,238,230,0.1)" }}
               />
             ))}
           </div>
-          {step === "service" && (
-            <div className="flex justify-between mt-1.5 text-[10px] uppercase tracking-wide font-medium">
-              <span className="text-[var(--accent-color)] font-semibold">Service</span>
-              <span className="text-white/15">Date &amp; Time</span>
-              <span className="text-white/15">Confirm</span>
-            </div>
+
+          {step === "service" && known && (
+            <p className="mt-5 text-[13px] text-white/55 flex items-center gap-2 flex-wrap">
+              {known.greeting}
+              <NotMe name={known.client.firstName} onClick={notMe} />
+            </p>
+          )}
+          <h1 className={`${HEADING} ${step === "service" && known ? "mt-1" : "mt-5"} text-[34px] leading-[1.05] font-semibold tracking-[-0.8px]`}>
+            {step === "service" ? <>What are we doing <em className="text-[var(--accent-color)]">today?</em></> : step === "time" ? <>Pick a <em className="text-[var(--accent-color)]">time</em></> : <>Almost <em className="text-[var(--accent-color)]">done</em></>}
+          </h1>
+          {step === "time" && service && (
+            <p className="text-[13px] text-white/40 mt-1.5">
+              {service.name} · {partyLabel.toLowerCase()} · {totalMinutes} min{total > 0 && ` · $${total}`}
+            </p>
           )}
         </div>
 
@@ -402,7 +403,7 @@ function BookingContent() {
                 </div>
               )}
             </div>
-            <BottomCta disabled={!service} onClick={() => setStep("time")}>
+            <BottomCta disabled={!service} onClick={() => setStep("time")} note="Pay in person · No card needed">
               {service ? "Pick a time" : "Choose a service"} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
@@ -474,7 +475,11 @@ function BookingContent() {
                 </div>
               )}
             </div>
-            <BottomCta disabled={!selectedTime} onClick={() => { setError(""); setStep("confirm"); }}>
+            <BottomCta
+              disabled={!selectedTime}
+              onClick={() => { setError(""); setStep("confirm"); }}
+              note={partySize > 1 ? `Showing times that fit all ${partySize} back to back` : "Times shown in the shop's time zone"}
+            >
               {selectedTime ? "Review booking" : selectedDate ? "Pick a time" : "Pick a day"} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
@@ -539,7 +544,7 @@ function BookingContent() {
                 </div>
                 )}
 
-                {!known?.client.smsOptedIn && (
+                {!known?.client.smsOptedIn && !forBarber && (
                 <>
                 <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
                   <input
@@ -575,7 +580,11 @@ function BookingContent() {
                 {error && <div className="mt-4"><ErrorBox>{error}</ErrorBox></div>}
               </div>
             </div>
-            <BottomCta disabled={(!known && !phone.trim()) || submitting} onClick={handleBook}>
+            <BottomCta
+              disabled={(!known && !phone.trim()) || submitting}
+              onClick={handleBook}
+              note={forBarber ? "Texts go out only if they've opted in" : getsTexts ? "You'll get a text confirmation" : "Texts are optional"}
+            >
               {submitting ? "Booking..." : <><Check className="w-4 h-4" strokeWidth={2.5} /> Confirm Booking</>}
             </BottomCta>
           </>
@@ -640,9 +649,9 @@ function DetailRow({ icon, title, sub }: { icon: React.ReactNode; title: string;
   );
 }
 
-function BottomCta({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+function BottomCta({ disabled, onClick, children, note }: { disabled?: boolean; onClick: () => void; children: React.ReactNode; note?: string }) {
   return (
-    <div className="px-6 pt-3 pb-9 sticky bottom-0 border-t border-white/[0.08] bg-[#121110]">
+    <div className="px-6 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] sticky bottom-0 border-t border-white/[0.08] bg-[#121110]">
       <button
         onClick={onClick}
         disabled={disabled}
@@ -650,6 +659,7 @@ function BottomCta({ disabled, onClick, children }: { disabled?: boolean; onClic
       >
         {children}
       </button>
+      {note && <p className="text-center text-[12px] text-white/40 mt-2">{note}</p>}
     </div>
   );
 }

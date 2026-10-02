@@ -1,195 +1,84 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect, lazy, Suspense } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Settings, X } from "lucide-react";
-import { PageSkeleton } from "@/components/ui/skeleton";
-
-const SettingsPage = lazy(() => import("./settings/page"));
 
 const tabs = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Messages", href: "/dashboard/messages" },
-  { label: "Schedule", href: "/dashboard/schedule" },
-  { label: "Services", href: "/dashboard/services" },
-  { label: "Portfolio", href: "/dashboard/portfolio" },
+  {
+    label: "Home",
+    href: "/dashboard",
+    icon: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
+  },
+  {
+    label: "Messages",
+    href: "/dashboard/messages",
+    icon: <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />,
+  },
+  {
+    label: "Schedule",
+    href: "/dashboard/schedule",
+    icon: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>,
+  },
+  {
+    label: "Clients",
+    href: "/dashboard/clients",
+    icon: <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></>,
+  },
 ];
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [isAdminUser, setIsAdminUser] = useState(false);
-
-  useEffect(() => {
-    if (pathname === "/dashboard/settings") {
-      setSettingsOpen(true);
-    }
-  }, [pathname]);
-
-  useEffect(() => {
-    fetch("/api/admin/check")
-      .then((r) => r.json())
-      .then((d) => setIsAdminUser(!!d.isAdmin))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    async function loadAccent() {
+    (async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-      const { data } = await supabase
-        .from("users")
-        .select("accent_color")
-        .eq("user_id", user.id)
-        .single();
+      const { data } = await supabase.from("users").select("accent_color").eq("user_id", user.id).single();
       if (!cancelled && data?.accent_color) {
         document.documentElement.style.setProperty("--accent-color", data.accent_color);
       }
-    }
-    loadAccent();
-    return () => { cancelled = true; };
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function closeSettings() {
-    setSettingsOpen(false);
-    if (pathname === "/dashboard/settings") {
-      router.push("/dashboard");
-    }
-  }
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-  }
+  const activeTab = tabs.find((t) => (t.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(t.href)));
 
   return (
-    <div className="min-h-screen bg-[#0F0E0D] relative">
-      <div className="relative z-10 max-w-md mx-auto px-4 py-5">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-[var(--accent-color)]">
-              <path d="M3 5.5C3 4.12 4.12 3 5.5 3h3.09c.39 0 .74.24.88.6l1.42 3.55c.15.37.05.8-.25 1.06l-1.72 1.47a12.06 12.06 0 005.69 5.69l1.47-1.72c.26-.3.69-.4 1.06-.25l3.55 1.42c.36.14.6.49.6.88v3.09c0 1.38-1.12 2.5-2.5 2.5C9.83 21.29 2.71 14.17 2.71 5.5H3z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M14 3c0 0 2 .5 3.5 2S20 9 20 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M14.5 6.5c0 0 1 .3 1.8 1.2.8.8 1.2 1.8 1.2 1.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <h1 className="text-lg font-bold tracking-tight">
-              <span className="text-white">Line</span>
-              <span className="text-[var(--accent-color)]">Catch</span>
-            </h1>
-          </div>
+    <div className="min-h-screen bg-[#121110] text-white">
+      <main className="relative max-w-md mx-auto px-5 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))]">{children}</main>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 border rounded-full px-2.5 py-0.5" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 20%, transparent)' }}>
-              <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent-color)]" />
-              <span className="text-[11px] font-medium" style={{ color: 'color-mix(in srgb, var(--accent-color) 80%, transparent)' }}>Active</span>
-            </div>
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
-            >
-              <Settings className="w-4.5 h-4.5" />
-            </button>
-            {isAdminUser && (
-              <Link
-                href="/dashboard/admin/stickers"
-                className="text-[11px] text-white/30 hover:text-white/60 transition-colors"
-              >
-                Admin
-              </Link>
-            )}
-            <button
-              onClick={handleSignOut}
-              className="text-[11px] text-white/30 hover:text-white/60 transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="mb-5 bg-white/[0.04] border border-white/[0.06] rounded-xl p-1 flex">
-          {tabs.map((tab) => {
-            const isActive =
-              tab.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(tab.href);
-
+      <nav
+        aria-label="Main"
+        className="fixed bottom-0 inset-x-0 z-30 border-t border-white/[0.06] bg-[#121110]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
+      >
+        <ul className="max-w-md mx-auto grid grid-cols-4">
+          {tabs.map((t) => {
+            const active = activeTab?.href === t.href;
             return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`flex-1 text-center py-2 px-2 rounded-lg text-[12px] font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.04]"
-                }`}
-                style={isActive ? { boxShadow: '0 0 12px color-mix(in srgb, var(--accent-color) 20%, transparent)' } : undefined}
-              >
-                {tab.label}
-              </Link>
+              <li key={t.href}>
+                <Link
+                  href={t.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex flex-col items-center gap-1 pt-2.5 pb-2 text-[11px] transition-colors ${
+                    active ? "text-[var(--accent-color)] font-semibold" : "text-white/35 hover:text-white/70"
+                  }`}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    {t.icon}
+                  </svg>
+                  {t.label}
+                </Link>
+              </li>
             );
           })}
-        </div>
-
-        {/* Content */}
-        {pathname === "/dashboard/settings" ? null : children}
-      </div>
-
-      {/* Settings Side Panel */}
-      {settingsOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/60 z-40 transition-opacity"
-            onClick={closeSettings}
-          />
-          <div className="fixed inset-y-0 right-0 w-full max-w-md bg-[#0F0E0D] border-l border-white/[0.06] z-50 overflow-y-auto animate-slide-in">
-            <div className="sticky top-0 z-10 bg-[#0F0E0D] border-b border-white/[0.06] px-4 py-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-white/70">Settings</h2>
-              <button
-                onClick={closeSettings}
-                className="p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
-              >
-                <X className="w-4.5 h-4.5" />
-              </button>
-            </div>
-            <div className="px-4 py-4">
-              <Suspense
-                fallback={
-                  <div className="flex items-center justify-center py-16 px-4">
-                    <PageSkeleton />
-                  </div>
-                }
-              >
-                <SettingsPage />
-              </Suspense>
-            </div>
-          </div>
-        </>
-      )}
-
-      <style jsx global>{`
-        :root {
-          --accent-color: #D4AF7A;
-        }
-        @keyframes slideIn {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        .animate-slide-in {
-          animation: slideIn 0.25s ease-out;
-        }
-      `}</style>
+        </ul>
+      </nav>
     </div>
   );
 }

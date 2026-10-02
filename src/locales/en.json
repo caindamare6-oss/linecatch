@@ -52,7 +52,14 @@
     "closed": "Closed",
     "timezone_label": "Timezone",
     "timezone_detecting": "Detecting...",
-    "timezone_hint": "Auto-detected from your device."
+    "timezone_hint": "Auto-detected from your device.",
+    "calendars": "Your calendars",
+    "cal_linecatch": "LineCatch calendar",
+    "cal_linecatch_sub": "Built in, no setup",
+    "cal_soon_sub": "Syncing busy times is coming soon",
+    "cal_on": "On",
+    "cal_soon": "Soon",
+    "hours": "Hours"
   },
   "step5": {
     "badge": "5",
@@ -71,7 +78,7 @@
   "step6": {
     "badge": "6",
     "title": "Your portfolio",
-    "subtitle": "Add your best cuts. Tap any empty spot to add a photo. You can change this anytime from the Portfolio tab."
+    "subtitle": "Add your best cuts. Tap any empty spot to add a photo. You can change this anytime with the Portfolio button on your dashboard."
   },
   "done": {
     "title": "You're all set!",

@@ -119,47 +119,50 @@ export default function VIPOptIn() {
   }
 
   return (
-    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-[#121110] text-white flex items-center justify-center px-6 py-8">
       <div className="w-full max-w-md">
         {!submitted ? (
-          <div className="bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27]">
-            <div className="text-center mb-8">
-              <div className="text-3xl font-bold mb-2 text-white">
-                Line<span className="text-[var(--accent-color)]">Catch</span> VIP
+          <div style={{ animation: "ob-fade-up 450ms ease-out both" }}>
+            <div className="text-center mb-7">
+              <div className="inline-flex items-center gap-2 mb-4">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="1.8" aria-hidden><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" /></svg>
+                <span className="font-heading text-lg font-semibold text-[var(--accent-color)]">LineCatch</span>
               </div>
-              <p className="text-stone-400">
-                Join {displayName}&apos;s text list for exclusive perks
-              </p>
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-[var(--accent-color)]/30 bg-[var(--accent-color)]/[0.08] text-[11px] font-bold uppercase tracking-[1px] text-[var(--accent-color)]">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                  VIP text list
+                </span>
+              </div>
+              <h1 className="font-heading text-[28px] leading-tight font-semibold tracking-[-0.5px] mt-4">
+                Join {displayName}&apos;s<br />VIP list
+              </h1>
+              <p className="text-[14px] text-white/45 mt-2 leading-relaxed">Get perks and never miss an open appointment.</p>
             </div>
 
-            <div className="rounded-lg p-4 mb-6" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'color-mix(in srgb, var(--accent-color) 20%, transparent)' }}>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-start gap-2">
-                  <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
-                  <span className="text-stone-300">
-                    Appointment reminders &amp; confirmations
+            <ul className="space-y-2 mb-6">
+              {[
+                { tone: "var(--accent-color)", title: "Appointment reminders", sub: "Never forget your next cut", d: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></> },
+                { tone: "#E0926A", title: "Loyalty rewards", sub: "$5 off as you keep coming back", d: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /> },
+                { tone: "#8FB8DE", title: "Quick booking", sub: "Book or move your cut by text", d: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /> },
+              ].map((b) => (
+                <li key={b.title} className="flex items-center gap-3.5 px-4 py-3 rounded-[14px] bg-white/[0.025] border border-white/[0.06]">
+                  <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ color: b.tone, background: `color-mix(in srgb, ${b.tone} 10%, transparent)` }} aria-hidden>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">{b.d}</svg>
                   </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
-                  <span className="text-stone-300">
-                    Exclusive member-only offers
+                  <span>
+                    <span className="block text-[14px] font-semibold">{b.title}</span>
+                    <span className="block text-[12px] text-white/40">{b.sub}</span>
                   </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-[var(--accent-color)] mt-0.5">&#10003;</span>
-                  <span className="text-stone-300">
-                    Quick booking &amp; rescheduling
-                  </span>
-                </div>
-              </div>
-            </div>
+                </li>
+              ))}
+            </ul>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label
                   htmlFor="firstName"
-                  className="block text-sm font-medium text-stone-300 mb-2"
+                  className="block text-[12px] font-medium text-white/45 mb-1.5"
                 >
                   First Name
                 </label>
@@ -170,14 +173,14 @@ export default function VIPOptIn() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50"
+                  className="w-full h-12 px-4 rounded-xl border border-white/[0.1] bg-white/[0.04] text-white text-[15px] placeholder-white/25 outline-none focus:border-[var(--accent-color)]/50 disabled:opacity-50"
                 />
               </div>
 
               <div>
                 <label
                   htmlFor="phone"
-                  className="block text-sm font-medium text-stone-300 mb-2"
+                  className="block text-[12px] font-medium text-white/45 mb-1.5"
                 >
                   Phone Number
                 </label>
@@ -188,7 +191,7 @@ export default function VIPOptIn() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={loading}
-                  className="w-full px-4 py-3 border border-[#333] rounded-lg bg-[#222] text-white placeholder-stone-500 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)] disabled:opacity-50"
+                  className="w-full h-12 px-4 rounded-xl border border-white/[0.1] bg-white/[0.04] text-white text-[15px] placeholder-white/25 outline-none focus:border-[var(--accent-color)]/50 disabled:opacity-50"
                 />
               </div>
 
@@ -199,7 +202,7 @@ export default function VIPOptIn() {
                 </div>
               )}
 
-              <div className="flex items-start gap-3 p-4 bg-[#1F1D1B] rounded-lg border border-[#2C2A27]">
+              <div className="flex items-start gap-3 px-1">
                 <input
                   id="consent"
                   type="checkbox"
@@ -209,7 +212,7 @@ export default function VIPOptIn() {
                 />
                 <label
                   htmlFor="consent"
-                  className="text-sm text-stone-400 cursor-pointer"
+                  className="text-[12px] leading-relaxed text-white/40 cursor-pointer"
                 >
                   {CONSENT_TEXT}{" "}
                   <Link href="/privacy" className="text-[var(--accent-color)] hover:underline">Privacy Policy</Link>
@@ -221,13 +224,13 @@ export default function VIPOptIn() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[var(--accent-color)] hover:brightness-90 text-[var(--accent-fg)] font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full h-[52px] bg-[var(--accent-color)] text-[var(--accent-fg)] font-bold rounded-[14px] transition hover:shadow-[0_6px_24px_color-mix(in_srgb,var(--accent-color)_30%,transparent)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Joining..." : "Join VIP List"}
+                {loading ? "Joining…" : "Join VIP list"}
               </button>
             </form>
 
-            <p className="text-xs text-stone-500 text-center mt-6">
+            <p className="text-xs text-white/30 text-center mt-6">
               By joining, you agree to our{" "}
               <Link href="/privacy" className="text-[var(--accent-color)] hover:underline">
                 Privacy Policy

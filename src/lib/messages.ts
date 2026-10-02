@@ -96,7 +96,9 @@ export async function buildSMS(opts: {
   const barberName = barberProfile?.first_name || "";
 
   let template: string | null;
-  if (opts.templateKey === "missed_call" && barberProfile?.custom_message) {
+  // The barber's own missed-call text wins, but only if it can carry the booking link.
+  // (The column's legacy default asks callers to "Reply YES or NO", which nothing handles.)
+  if (opts.templateKey === "missed_call" && barberProfile?.custom_message?.includes("{link}")) {
     template = barberProfile.custom_message;
   } else {
     template = await resolveTemplate(opts.userId, opts.templateKey, language);

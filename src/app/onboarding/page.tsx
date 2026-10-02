@@ -201,7 +201,7 @@ function OnboardingFlow({
     }
   }, [initialData, language]);
 
-  const saveStep = useCallback(async (stepName: string, data: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> => {
+  const saveStep = useCallback(async (stepName: string, data: Record<string, unknown>): Promise<{ ok: boolean; error?: string; body?: Record<string, unknown> }> => {
     setSaving(true);
     setError(null);
     try {
@@ -216,7 +216,7 @@ function OnboardingFlow({
         return { ok: false, error: body.error || `Save failed (${res.status})` };
       }
       setSaving(false);
-      return { ok: true };
+      return { ok: true, body: await res.json().catch(() => ({})) };
     } catch {
       setSaving(false);
       return { ok: false, error: "Network error" };
@@ -288,13 +288,19 @@ function OnboardingFlow({
   }
 
   async function goNext() {
-    let result: { ok: boolean; error?: string } | null = null;
+    let result: { ok: boolean; error?: string; body?: Record<string, unknown> } | null = null;
 
     const langToSave = language === "other" ? (otherLanguage.trim() || "other") : language;
     if (step === 0) result = await saveStep("who", { language: langToSave });
     else if (step === 1) result = await saveStep("who", { firstName, language: langToSave, accentColor });
     else if (step === 2) result = await saveStep("business", { businessName, phone, email });
-    else if (step === 3) result = await saveStep("services", { services: services.filter((s) => s.enabled) });
+    else if (step === 3) {
+      result = await saveStep("services", { services });
+      const ids = result.body?.ids;
+      if (result.ok && Array.isArray(ids)) {
+        setServices((prev) => prev.map((s, i) => (typeof ids[i] === "string" ? { ...s, id: ids[i] as string } : s)));
+      }
+    }
     else if (step === 4) result = await saveStep("hours", { businessHours, timezone });
     else if (step === 5) result = await saveStep("preferences", { featureAutotext, featureWednesday, featureReviews, googleReviewUrl });
 
@@ -708,6 +714,31 @@ function OnboardingFlow({
           {/* Step 4: Calendar & hours */}
           {step === 4 && (
             <StepContainer title={t("step4.title")} subtitle={t("step4.subtitle")} stepNum={4}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.8px] mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("step4.calendars")}</p>
+              <div className="rounded-xl mb-5 divide-y" style={{ backgroundColor: "var(--ob-surface)", border: "1px solid var(--ob-border)", borderColor: "var(--ob-border)" }}>
+                {[
+                  { name: t("step4.cal_linecatch"), sub: t("step4.cal_linecatch_sub"), on: true },
+                  { name: "Google Calendar", sub: t("step4.cal_soon_sub"), on: false },
+                  { name: "Apple Calendar", sub: t("step4.cal_soon_sub"), on: false },
+                  { name: "Outlook", sub: t("step4.cal_soon_sub"), on: false },
+                ].map((c) => (
+                  <div key={c.name} className="flex items-center gap-3 px-4 py-3" style={{ borderColor: "var(--ob-border)" }}>
+                    <span className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0" style={{ backgroundColor: c.on ? "var(--ob-accent-glow)" : "var(--ob-surface-hover)", color: c.on ? "var(--ob-accent)" : "var(--ob-text-muted)" }} aria-hidden>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-semibold" style={{ color: c.on ? "var(--ob-text)" : "var(--ob-text-secondary)" }}>{c.name}</span>
+                      <span className="block text-xs" style={{ color: "var(--ob-text-muted)" }}>{c.sub}</span>
+                    </span>
+                    {c.on ? (
+                      <span className="text-[11px] font-semibold" style={{ color: "var(--ob-accent)" }}>{t("step4.cal_on")}</span>
+                    ) : (
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5px] px-2 py-0.5 rounded-md" style={{ color: "var(--ob-text-muted)", backgroundColor: "var(--ob-surface-hover)" }}>{t("step4.cal_soon")}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.8px] mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("step4.hours")}</p>
               <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: "var(--ob-surface)", border: "1px solid var(--ob-border)" }}>
                 {DAYS.map((day) => {
                   const isOpen = !!businessHours[day];
@@ -761,7 +792,7 @@ function OnboardingFlow({
             </StepContainer>
           )}
 
-          {/* Step 6: Portfolio (saves as they go; skippable, editable later from the Portfolio tab) */}
+          {/* Step 6: Portfolio (saves as they go; skippable, editable later from the dashboard Portfolio button) */}
           {step === 6 && (
             <StepContainer title={t("step6.title")} subtitle={t("step6.subtitle")} stepNum={6}>
               <PortfolioSection bare />

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -9,15 +10,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { step, data } = body;
+  const body = await request.json().catch(() => ({}));
+  const { step } = body;
+  const data = body.data && typeof body.data === "object" ? body.data : {};
   const admin = createAdminClient();
 
   if (step === "who") {
     const update: Record<string, unknown> = {};
-    if (data.language) update.barber_language = data.language;
-    if (data.firstName !== undefined) update.first_name = data.firstName || null;
-    if (data.accentColor) update.accent_color = data.accentColor;
+    if (["en", "es", "pt"].includes(data.language)) update.barber_language = data.language;
+    if (data.firstName !== undefined) update.first_name = cleanText(data.firstName, 40);
+    // Only the offered accents are saved; a stale pick is ignored rather than failing the step.
+    const accent = cleanAccent(data.accentColor);
+    if (accent) update.accent_color = accent;
 
     const { error } = await admin
       .from("users")
@@ -32,12 +36,14 @@ export async function POST(request: Request) {
   }
 
   if (step === "business") {
+    const phone = cleanOptionalPhone(data.phone);
+    if (!phone.ok) return NextResponse.json({ error: phone.error }, { status: 400 });
     const { error } = await admin
       .from("users")
       .update({
-        business_name: data.businessName || null,
-        forwarding_number: data.phone || null,
-        email: data.email || user.email || null,
+        business_name: cleanText(data.businessName, 60),
+        forwarding_number: phone.value,
+        email: cleanText(data.email, 120) || user.email || null,
       })
       .eq("user_id", user.id);
 
@@ -49,47 +55,58 @@ export async function POST(request: Request) {
   }
 
   if (step === "services") {
+    if (!Array.isArray(data.services) || data.services.length > 30) {
+      return NextResponse.json({ error: "Invalid services" }, { status: 400 });
+    }
+    // Returns each row's id so the client can send it back on the next save (Back then Continue
+    // must update, not insert a second copy).
+    const ids: (string | null)[] = [];
     for (const svc of data.services) {
-      if (svc.id) {
+      const enabled = !!svc?.enabled;
+      const isNew = !svc?.id;
+      if (isNew && !enabled) {
+        ids.push(null);
+        continue;
+      }
+      const clean = cleanService(svc);
+      if (!clean) {
+        return NextResponse.json({ error: `Check the price and minutes for "${String(svc?.name || "a service").slice(0, 40)}"` }, { status: 400 });
+      }
+      const sortOrder = Number.isInteger(svc.sortOrder) ? svc.sortOrder : 0;
+      if (!isNew) {
+        // Scoped to this barber: a service id from someone else's shop matches nothing.
         const { error } = await admin
           .from("services")
-          .update({
-            name: svc.name,
-            price: svc.price,
-            duration_minutes: svc.duration,
-            is_active: svc.enabled,
-          })
-          .eq("id", svc.id);
-
+          .update({ name: clean.name, price: clean.price, duration_minutes: clean.duration, is_active: enabled, sort_order: sortOrder })
+          .eq("id", svc.id)
+          .eq("user_id", user.id);
         if (error) {
           console.error("[onboarding]", error);
           return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
         }
+        ids.push(svc.id);
       } else {
-        const { error } = await admin.from("services").insert({
-          user_id: user.id,
-          name: svc.name,
-          price: svc.price,
-          duration_minutes: svc.duration,
-          is_active: svc.enabled,
-          sort_order: svc.sortOrder || 0,
-        });
-
-        if (error) {
+        const { data: row, error } = await admin
+          .from("services")
+          .insert({ user_id: user.id, name: clean.name, price: clean.price, duration_minutes: clean.duration, is_active: true, sort_order: sortOrder })
+          .select("id")
+          .single();
+        if (error || !row) {
           console.error("[onboarding]", error);
           return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
         }
+        ids.push(row.id);
       }
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, ids });
   }
 
   if (step === "hours") {
-    const update: Record<string, unknown> = {
-      business_hours: data.businessHours,
-    };
-    if (data.timezone) {
+    const hours = cleanHours(data.businessHours);
+    if (!hours.ok) return NextResponse.json({ error: hours.error }, { status: 400 });
+    const update: Record<string, unknown> = { business_hours: hours.value };
+    if (typeof data.timezone === "string" && isTimeZone(data.timezone)) {
       update.timezone = data.timezone;
     }
 
@@ -110,7 +127,11 @@ export async function POST(request: Request) {
     if (typeof data.featureAutotext === "boolean") update.feature_autotext = data.featureAutotext;
     if (typeof data.featureWednesday === "boolean") update.feature_wednesday = data.featureWednesday;
     if (typeof data.featureReviews === "boolean") update.feature_reviews = data.featureReviews;
-    if (data.googleReviewUrl !== undefined) update.google_review_url = data.googleReviewUrl || null;
+    if (data.googleReviewUrl !== undefined) {
+      const url = cleanUrl(data.googleReviewUrl);
+      if (!url.ok) return NextResponse.json({ error: url.error }, { status: 400 });
+      update.google_review_url = url.value;
+    }
 
     const { error } = await admin
       .from("users")
@@ -173,4 +194,13 @@ export async function GET() {
     googleName,
     googleEmail,
   });
+}
+
+function isTimeZone(tz: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
 }

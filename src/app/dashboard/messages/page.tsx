@@ -1,417 +1,237 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { PhoneIcon, MegaphoneIcon, MessageIcon } from "../icons";
+import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { PageHeader, Segmented, Card, EmptyState, Avatar, SERIF } from "../ui";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { formatPhone, clientPathId } from "@/lib/clients";
+import { listTime, type Conversation, type BroadcastGroup } from "@/lib/conversations";
 
-type TwilioMessage = {
-  sid: string;
-  from: string;
-  to: string;
-  body: string;
-  status: string;
-  direction: string;
-  dateSent: string;
-};
-
-type Conversation = {
-  phone: string;
-  messages: TwilioMessage[];
-  lastTimestamp: string;
-  outbound: number;
-  inbound: number;
-};
+type Filter = "all" | "sent" | "received";
 
 export default function MessagesPage() {
-  const [messages, setMessages] = useState<TwilioMessage[]>([]);
-  const [barberPhone, setBarberPhone] = useState<string>("");
-  const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"conversations" | "broadcast">("conversations");
-  const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
-  const [broadcastMessage, setBroadcastMessage] = useState("");
-  const [broadcastSending, setBroadcastSending] = useState(false);
-  const [broadcastSent, setBroadcastSent] = useState(false);
-  const [recipientCount, setRecipientCount] = useState(0);
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <Messages />
+    </Suspense>
+  );
+}
+
+function Messages() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const [filter, setFilter] = useState<Filter>("all");
+  const [items, setItems] = useState<(Conversation | BroadcastGroup)[] | null>(null);
+  const [error, setError] = useState("");
+  const composing = params.get("compose") === "broadcast";
 
   useEffect(() => {
-    async function load() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: barber } = await supabase
-        .from("users")
-        .select("phone_number")
-        .eq("user_id", user.id)
-        .single();
-
-      if (barber?.phone_number) {
-        setBarberPhone(barber.phone_number);
-      }
-
-      try {
-        const res = await fetch("/api/messages");
-        if (res.ok) {
-          const data = await res.json();
-          setMessages(data.messages || []);
+    let cancelled = false;
+    fetch(`/api/messages?filter=${filter}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((d) => {
+        if (!cancelled) {
+          setItems(d.items);
+          setError("");
         }
-      } catch {
-        // silent
-      }
+      })
+      .catch(() => !cancelled && setError("Couldn't load messages. Pull to refresh or try again."));
+    return () => {
+      cancelled = true;
+    };
+  }, [filter]);
 
-      // Get broadcast recipient count (VIP + missed calls)
-      const { count: vipCount } = await supabase
-        .from("vip_clients")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("is_opted_in", true)
-        .is("opted_out_at", null);
+  const openComposer = (open: boolean) => router.replace(open ? "/dashboard/messages?compose=broadcast" : "/dashboard/messages", { scroll: false });
 
-      setRecipientCount(vipCount || 0);
-      setLoading(false);
-    }
-    load();
+  return (
+    <>
+      <PageHeader
+        title="Messages"
+        right={
+          <button
+            onClick={() => openComposer(true)}
+            className="h-10 px-3.5 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[13px] font-semibold flex items-center gap-1.5 hover:-translate-y-px transition-transform"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+            Broadcast
+          </button>
+        }
+      />
+
+      <Segmented
+        label="Filter messages"
+        value={filter}
+        onChange={(f) => {
+          setItems(null);
+          setFilter(f);
+        }}
+        options={[
+          { value: "all", label: "All" },
+          { value: "sent", label: "Sent" },
+          { value: "received", label: "Received" },
+        ]}
+      />
+
+      <div className="mt-4">
+        {error ? (
+          <EmptyState title="Something went wrong">{error}</EmptyState>
+        ) : items === null ? (
+          <PageSkeleton />
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>}
+            title={filter === "received" ? "No replies yet" : "No messages yet"}
+          >
+            Missed-call texts, confirmations and client replies show up here.
+          </EmptyState>
+        ) : (
+          <ul className="space-y-2">
+            {items.map((it) => (it.kind === "broadcast" ? <BroadcastRow key={it.id} g={it} /> : <ConversationRow key={it.phone} c={it} />))}
+          </ul>
+        )}
+      </div>
+
+      {composing && <BroadcastSheet onClose={() => openComposer(false)} />}
+    </>
+  );
+}
+
+function ConversationRow({ c }: { c: Conversation }) {
+  const missedCall = c.last.template_key === "missed_call" && !c.name;
+  return (
+    <li>
+      <Link href={`/dashboard/messages/${clientPathId(c.phone)}`} className="block group">
+        <Card className="px-4 py-3.5 flex items-center gap-3.5 transition-[border-color,transform] group-hover:border-[var(--accent-color)]/20 group-hover:-translate-y-px">
+          {missedCall ? (
+            <span className="w-10 h-10 shrink-0 rounded-xl bg-white/[0.05] text-white/45 flex items-center justify-center" aria-hidden>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72" /><path d="M15 3h6v6M21 3l-7 7" /></svg>
+            </span>
+          ) : (
+            <Avatar name={c.name} size={40} />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className={`text-[15px] truncate ${c.unreplied ? "font-bold" : "font-semibold"}`}>{c.name || formatPhone(c.phone)}</span>
+              <span className={`text-[11px] shrink-0 ${c.unreplied ? "text-[var(--accent-color)]" : "text-white/30"}`}>{listTime(c.last.created_at)}</span>
+            </div>
+            <p className={`text-[13px] truncate mt-0.5 ${c.unreplied ? "text-white/80" : "text-white/40"}`}>
+              {c.last.direction === "outbound" && <span className="text-white/30">You: </span>}
+              {c.last.body}
+            </p>
+          </div>
+          {c.unreplied && <span className="w-2 h-2 rounded-full bg-[var(--accent-color)] shrink-0" aria-label="New reply" />}
+        </Card>
+      </Link>
+    </li>
+  );
+}
+
+function BroadcastRow({ g }: { g: BroadcastGroup }) {
+  return (
+    <li>
+      <Card className="px-4 py-3.5 flex items-center gap-3.5 border-[var(--accent-color)]/15">
+        <span className="w-10 h-10 shrink-0 rounded-xl bg-[var(--accent-color)]/[0.12] text-[var(--accent-color)] flex items-center justify-center" aria-hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="flex items-center gap-1.5">
+              <span className="text-[15px] font-semibold">Broadcast</span>
+              <span className="text-[10px] font-bold px-1.5 py-[2px] rounded-[5px] text-[var(--accent-color)] bg-[var(--accent-color)]/[0.12]">{g.sent} sent</span>
+            </span>
+            <span className="text-[11px] text-white/30 shrink-0">{listTime(g.created_at)}</span>
+          </div>
+          <p className="text-[13px] text-white/40 truncate mt-0.5">{g.body}</p>
+        </div>
+      </Card>
+    </li>
+  );
+}
+
+function BroadcastSheet({ onClose }: { onClose: () => void }) {
+  const [text, setText] = useState("");
+  const [count, setCount] = useState<number | null>(null);
+  const [state, setState] = useState<"idle" | "confirm" | "sending" | "done">("idle");
+  const [result, setResult] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/broadcast")
+      .then((r) => r.json())
+      .then((d) => setCount(typeof d.total === "number" ? d.total : 0))
+      .catch(() => setCount(0));
   }, []);
 
-  function formatPhone(phone: string) {
-    if (phone.length === 12 && phone.startsWith("+1")) {
-      const n = phone.slice(2);
-      return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
-    }
-    return phone;
-  }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && state !== "sending" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, state]);
 
-  function formatDate(ts: string) {
-    const d = new Date(ts);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) {
-      return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-    } else if (days === 1) {
-      return "Yesterday";
-    } else if (days < 7) {
-      return d.toLocaleDateString("en-US", { weekday: "short" });
-    }
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-
-  function formatFullDate(ts: string) {
-    const d = new Date(ts);
-    return d.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }) + " · " + d.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  function getMessageLabel(body: string, direction: string): string {
-    if (direction.startsWith("inbound")) {
-      const lower = body.trim().toLowerCase();
-      if (["stop", "unsubscribe", "cancel", "end", "quit"].includes(lower)) return "Opt-out";
-      if (["start", "unstop"].includes(lower)) return "Re-subscribe";
-      if (lower === "late") return "Late broadcast";
-      if (["en", "es", "pt", "english", "spanish", "portuguese"].includes(lower)) return "Language change";
-      return "Client reply";
-    }
-    const lower = body.toLowerCase();
-    if (lower.includes("missed your call")) return "Auto-text";
-    if (lower.includes("loyalty") || lower.includes("$5 off") || lower.includes("discount")) return "Loyalty";
-    if (lower.includes("review") && lower.includes("google")) return "Review request";
-    if (lower.includes("reminder")) return "Reminder";
-    if (lower.includes("rescheduled") || lower.includes("new time")) return "Reschedule";
-    if (lower.includes("cancelled") || lower.includes("canceled")) return "Cancellation";
-    if (lower.includes("running late") || lower.includes("running behind")) return "Late notice";
-    if (lower.includes("booked") || lower.includes("confirmed")) return "Booking confirmed";
-    return "Outbound";
-  }
-
-  function getLabelColor(label: string): string {
-    switch (label) {
-      case "Auto-text": return "text-[var(--accent-color)] bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)]";
-      case "Loyalty": return "text-yellow-400 bg-yellow-400/10";
-      case "Review request": return "text-blue-400 bg-blue-400/10";
-      case "Reminder": return "text-stone-300 bg-stone-300/10";
-      case "Booking confirmed": return "text-[var(--accent-color)] bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)]";
-      case "Reschedule": return "text-orange-400 bg-orange-400/10";
-      case "Cancellation": return "text-red-400 bg-red-400/10";
-      case "Late notice": return "text-orange-400 bg-orange-400/10";
-      case "Opt-out": return "text-red-400 bg-red-400/10";
-      case "Re-subscribe": return "text-[var(--accent-color)] bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)]";
-      case "Late broadcast": return "text-orange-400 bg-orange-400/10";
-      case "Language change": return "text-blue-400 bg-blue-400/10";
-      case "Client reply": return "text-white/50 bg-white/[0.06]";
-      default: return "text-white/40 bg-white/[0.04]";
-    }
-  }
-
-  // Group messages into conversations by client phone
-  const conversations: Conversation[] = [];
-  const phoneMap = new Map<string, TwilioMessage[]>();
-
-  for (const msg of messages) {
-    const clientPhone = msg.from === barberPhone ? msg.to : msg.from;
-    if (clientPhone === barberPhone) continue;
-    const existing = phoneMap.get(clientPhone);
-    if (existing) {
-      existing.push(msg);
-    } else {
-      phoneMap.set(clientPhone, [msg]);
-    }
-  }
-
-  for (const [phone, phoneMsgs] of phoneMap) {
-    phoneMsgs.sort(
-      (a, b) => new Date(b.dateSent).getTime() - new Date(a.dateSent).getTime()
-    );
-    conversations.push({
-      phone,
-      messages: phoneMsgs,
-      lastTimestamp: phoneMsgs[0].dateSent,
-      outbound: phoneMsgs.filter((m) => m.from === barberPhone).length,
-      inbound: phoneMsgs.filter((m) => m.to === barberPhone).length,
-    });
-  }
-
-  conversations.sort(
-    (a, b) => new Date(b.lastTimestamp).getTime() - new Date(a.lastTimestamp).getTime()
-  );
-
-  const selectedConvo = selectedPhone
-    ? conversations.find((c) => c.phone === selectedPhone)
-    : null;
-
-  async function handleBroadcast() {
-    if (!broadcastMessage.trim()) return;
-    setBroadcastSending(true);
-
+  async function send() {
+    setState("sending");
+    setError("");
     try {
-      const res = await fetch("/api/broadcast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: broadcastMessage }),
-      });
-      if (res.ok) {
-        setBroadcastSent(true);
-        setBroadcastMessage("");
-        setTimeout(() => setBroadcastSent(false), 3000);
-      }
-    } catch {
-      // silently fail for now
-    } finally {
-      setBroadcastSending(false);
+      const res = await fetch("/api/broadcast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Broadcast failed");
+      setResult(`Sent to ${d.sent} of ${d.total} VIP${d.total === 1 ? "" : "s"}.`);
+      setState("done");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Broadcast failed");
+      setState("idle");
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16 px-4">
-        <PageSkeleton />
-      </div>
-    );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Toggle: Conversations / Broadcast */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => { setView("conversations"); setSelectedPhone(null); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
-            view === "conversations"
-              ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
-              : "bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
-          }`}
-        >
-          <MessageIcon className={view === "conversations" ? "text-[var(--accent-fg)]" : ""} />
-          Conversations
-        </button>
-        <button
-          onClick={() => { setView("broadcast"); setSelectedPhone(null); }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 ${
-            view === "broadcast"
-              ? "bg-[var(--accent-color)] text-[var(--accent-fg)]"
-              : "bg-white/[0.04] border border-white/[0.06] text-white/40 hover:text-white/60 hover:bg-white/[0.06]"
-          }`}
-        >
-          <MegaphoneIcon className={view === "broadcast" ? "text-[var(--accent-fg)]" : ""} />
-          Broadcast
-        </button>
-      </div>
-
-      {/* Conversations View */}
-      {view === "conversations" && !selectedPhone && (
-        <div className="space-y-2">
-          {conversations.length === 0 ? (
-            <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-8 text-center">
-              <MessageIcon className="w-8 h-8 text-white/10 mx-auto mb-3" />
-              <p className="text-sm text-white/20">
-                No messages yet. Automated texts will appear here.
-              </p>
-            </div>
-          ) : (
-            conversations.map((convo) => {
-              const lastMsg = convo.messages[0];
-              const isOutbound = lastMsg.from === barberPhone;
-              const label = getMessageLabel(lastMsg.body, lastMsg.direction);
-              const preview = lastMsg.body.length > 60
-                ? lastMsg.body.slice(0, 60) + "..."
-                : lastMsg.body;
-
-              return (
-                <button
-                  key={convo.phone}
-                  onClick={() => setSelectedPhone(convo.phone)}
-                  className="w-full bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 flex items-center gap-3 hover:bg-white/[0.07] transition-all duration-200 text-left group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0">
-                    <PhoneIcon className="text-white/30" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-white/80 group-hover:text-white transition-colors">
-                        {formatPhone(convo.phone)}
-                      </p>
-                      <span className="text-[11px] text-white/20">
-                        {formatDate(convo.lastTimestamp)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getLabelColor(label)}`}>
-                        {label}
-                      </span>
-                      <span className="text-xs text-white/20 truncate">
-                        {isOutbound ? "" : "← "}{preview}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-white/15 mt-0.5">
-                      {convo.messages.length} message{convo.messages.length !== 1 ? "s" : ""}
-                      {convo.inbound > 0 && ` · ${convo.inbound} inbound`}
-                    </p>
-                  </div>
-                  <svg className="w-4 h-4 text-white/10 group-hover:text-white/30 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      {/* Single Conversation Detail */}
-      {view === "conversations" && selectedConvo && (
-        <div className="space-y-3">
-          <button
-            onClick={() => setSelectedPhone(null)}
-            className="flex items-center gap-2 text-white/40 hover:text-white/60 transition-colors text-sm"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-            Back
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="bc-title">
+      <button aria-label="Close" className="absolute inset-0 bg-black/60" onClick={() => state !== "sending" && onClose()} />
+      <div className="relative w-full max-w-md bg-[#1B1A18] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(20px+env(safe-area-inset-bottom))]" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
+        <div className="flex items-center justify-between mb-1">
+          <h2 id="bc-title" className={`${SERIF} text-xl font-semibold`}>Broadcast</h2>
+          <button onClick={onClose} disabled={state === "sending"} aria-label="Close" className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
-
-          <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
-            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-white/[0.06]">
-              <div className="w-10 h-10 rounded-full bg-white/[0.06] flex items-center justify-center">
-                <PhoneIcon className="text-white/30" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white/90">{formatPhone(selectedConvo.phone)}</p>
-                <p className="text-xs text-white/25">
-                  {selectedConvo.messages.length} message{selectedConvo.messages.length !== 1 ? "s" : ""}
-                  {selectedConvo.inbound > 0 && ` · ${selectedConvo.inbound} inbound`}
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {[...selectedConvo.messages].reverse().map((msg) => {
-                const isOutbound = msg.from === barberPhone;
-                const label = getMessageLabel(msg.body, msg.direction);
-
-                return (
-                  <div
-                    key={msg.sid}
-                    className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-3 border ${
-                        isOutbound ? "" : "bg-white/[0.06] border-white/[0.08]"
-                      }`}
-                      style={isOutbound ? { backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent-color) 20%, transparent)' } : undefined}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getLabelColor(label)}`}>
-                          {label}
-                        </span>
-                        {msg.status === "delivered" && (
-                          <span className="text-[9px]" style={{ color: 'color-mix(in srgb, var(--accent-color) 50%, transparent)' }}>✓ Delivered</span>
-                        )}
-                        {msg.status === "failed" && (
-                          <span className="text-[9px] text-red-400/70">✗ Failed</span>
-                        )}
-                        {msg.status === "undelivered" && (
-                          <span className="text-[9px] text-red-400/70">✗ Undelivered</span>
-                        )}
-                      </div>
-                      <p className={`text-sm ${isOutbound ? "text-white/80" : "text-white/60"}`}>
-                        {msg.body}
-                      </p>
-                      <p className="text-[10px] text-white/20 mt-1.5">
-                        {formatFullDate(msg.dateSent)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
-      )}
+        <p className="text-[13px] text-white/45 mb-4">
+          {count === null ? "Counting VIPs…" : count === 0 ? "No VIPs have opted in yet." : `Goes to your ${count} opted-in VIP${count === 1 ? "" : "s"}.`}
+        </p>
 
-      {/* Broadcast View */}
-      {view === "broadcast" && (
-        <div className="space-y-3">
-          <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <MegaphoneIcon className="text-white/30" />
-              <h3 className="text-sm font-medium text-white/60">Mass message</h3>
-            </div>
-            <p className="text-xs text-white/25 mb-4">
-              Send a text to all your opted-in clients. Includes VIP members and missed-call contacts.
-            </p>
-
+        {state === "done" ? (
+          <>
+            <p className="text-sm text-[#A8C49A] font-medium">{result}</p>
+            <button onClick={onClose} className="mt-4 w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold">Done</button>
+          </>
+        ) : (
+          <>
+            <label htmlFor="bc-text" className="sr-only">Message</label>
             <textarea
-              value={broadcastMessage}
-              onChange={(e) => setBroadcastMessage(e.target.value)}
-              placeholder="e.g. Hey! I have openings this Saturday. Book now: ..."
+              id="bc-text"
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value.slice(0, 320));
+                if (state === "confirm") setState("idle");
+              }}
               rows={4}
-              maxLength={320}
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-sm text-white/80 placeholder:text-white/15 resize-none focus:outline-none focus:border-[var(--accent-color)] transition-colors"
+              placeholder="Slots open this week. Book here: …"
+              className="w-full rounded-xl bg-white/[0.04] border border-white/[0.1] px-4 py-3 text-[15px] placeholder-white/25 outline-none focus:border-[var(--accent-color)]/50 resize-none"
             />
-
-            <div className="flex items-center justify-between mt-3">
-              <span className="text-[11px] text-white/15">
-                {broadcastMessage.length}/320 · {recipientCount} recipient{recipientCount !== 1 ? "s" : ""}
-              </span>
-              <button
-                onClick={handleBroadcast}
-                disabled={!broadcastMessage.trim() || broadcastSending || recipientCount === 0}
-                className="bg-[var(--accent-color)] text-[var(--accent-fg)] text-sm font-semibold px-4 py-2 rounded-lg hover:brightness-90 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
-              >
-                {broadcastSending ? "Sending..." : broadcastSent ? "Sent!" : "Send to all"}
-              </button>
+            <div className="flex justify-between text-[11px] text-white/35 mt-1.5">
+              <span>&quot;Reply STOP to opt out&quot; is added automatically.</span>
+              <span>{text.length}/320</span>
             </div>
-          </div>
-        </div>
-      )}
+            {error && <p className="mt-3 text-[13px] text-[#F08A8A]">{error}</p>}
+            <button
+              onClick={() => (state === "confirm" ? send() : setState("confirm"))}
+              disabled={!text.trim() || !count || state === "sending"}
+              className="mt-4 w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold disabled:opacity-40 transition-opacity"
+            >
+              {state === "sending" ? "Sending…" : state === "confirm" ? `Tap again to text ${count} people` : "Send broadcast"}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,56 +1,43 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { CONSENT_TEXT } from "@/lib/consent";
+import { normalizePhone } from "@/lib/phone";
 
+/**
+ * Barber adds someone to their client list by hand.
+ * This saves a contact only: it does NOT opt them in to texts. Consent has to come from the client
+ * (VIP signup, booking checkbox, QR), so a typed-in number is never marketed to.
+ */
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { phone, name } = await request.json();
-
-  if (!phone || typeof phone !== "string") {
-    return NextResponse.json({ error: "Phone required" }, { status: 400 });
+  const { phone, name } = await request.json().catch(() => ({}));
+  const p = normalizePhone(typeof phone === "string" ? phone : "");
+  if (!p.valid) {
+    return NextResponse.json({ error: p.error }, { status: 400 });
   }
 
   const { data: existing } = await supabase
-    .from("vip_clients")
-    .select("id")
+    .from("contacts")
+    .select("caller_phone")
     .eq("user_id", user.id)
-    .eq("phone_number", phone)
-    .single();
+    .eq("caller_phone", p.e164)
+    .maybeSingle();
 
-  if (existing) {
-    return NextResponse.json({ ok: true, existed: true });
-  }
-
-  const { error } = await supabase.from("vip_clients").insert({
-    user_id: user.id,
-    phone_number: phone,
-    first_name: name || null,
-    is_opted_in: true,
-    opted_in_at: new Date().toISOString(),
-    consent_text: CONSENT_TEXT,
-    opt_in_source: "barber_added",
-    cut_count: 0,
-  });
+  const cleanName = typeof name === "string" && name.trim() ? name.trim().slice(0, 60) : null;
+  const { error } = await supabase
+    .from("contacts")
+    .upsert({ user_id: user.id, caller_phone: p.e164, ...(cleanName ? { name: cleanName } : {}) }, { onConflict: "user_id,caller_phone" });
 
   if (error) {
     console.error("[clients/add]", error);
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 
-  if (name) {
-    await supabase.from("contacts").upsert(
-      { user_id: user.id, caller_phone: phone, name },
-      { onConflict: "user_id,caller_phone" }
-    );
-  }
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, existed: !!existing, phone: p.e164 });
 }

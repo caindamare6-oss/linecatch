@@ -52,7 +52,14 @@
     "closed": "Cerrado",
     "timezone_label": "Zona horaria",
     "timezone_detecting": "Detectando...",
-    "timezone_hint": "Detectada automáticamente desde tu dispositivo."
+    "timezone_hint": "Detectada automáticamente desde tu dispositivo.",
+    "calendars": "Tus calendarios",
+    "cal_linecatch": "Calendario LineCatch",
+    "cal_linecatch_sub": "Incluido, sin configurar",
+    "cal_soon_sub": "Pronto podrás sincronizar tus horas ocupadas",
+    "cal_on": "Activo",
+    "cal_soon": "Pronto",
+    "hours": "Horario"
   },
   "step5": {
     "badge": "5",
@@ -71,7 +78,7 @@
   "step6": {
     "badge": "6",
     "title": "Tu portafolio",
-    "subtitle": "Agrega tus mejores cortes. Toca cualquier espacio vacío para subir una foto. Puedes cambiarlo cuando quieras desde la pestaña Portafolio."
+    "subtitle": "Agrega tus mejores cortes. Toca cualquier espacio vacío para subir una foto. Puedes cambiarlo cuando quieras con el botón Portafolio en tu panel."
   },
   "done": {
     "title": "¡Todo listo!",

@@ -324,101 +324,90 @@ export default function ManageBookingPage() {
     );
   }
 
+  const statusTone = booking.status === "confirmed" ? "var(--accent-color)" : booking.status === "completed" ? "#A8C49A" : "#F08A8A";
+  const price = booking.service ? Math.max(booking.service.price * (booking.partySize || 1) - (booking.rewardDue ? 5 : 0), 0) : 0;
+
   return (
-    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <div className="text-2xl font-bold text-white mb-1">
-            Line<span className="text-[var(--accent-color)]">Catch</span>
+    <div className="min-h-screen bg-[#121110] text-white flex flex-col">
+      <div className="w-full max-w-md mx-auto flex-1 flex flex-col px-6">
+        <header className="pt-6" style={{ animation: "ob-fade-up 450ms ease-out both" }}>
+          <div className="flex items-center gap-2.5 mb-5">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="2" aria-hidden><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" /></svg>
+            <span className="font-heading text-lg font-bold text-[var(--accent-color)]">LineCatch</span>
           </div>
-          <p className="text-stone-400 text-sm">Manage your appointment</p>
-        </div>
+          <h1 className="font-heading text-[26px] font-semibold tracking-[-0.5px]">Manage booking</h1>
+          <p className="text-[13px] text-white/40 mt-1">{displayName}</p>
+        </header>
 
-        <div className="bg-[#1B1A18] rounded-2xl p-6 border border-[#2C2A27]">
-          <div className="space-y-3 mb-6">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/50">Barber</span>
-              <span className="text-white/80">{displayName}</span>
-            </div>
+        <main className="flex-1 pb-6" style={{ animation: "ob-fade-up 450ms ease-out 120ms both" }}>
+          <span
+            className="mt-5 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-[12px] font-semibold uppercase tracking-[0.5px]"
+            style={{ color: statusTone, borderColor: `color-mix(in srgb, ${statusTone} 25%, transparent)`, background: `color-mix(in srgb, ${statusTone} 8%, transparent)` }}
+          >
+            <span className="w-2 h-2 rounded-full" style={{ background: statusTone }} />
+            {booking.status === "no_show" ? "Missed" : booking.status}
+          </span>
+
+          <div className="mt-4 rounded-[18px] bg-white/[0.025] border border-white/[0.07] px-5 py-1">
             {booking.service && (
-              <div className="flex justify-between text-sm">
-                <span className="text-white/50">Service</span>
-                <span className="text-white/80">
-                  {booking.service.name}
-                  {booking.partySize > 1 && ` · party of ${booking.partySize}`}
-                </span>
-              </div>
+              <Detail tone="var(--accent-color)" label="Service" title={`${booking.service.name}${booking.partySize > 1 ? ` · party of ${booking.partySize}` : ""}`} sub={`${booking.service.duration_minutes * (booking.partySize || 1)} min${price > 0 ? ` · $${price}` : ""}${booking.rewardDue ? " ($5 loyalty reward applied)" : ""}`} icon={<><path d="M6 3a3 3 0 100 6 3 3 0 000-6zM6 15a3 3 0 100 6 3 3 0 000-6z" /><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" /></>} />
             )}
-            {booking.service && booking.service.price > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-white/50">Price</span>
-                <span className="text-[var(--accent-color)]">
-                  ${Math.max(booking.service.price * (booking.partySize || 1) - (booking.rewardDue ? 5 : 0), 0)}
-                </span>
-              </div>
-            )}
-            {booking.rewardDue && (
-              <div className="flex justify-between text-sm">
-                <span className="text-white/50">Loyalty reward</span>
-                <span className="text-[var(--accent-color)] font-semibold">$5 off this visit</span>
-              </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span className="text-white/50">Date</span>
-              <span className="text-white/80">
-                {formatBarberDate(bt, booking.timezone)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-white/50">Time</span>
-              <span className="text-white/80">
-                {formatBarberTime(bt, booking.timezone)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-white/50">Status</span>
-              <span className={`font-medium ${
-                booking.status === "confirmed" ? "text-[var(--accent-color)]"
-                  : booking.status === "completed" ? "text-blue-400"
-                  : "text-red-400"
-              }`}>
-                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-              </span>
-            </div>
+            <Detail tone="#8FB8DE" label="Date" title={formatBarberDate(bt, booking.timezone)} icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
+            <Detail tone="#E0926A" label="Time" title={formatBarberTime(bt, booking.timezone)} icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} last />
           </div>
-
-          {tooLate && (
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-center">
-              <p className="text-yellow-400 text-sm font-medium mb-1">Too late to change</p>
-              <p className="text-yellow-400/60 text-xs">Your appointment is less than 3 hours away. Contact your barber directly.</p>
-            </div>
-          )}
-
-          {booking.status !== "confirmed" && (
-            <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 text-center">
-              <p className="text-white/40 text-sm">
-                This booking has been {booking.status}.
-              </p>
-            </div>
-          )}
 
           {canModify && (
-            <div className="flex gap-3">
+            <div className="mt-6 flex flex-col gap-2.5">
               <button
                 onClick={() => setView("reschedule")}
-                className="flex-1 py-3 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold text-sm hover:brightness-90 transition"
+                className="h-[52px] rounded-[14px] bg-[var(--accent-color)] text-[var(--accent-fg)] font-bold flex items-center justify-center gap-2 hover:shadow-[0_6px_24px_color-mix(in_srgb,var(--accent-color)_30%,transparent)] transition-shadow"
               >
                 Reschedule
               </button>
               <button
                 onClick={() => setView("confirm-cancel")}
-                className="flex-1 py-3 rounded-xl border border-red-500/30 text-red-400 font-semibold text-sm hover:bg-red-500/10 transition"
+                className="h-[52px] rounded-[14px] border-2 border-[#EF4444]/30 text-[#F08A8A] font-bold hover:border-[#EF4444]/50 transition-colors"
               >
-                Cancel
+                Cancel booking
               </button>
             </div>
           )}
-        </div>
+
+          {booking.status === "confirmed" && (
+            <p className={`mt-4 rounded-[10px] px-3.5 py-3 text-[12px] leading-relaxed border ${tooLate ? "bg-[#E0926A]/10 border-[#E0926A]/25 text-[#E0926A]" : "bg-[#E0926A]/[0.04] border-[#E0926A]/10 text-white/40"}`}>
+              {tooLate
+                ? "Your appointment is less than 3 hours away, so it can't be changed here. Call or text the shop."
+                : "Changes can be made up to 3 hours before your appointment. After that, contact the shop directly."}
+            </p>
+          )}
+
+          {booking.status !== "confirmed" && (
+            <p className="mt-6 text-center text-[13px] text-white/45">
+              {booking.status === "cancelled" ? "This booking was cancelled." : booking.status === "completed" ? "Thanks for coming in." : "This appointment was missed."}
+            </p>
+          )}
+        </main>
+
+        <footer className="py-6 text-center">
+          <a href={`/book/${booking.userId}`} className="text-[13px] text-[var(--accent-color)]/60 hover:text-[var(--accent-color)] transition-colors">
+            Book another appointment →
+          </a>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ icon, tone, label, title, sub, last }: { icon: React.ReactNode; tone: string; label: string; title: string; sub?: string; last?: boolean }) {
+  return (
+    <div className={`flex items-center gap-3.5 py-3.5 ${last ? "" : "border-b border-white/[0.05]"}`}>
+      <span className="w-[42px] h-[42px] rounded-xl flex items-center justify-center shrink-0" style={{ background: `color-mix(in srgb, ${tone} 8%, transparent)`, color: tone }} aria-hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">{icon}</svg>
+      </span>
+      <div className="min-w-0">
+        <p className="text-[12px] text-white/35">{label}</p>
+        <p className="text-[16px] font-semibold">{title}</p>
+        {sub && <p className="text-[13px] text-white/40">{sub}</p>}
       </div>
     </div>
   );

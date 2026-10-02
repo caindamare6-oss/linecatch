@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Plus, GripVertical, Trash2 } from "lucide-react";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "../ui";
 
 type Service = {
   id: string;
@@ -22,7 +23,7 @@ const PRESETS = [
   { name: "Kids Cut", duration: 25 },
 ];
 
-export default function ServicesPage() {
+function ServicesEditor() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,9 +34,6 @@ export default function ServicesPage() {
   const [userId, setUserId] = useState("");
   const [hasServices, setHasServices] = useState(false);
 
-  useEffect(() => {
-    loadServices();
-  }, []);
 
   async function loadServices() {
     const supabase = createClient();
@@ -133,6 +131,11 @@ export default function ServicesPage() {
     await supabase.from("services").delete().eq("id", id);
     setServices((prev) => prev.filter((s) => s.id !== id));
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load once on mount; state is set after the query resolves
+    loadServices();
+  }, []);
 
   if (loading) {
     return (
@@ -303,5 +306,14 @@ export default function ServicesPage() {
         off to temporarily remove them.
       </p>
     </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <>
+      <PageHeader title="Services" back="/dashboard/settings" sub="What clients can book, and for how much." />
+      <ServicesEditor />
+    </>
   );
 }

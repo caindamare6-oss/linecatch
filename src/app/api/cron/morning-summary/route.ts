@@ -14,9 +14,12 @@ export async function GET(request: Request) {
   const now = new Date();
   let sent = 0;
 
+  // Housekeeping: client recognition tokens past their expiry are useless; drop them.
+  await supabase.from("client_sessions").delete().lt("expires_at", new Date().toISOString());
+
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, business_name, timezone, is_locked_out, is_active, barber_language")
+    .select("user_id, phone_number, forwarding_number, business_name, timezone, is_locked_out, is_active, barber_language")
     .eq("is_active", true)
     .eq("is_locked_out", false);
 
@@ -66,7 +69,8 @@ export async function GET(request: Request) {
     const msg = `${cutsToday} cut${cutsToday > 1 ? "s" : ""} today, first at ${firstTime}. ${rewardLine}`.trim();
 
     try {
-      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "morning_summary", language: barber.barber_language || "en", audience: "barber" });
+      if (!barber.forwarding_number) continue;
+      await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "morning_summary", language: barber.barber_language || "en", audience: "barber" });
       sent++;
     } catch (err) {
       console.error(`Morning summary failed for ${barber.user_id}:`, err);

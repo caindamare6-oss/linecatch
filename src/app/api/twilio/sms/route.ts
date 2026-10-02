@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateTwilioRequest } from "@/lib/twilio";
+import { barberLocalToUTC } from "@/lib/format";
+import { localParts } from "@/lib/revenue";
+import { issueToken } from "@/lib/client-session";
+
+const AUTO_REPLY_COOLDOWN_HOURS = 12;
 
 const STOP_KEYWORDS_EN = ["stop", "unsubscribe", "cancel", "end", "quit"];
 const STOP_KEYWORDS_ES = ["parar", "alto", "salir", "cancelar"];
@@ -46,18 +51,34 @@ export async function POST(request: Request) {
 
   const from = params.From;
   const to = params.To;
-  const body = (params.Body || "").trim().toLowerCase();
+  const rawBody = (params.Body || "").trim();
+  const body = rawBody.toLowerCase();
 
   const supabase = createAdminClient();
 
   const { data: barber } = await supabase
     .from("users")
-    .select("user_id, is_locked_out")
+    .select("user_id, is_locked_out, forwarding_number, timezone")
     .eq("phone_number", to)
     .single();
 
   if (!barber) {
     return twimlResponse("");
+  }
+
+  // The barber texting their own LineCatch number (e.g. LATE) isn't a client conversation.
+  const fromBarber = !!barber.forwarding_number && from === barber.forwarding_number;
+  if (!fromBarber && rawBody) {
+    await supabase.from("sms_log").insert({
+      user_id: barber.user_id,
+      direction: "inbound",
+      from_number: from,
+      to_number: to,
+      body: rawBody.slice(0, 1600),
+      status: "received",
+      template_key: null,
+      language: null,
+    });
   }
 
   // STOP/HELP always process regardless of lockout (carrier obligations)
@@ -116,20 +137,21 @@ export async function POST(request: Request) {
     return twimlResponse(OPT_IN_REPLIES[lang] || OPT_IN_REPLIES.en);
   }
 
-  // LATE — barber broadcasts delay to today's booked clients
-  if (body === "late" && !barber.is_locked_out) {
-    const now = new Date();
-    const dayStart = new Date(now);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(now);
-    dayEnd.setHours(23, 59, 59, 999);
+  // LATE — the barber (texting from their own cell) warns today's clients they're behind.
+  // A client texting "late" about themselves must never trigger this.
+  if (body === "late" && fromBarber && !barber.is_locked_out) {
+    const tz = barber.timezone || "America/New_York";
+    const { year, month, day } = localParts(new Date(), tz);
+    const today = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const dayStart = barberLocalToUTC(today, "00:00", tz);
+    const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000 - 1);
 
     const { data: todayBookings } = await supabase
       .from("bookings")
       .select("customer_phone")
       .eq("user_id", barber.user_id)
       .eq("status", "confirmed")
-      .gte("booking_time", dayStart.toISOString())
+      .gte("booking_time", new Date().toISOString())
       .lte("booking_time", dayEnd.toISOString());
 
     if (todayBookings && todayBookings.length > 0) {
@@ -192,7 +214,62 @@ export async function POST(request: Request) {
     return twimlResponse(LANGUAGE_CHANGE_REPLIES[newLang] || LANGUAGE_CHANGE_REPLIES.en);
   }
 
+  if (!fromBarber && !barber.is_locked_out) {
+    const reply = await autoReply(supabase, barber.user_id, from);
+    if (reply) return twimlResponse(reply);
+  }
+
   return twimlResponse("");
+}
+
+/**
+ * A client texted something that isn't a keyword. Point them at their booking (or the booking page)
+ * so "can I move my 3pm?" gets an answer even while the barber is cutting. Once per 12 hours per client.
+ */
+async function autoReply(supabase: ReturnType<typeof createAdminClient>, userId: string, phone: string): Promise<string | null> {
+  const since = new Date(Date.now() - AUTO_REPLY_COOLDOWN_HOURS * 60 * 60 * 1000).toISOString();
+  const [{ data: vip }, { data: optOut }, { count: recent }] = await Promise.all([
+    supabase.from("vip_clients").select("opted_out_at").eq("user_id", userId).eq("phone_number", phone).maybeSingle(),
+    supabase.from("opt_outs").select("caller_phone").eq("user_id", userId).eq("caller_phone", phone).maybeSingle(),
+    supabase.from("sms_log").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("to_number", phone).eq("template_key", "auto_reply_inbound").gte("created_at", since),
+  ]);
+  if (optOut || vip?.opted_out_at || (recent ?? 0) > 0) return null;
+
+  const app = process.env.NEXT_PUBLIC_APP_URL;
+  const { data: next } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("customer_phone", phone)
+    .eq("status", "confirmed")
+    .gt("booking_time", new Date().toISOString())
+    .order("booking_time", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  let link: string;
+  if (next) {
+    link = `${app}/manage/${next.id}`;
+  } else {
+    // Texting from the phone proves who they are, so the link can recognize them.
+    const token = await issueToken(supabase, { userId, phone, kind: "link", verified: true });
+    link = `${app}/book/${userId}?src=sms_reply${token ? `&t=${token}` : ""}`;
+  }
+
+  const { buildSMS } = await import("@/lib/messages");
+  const sms = await buildSMS({ userId, templateKey: "auto_reply_inbound", clientPhone: phone, vars: { link } });
+  if (!sms) return null;
+
+  // Logged like any other outbound text so it shows in the thread and counts toward the cooldown.
+  await supabase.from("sms_log").insert({
+    user_id: userId,
+    to_number: phone,
+    template_key: "auto_reply_inbound",
+    language: sms.language,
+    body: sms.body,
+    status: "sent",
+    sent_at: new Date().toISOString(),
+  });
+  return sms.body;
 }
 
 async function handleOptOut(

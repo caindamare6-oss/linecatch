@@ -41,12 +41,12 @@ export async function GET(request: Request) {
   const barberIds = [...new Set(bookings.map((b) => b.user_id))];
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, is_locked_out, is_active, barber_language")
+    .select("user_id, phone_number, forwarding_number, is_locked_out, is_active, barber_language")
     .in("user_id", barberIds);
 
-  const barberMap: Record<string, { phone_number: string; is_locked_out: boolean; is_active: boolean; barber_language: string | null }> = {};
+  const barberMap: Record<string, { phone_number: string; forwarding_number: string | null; is_locked_out: boolean; is_active: boolean; barber_language: string | null }> = {};
   for (const b of barbers || []) {
-    barberMap[b.user_id] = { phone_number: b.phone_number, is_locked_out: b.is_locked_out, is_active: b.is_active, barber_language: b.barber_language };
+    barberMap[b.user_id] = { phone_number: b.phone_number, forwarding_number: b.forwarding_number, is_locked_out: b.is_locked_out, is_active: b.is_active, barber_language: b.barber_language };
   }
 
   for (const booking of bookings) {
@@ -73,7 +73,8 @@ export async function GET(request: Request) {
     const msg = `Done with ${clientName}? Tap to complete: ${link}`;
 
     try {
-      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: booking.user_id, templateKey: "completion_nudge", language: barber.barber_language || "en", audience: "barber" });
+      if (!barber.forwarding_number) continue;
+      await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: msg, userId: booking.user_id, templateKey: "completion_nudge", language: barber.barber_language || "en", audience: "barber" });
       sent++;
     } catch (err) {
       console.error(`Completion nudge failed for booking ${booking.id}:`, err);

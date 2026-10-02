@@ -1,285 +1,94 @@
 import { createClient } from "@/lib/supabase/server";
-import { StatsClient } from "@/app/dashboard/stats-client";
+import { monthBounds, monthRevenue, greetingFor } from "@/lib/revenue";
+import { HomeClient } from "@/app/dashboard/home-client";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) return null;
-
-  const weekAgo = new Date(
-    Date.now() - 7 * 24 * 60 * 60 * 1000
-  ).toISOString();
-
-  const { data: weekCalls } = await supabase
-    .from("missed_calls_log")
-    .select("call_id, caller_phone, status, timestamp")
-    .eq("user_id", user.id)
-    .gte("timestamp", weekAgo)
-    .order("timestamp", { ascending: false });
-
-  const { data: weekClicks } = await supabase
-    .from("link_clicks")
-    .select("click_id, call_id, clicked_at")
-    .gte("clicked_at", weekAgo);
-
-  const userCallIds = new Set(
-    (weekCalls || []).map((c) => c.call_id)
-  );
-  const relevantClicks = (weekClicks || []).filter((c) =>
-    userCallIds.has(c.call_id)
-  );
 
   const { data: barber } = await supabase
     .from("users")
-    .select("first_name, business_name, avg_booking_value, timezone, google_review_url")
+    .select("first_name, business_name, timezone, google_review_url, feature_wednesday, feature_autotext, is_locked_out")
     .eq("user_id", user.id)
     .single();
 
-  // Check if barber has an active sticker
-  const { data: activeSticker } = await supabase
-    .from("sticker_codes")
-    .select("code")
-    .eq("owner_user_id", user.id)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-
-  const hasActiveSticker = !!activeSticker;
-
-  const avgBookingValue = barber?.avg_booking_value || 35;
-  const barberTimezone = barber?.timezone || "America/New_York";
-  const googleReviewUrl: string | null = barber?.google_review_url || null;
-  const barberFirstName: string = barber?.first_name || "";
-
-  // Fetch all-time caller phones to determine new vs repeat
-  const { data: allTimeCalls } = await supabase
-    .from("missed_calls_log")
-    .select("caller_phone, timestamp")
-    .eq("user_id", user.id)
-    .lt("timestamp", weekAgo)
-    .order("timestamp", { ascending: true });
-
-  const previousCallers = new Set(
-    (allTimeCalls || []).map((c) => c.caller_phone)
-  );
-
-  // Total clients = unique phones from missed calls + VIP clients (booking/QR signups)
-  const thisWeekPhones = new Set((weekCalls || []).map((c) => c.caller_phone));
-  const allClientsSet = new Set([...previousCallers, ...thisWeekPhones]);
-
-  const { data: vipClients } = await supabase
-    .from("vip_clients")
-    .select("phone_number, first_name, is_opted_in")
-    .eq("user_id", user.id);
-
-  for (const vip of vipClients || []) {
-    allClientsSet.add(vip.phone_number);
-  }
-
-  const totalClients = allClientsSet.size;
-
-  // Fetch saved contact names
-  const { data: contacts } = await supabase
-    .from("contacts")
-    .select("caller_phone, name")
-    .eq("user_id", user.id);
-
-  const contactMap: Record<string, string> = {};
-  // Use VIP first_name as default name
-  for (const vip of vipClients || []) {
-    if (vip.first_name) contactMap[vip.phone_number] = vip.first_name;
-  }
-  // Manual contact names override VIP names
-  for (const c of contacts || []) {
-    if (c.name) contactMap[c.caller_phone] = c.name;
-  }
-
-  // Build VIP opt-in status map
-  const vipStatusMap: Record<string, boolean> = {};
-  for (const vip of vipClients || []) {
-    vipStatusMap[vip.phone_number] = vip.is_opted_in === true;
-  }
-
-  // Wednesday Engine: count targeted clients (same query as retention-loop cron)
+  const tz = barber?.timezone || "America/New_York";
   const now = new Date();
-  const fourteenDaysAgo = new Date(now);
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-  const twentyEightDaysAgo = new Date(now);
-  twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
-  const twentyOneDaysAgo = new Date(now);
-  twentyOneDaysAgo.setDate(twentyOneDaysAgo.getDate() - 21);
+  const bounds = monthBounds(now, tz);
+  const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
+  const day = 86_400_000;
+  const iso = (ms: number) => new Date(ms).toISOString().split("T")[0];
 
-  const { data: wednesdayCandidates } = await supabase
-    .from("vip_clients")
-    .select("id, phone_number, last_reengagement_sent_at")
-    .eq("user_id", user.id)
-    .eq("is_opted_in", true)
-    .is("opted_out_at", null)
-    .gte("last_cut_date", twentyEightDaysAgo.toISOString().split("T")[0])
-    .lte("last_cut_date", fourteenDaysAgo.toISOString().split("T")[0]);
-
-  let wednesdayTargeted = 0;
-  for (const c of wednesdayCandidates || []) {
-    if (c.last_reengagement_sent_at && new Date(c.last_reengagement_sent_at) > twentyOneDaysAgo) continue;
-    const { data: activeBooking } = await supabase
+  const [sticker, services, completed, vipCount, caughtThisWeek, wedCandidates, upcoming, feed, suppressed] = await Promise.all([
+    supabase.from("sticker_codes").select("code").eq("owner_user_id", user.id).eq("status", "active").limit(1).maybeSingle(),
+    supabase.from("services").select("id, price").eq("user_id", user.id),
+    supabase
       .from("bookings")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("customer_phone", c.phone_number)
-      .eq("status", "confirmed")
-      .gt("booking_time", now.toISOString())
-      .limit(1)
-      .single();
-    if (!activeBooking) wednesdayTargeted++;
-  }
-
-  // VIPs: count only opted-in clients
-  const { count: loyaltyActiveClients } = await supabase
-    .from("vip_clients")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("is_opted_in", true);
-
-  // Missed Call Auto-Respond: calls saved this week
-  const { count: callsSavedThisWeek } = await supabase
-    .from("missed_calls")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("sms_dispatched", true)
-    .gte("received_at", weekAgo);
-
-  // Monthly revenue: completed bookings this calendar month
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const { count: monthlyCompletedCount } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "completed")
-    .gte("booking_time", monthStart);
-
-  const monthlyRevenue = (monthlyCompletedCount || 0) * avgBookingValue;
-
-  // Last month's revenue for comparison
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
-  const { count: lastMonthCount } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "completed")
-    .gte("booking_time", lastMonthStart)
-    .lte("booking_time", lastMonthEnd);
-  const lastMonthRevenue = (lastMonthCount || 0) * avgBookingValue;
-
-  // Weekly breakdown for sparkline (4 weeks of current month)
-  const weeklyRevenue: number[] = [];
-  for (let w = 0; w < 4; w++) {
-    const wStart = new Date(now.getFullYear(), now.getMonth(), 1 + w * 7);
-    const wEnd = new Date(now.getFullYear(), now.getMonth(), Math.min(1 + (w + 1) * 7, new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() + 1));
-    const { count: wCount } = await supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
+      .select("booking_time, service_id")
       .eq("user_id", user.id)
       .eq("status", "completed")
-      .gte("booking_time", wStart.toISOString())
-      .lt("booking_time", wEnd.toISOString());
-    weeklyRevenue.push((wCount || 0) * avgBookingValue);
-  }
+      .gte("booking_time", bounds.prevStart.toISOString())
+      .lt("booking_time", bounds.end.toISOString()),
+    supabase.from("vip_clients").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_opted_in", true).is("opted_out_at", null),
+    supabase.from("missed_calls").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("sms_dispatched", true).gte("received_at", weekAgo),
+    // Same window as the Wednesday cron: last cut 14–28 days ago, not nudged in 21 days.
+    supabase
+      .from("vip_clients")
+      .select("phone_number, last_reengagement_sent_at")
+      .eq("user_id", user.id)
+      .eq("is_opted_in", true)
+      .is("opted_out_at", null)
+      .gte("last_cut_date", iso(now.getTime() - 28 * day))
+      .lte("last_cut_date", iso(now.getTime() - 14 * day)),
+    supabase.from("bookings").select("customer_phone").eq("user_id", user.id).eq("status", "confirmed").gt("booking_time", now.toISOString()),
+    supabase
+      .from("activity_feed")
+      .select("id, event_type, client_name, description, metadata, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("missed_calls")
+      .select("id, from_number, received_at, suppressed_reason")
+      .eq("user_id", user.id)
+      .eq("sms_dispatched", false)
+      .gte("received_at", weekAgo)
+      .order("received_at", { ascending: false })
+      .limit(10),
+  ]);
 
-  // Mid-week cuts filled: completed bookings from cron_reengagement this month
-  const { count: midWeekCutsCount } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "completed")
-    .eq("source", "cron_reengagement")
-    .gte("booking_time", monthStart);
+  const prices = Object.fromEntries((services.data || []).map((s) => [s.id, Number(s.price)]));
+  const revenue = monthRevenue(completed.data || [], prices, tz, now);
 
-  // Loyalty claims this month from activity_feed
-  const { count: loyaltyClaimsCount } = await supabase
-    .from("activity_feed")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("event_type", "loyalty_claimed")
-    .gte("created_at", monthStart);
+  const booked = new Set((upcoming.data || []).map((b) => b.customer_phone));
+  const nudgeCutoff = now.getTime() - 21 * day;
+  const wednesdayTargeted = (wedCandidates.data || []).filter(
+    (c) => !booked.has(c.phone_number) && !(c.last_reengagement_sent_at && new Date(c.last_reengagement_sent_at).getTime() > nudgeCutoff)
+  ).length;
 
-  // Activity feed: latest 20 events
-  const { data: activityFeed } = await supabase
-    .from("activity_feed")
-    .select("id, event_type, client_name, client_phone, description, metadata, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  // Fetch suppressed missed calls (no consent / opted out)
-  const { data: suppressedCalls } = await supabase
-    .from("missed_calls")
-    .select("id, from_number, received_at, suppressed_reason")
-    .eq("user_id", user.id)
-    .eq("sms_dispatched", false)
-    .order("received_at", { ascending: false })
-    .limit(10);
-
-  // Completed bookings count (all time, for the grid)
-  const { count: totalCompletedCount } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "completed");
-
-  const bookingLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.app"}/book/${user.id}`;
+  const firstName = barber?.first_name?.trim() || "";
+  const dateLine = now.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: tz });
 
   return (
-    <StatsClient
-      barberFirstName={barberFirstName}
-      hasActiveSticker={hasActiveSticker}
-      bookingLink={bookingLink}
-      weeklyRevenue={weeklyRevenue}
-      lastMonthRevenue={lastMonthRevenue}
-      totalCompleted={totalCompletedCount || 0}
-      calls={(weekCalls || []).map((c) => ({
-        call_id: c.call_id,
-        caller_phone: c.caller_phone,
-        status: c.status,
-        timestamp: c.timestamp,
-      }))}
-      clicks={relevantClicks.map((c) => ({
-        click_id: c.click_id,
-        call_id: c.call_id,
-        clicked_at: c.clicked_at,
-      }))}
-      avgBookingValue={avgBookingValue}
-      previousCallers={Array.from(previousCallers)}
-      totalClients={totalClients}
-      allClientPhones={Array.from(allClientsSet)}
-      contactNames={contactMap}
-      vipStatus={vipStatusMap}
-      suppressedCalls={(suppressedCalls || []).map((c) => ({
-        id: c.id,
-        from_number: c.from_number,
-        received_at: c.received_at,
-        suppressed_reason: c.suppressed_reason,
-      }))}
+    <HomeClient
+      greeting={`${greetingFor(now, tz)}${firstName ? `, ${firstName}` : ""}`}
+      dateLine={dateLine}
+      paused={!!barber?.is_locked_out}
+      hasActiveSticker={!!sticker.data}
+      bookingLink={`${process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.app"}/book/${user.id}`}
+      revenue={revenue}
+      vips={vipCount.count || 0}
+      callsCaught={caughtThisWeek.count || 0}
+      autotextOn={barber?.feature_autotext !== false}
+      wednesdayOn={barber?.feature_wednesday !== false}
       wednesdayTargeted={wednesdayTargeted}
-      timezone={barberTimezone}
-      loyaltyActiveClients={loyaltyActiveClients || 0}
-      callsSavedThisWeek={callsSavedThisWeek || 0}
-      googleReviewUrl={googleReviewUrl}
-      monthlyRevenue={monthlyRevenue}
-      monthlyCompleted={monthlyCompletedCount || 0}
-      midWeekCutsFilled={midWeekCutsCount || 0}
-      loyaltyClaims={loyaltyClaimsCount || 0}
-      activityFeed={(activityFeed || []).map((e) => ({
-        id: e.id,
-        event_type: e.event_type,
-        client_name: e.client_name,
-        description: e.description,
-        created_at: e.created_at,
-      }))}
+      reviewsOn={!!barber?.google_review_url}
+      feed={feed.data || []}
+      suppressed={suppressed.data || []}
+      timezone={tz}
     />
   );
 }

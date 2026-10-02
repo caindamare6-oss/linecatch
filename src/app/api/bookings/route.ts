@@ -209,7 +209,7 @@ export async function POST(request: Request) {
     client_name: clientName,
     client_phone: normalized,
     description: `${clientName || "New client"} booked ${serviceLabel}`,
-    metadata: { booking_id: booking.id, group_id: groupId, party_size: partySize, service_name: service.name, source: source || "direct" },
+    metadata: { booking_id: booking.id, group_id: groupId, party_size: partySize, service_name: service.name, price: Number(service.price) * partySize, source: source || "direct" },
   });
 
   // Get barber info for confirmation SMS and barber notify

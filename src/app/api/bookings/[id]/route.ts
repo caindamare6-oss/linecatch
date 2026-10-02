@@ -121,7 +121,7 @@ export async function PATCH(
 
   const { data: barber } = await supabase
     .from("users")
-    .select("phone_number, business_name, first_name, booking_link, google_review_url, feature_reviews, timezone, business_hours")
+    .select("phone_number, forwarding_number, business_name, first_name, booking_link, google_review_url, feature_reviews, timezone, business_hours")
     .eq("user_id", booking.user_id)
     .single();
 
@@ -223,6 +223,22 @@ export async function PATCH(
     return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
   }
 
+  // Barber marks a client who never showed. No stamp, no texts; reminders that haven't gone out are dropped.
+  if (action === "no_show") {
+    if (!isOwner) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+    if (new Date(booking.booking_time).getTime() > Date.now()) {
+      return NextResponse.json({ error: "You can only mark a no-show after the appointment time" }, { status: 400 });
+    }
+    const { error: nsError } = await supabase.from("bookings").update({ status: "no_show" }).eq("id", id).eq("status", "confirmed");
+    if (nsError) {
+      console.error("[bookings/no_show]", nsError);
+      return NextResponse.json({ error: "Couldn't update this booking. Please try again." }, { status: 500 });
+    }
+    await supabase.from("booking_reminders").delete().eq("booking_id", id).in("reminder_type", ["24h", "2h"]);
+    await closeOutVisit();
+    return NextResponse.json({ success: true, status: "no_show" });
+  }
+
   if (action === "cancel") {
     const { error: cancelError } = await supabase
       .from("bookings")
@@ -272,9 +288,9 @@ export async function PATCH(
             time: formatCasualTime(oldTime, tz),
           },
         });
-        if (cancelNotifySms) {
+        if (cancelNotifySms && barber.forwarding_number) {
           try {
-            await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: cancelNotifySms.body, userId: booking.user_id, templateKey: "barber_cancel_notify", language: cancelNotifySms.language, audience: "barber" });
+            await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: cancelNotifySms.body, userId: booking.user_id, templateKey: "barber_cancel_notify", language: cancelNotifySms.language, audience: "barber" });
           } catch (err) {
             console.error("Barber cancel notify failed:", err);
           }
@@ -360,9 +376,9 @@ export async function PATCH(
             time: timeStr,
           },
         });
-        if (rescheduleNotifySms) {
+        if (rescheduleNotifySms && barber.forwarding_number) {
           try {
-            await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: rescheduleNotifySms.body, userId: booking.user_id, templateKey: "barber_reschedule_notify", language: rescheduleNotifySms.language, audience: "barber" });
+            await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: rescheduleNotifySms.body, userId: booking.user_id, templateKey: "barber_reschedule_notify", language: rescheduleNotifySms.language, audience: "barber" });
           } catch (err) {
             console.error("Barber reschedule notify failed:", err);
           }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { barberLocalToUTC } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { resolveTemplate, interpolateTemplate } from "@/lib/messages";
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
 
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, business_name, timezone, is_locked_out, is_active, avg_booking_value, barber_language")
+    .select("user_id, phone_number, forwarding_number, business_name, timezone, is_locked_out, is_active, avg_booking_value, barber_language")
     .eq("is_active", true)
     .eq("is_locked_out", false);
 
@@ -28,25 +29,28 @@ export async function GET(request: Request) {
     const localTime = new Date(now.toLocaleString("en-US", { timeZone: tz }));
     if (localTime.getDay() !== 0 || localTime.getHours() !== 9) continue;
 
-    const weekStart = new Date(localTime);
-    weekStart.setDate(weekStart.getDate() - 7);
-    weekStart.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(localTime);
-    weekEnd.setHours(0, 0, 0, 0);
+    // Last 7 days, midnight to midnight on the barber's wall clock.
+    const ymd = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: tz });
+    const weekEnd = barberLocalToUTC(ymd(now), "00:00", tz);
+    const weekStart = barberLocalToUTC(ymd(new Date(weekEnd.getTime() - 6.5 * 86_400_000)), "00:00", tz);
 
-    const { count: cutsCount } = await supabase
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", barber.user_id)
-      .eq("status", "completed")
-      .gte("booking_time", weekStart.toISOString())
-      .lt("booking_time", weekEnd.toISOString());
+    const [{ data: done }, { data: services }] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select("service_id")
+        .eq("user_id", barber.user_id)
+        .eq("status", "completed")
+        .gte("booking_time", weekStart.toISOString())
+        .lt("booking_time", weekEnd.toISOString()),
+      supabase.from("services").select("id, price").eq("user_id", barber.user_id),
+    ]);
 
-    const cuts = cutsCount || 0;
+    const cuts = done?.length || 0;
     if (cuts === 0) continue;
 
-    const avgValue = barber.avg_booking_value || 35;
-    const revenue = (cuts * avgValue).toFixed(0);
+    // Actual service prices, so the recap matches the dashboard.
+    const prices = new Map((services || []).map((sv) => [sv.id, Number(sv.price)]));
+    const revenue = String(Math.round((done || []).reduce((sum, b) => sum + (prices.get(b.service_id) ?? barber.avg_booking_value ?? 35), 0)));
 
     const { count: newVips } = await supabase
       .from("vip_clients")
@@ -57,7 +61,7 @@ export async function GET(request: Request) {
 
     const { count: missedCaught } = await supabase
       .from("missed_calls_log")
-      .select("id", { count: "exact", head: true })
+      .select("call_id", { count: "exact", head: true })
       .eq("user_id", barber.user_id)
       .eq("status", "sms_sent")
       .gte("timestamp", weekStart.toISOString())
@@ -78,7 +82,7 @@ export async function GET(request: Request) {
 
     const barberName = barberProfile?.first_name || barber.business_name || "Boss";
 
-    const template = await resolveTemplate(barber.user_id, "weekly_report", "en");
+    const template = await resolveTemplate(barber.user_id, "weekly_report", barber.barber_language || "en");
     const msg = template
       ? interpolateTemplate(template, {
           barber_name: barberName,
@@ -91,7 +95,8 @@ export async function GET(request: Request) {
       : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, ${newVips || 0} new VIPs, ${missedCaught || 0} missed calls caught, ${reviewsSent || 0} review requests sent.`;
 
     try {
-      await sendSMS({ to: barber.phone_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "weekly_report", language: barber.barber_language || "en", audience: "barber" });
+      if (!barber.forwarding_number) continue;
+      await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "weekly_report", language: barber.barber_language || "en", audience: "barber" });
       sent++;
     } catch (err) {
       console.error(`Weekly report failed for ${barber.user_id}:`, err);
