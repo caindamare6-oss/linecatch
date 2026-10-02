@@ -115,7 +115,7 @@ export default async function StickerPage({
         >
           {t("claim.setup_cta")}
         </a>
-        <a href={`/s/${sticker.code}/start`} className="mt-3 block text-center text-[13px] text-stone-400 hover:text-stone-200">
+        <a href={`/s/${sticker.code}/start?mode=in`} className="mt-3 block text-center text-[13px] text-stone-400 hover:text-stone-200">
           {t("claim.setup_signin")}
         </a>
         <p className="mt-5 text-center font-mono tracking-[2px] text-[12px] text-stone-600">{sticker.code}</p>

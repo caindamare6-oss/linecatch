@@ -5,6 +5,7 @@ import { resolveTemplate } from "@/lib/messages";
 import { cookies } from "next/headers";
 import { ensureReferralCode } from "@/lib/referrals";
 import { LANG_COOKIE } from "@/lib/i18n-shared";
+import { claimOnSignIn, STICKER_COOKIE } from "@/lib/sticker-claim";
 
 export async function POST() {
   const supabase = await createClient();
@@ -26,7 +27,11 @@ export async function POST() {
     .single();
 
   if (existingById) {
-    return NextResponse.json({ status: "exists" });
+    const jar = await cookies();
+    const pending = jar.get(STICKER_COOKIE)?.value;
+    const claimed = await claimOnSignIn(admin, user.id, pending);
+    if (claimed) jar.delete(STICKER_COOKIE);
+    return NextResponse.json({ status: "exists", sticker: claimed?.ok ? claimed.code : null });
   }
 
   // users.phone_number is each barber's LineCatch (Twilio) number, never their login phone,

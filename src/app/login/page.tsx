@@ -26,7 +26,7 @@ function Login() {
   const params = useSearchParams();
   const refParam = params.get("ref");
   const stickerParam = params.get("sticker");
-  const [mode, setMode] = useState<"in" | "up">(params.get("mode") === "up" || refParam || stickerParam ? "up" : "in");
+  const [mode, setMode] = useState<"in" | "up">(params.get("mode") === "in" ? "in" : params.get("mode") === "up" || refParam || stickerParam ? "up" : "in");
   const [sticker, setSticker] = useState<{ code: string; shop: string | null } | null>(null);
   const [invite, setInvite] = useState<Invite | null>(null);
   const [method, setMethod] = useState<"email" | "phone">("email");
@@ -194,7 +194,7 @@ function Login() {
             <p className="text-[14px] font-semibold text-[#A8C49A]">
               {sticker.shop ? t("login.sticker_banner_shop", { code: sticker.code, shop: sticker.shop }) : t("login.sticker_banner", { code: sticker.code })}
             </p>
-            <p className="text-[12px] text-white/45 mt-0.5">{t("login.sticker_sub")}</p>
+            <p className="text-[12px] text-white/45 mt-0.5">{t(up ? "login.sticker_sub" : "login.sticker_sub_in")}</p>
           </div>
         )}
 

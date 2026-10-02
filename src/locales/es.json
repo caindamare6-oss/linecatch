@@ -560,7 +560,8 @@
     "email_placeholder": "tu@correo.com",
     "sticker_banner": "El sticker QR {code} está listo",
     "sticker_banner_shop": "El sticker QR {code} para {shop} está listo",
-    "sticker_sub": "Regístrate y se conecta a tu barbería. No necesitas dirección."
+    "sticker_sub": "Regístrate y se conecta a tu barbería. No necesitas dirección.",
+    "sticker_sub_in": "Inicia sesión y se conecta a tu barbería."
   },
   "book": {
     "morning": "Mañana",
@@ -857,10 +858,10 @@
     "clear": "Liberar",
     "retire": "Retirar",
     "no_codes": "No se encontraron códigos",
-    "sticker_tagline": "Nunca más pierdas un cliente",
+    "sticker_tagline": "Reserva tu próximo corte en pocos toques",
     "sticker_scan": "Escanea para reservar",
-    "sticker_hint_1": "Abre la cámara y apúntala al código QR",
-    "sticker_hint_2": "para registrarte como cliente VIP",
+    "sticker_hint_1": "Abre la cámara y apúntala al código",
+    "sticker_hint_2": "para reservar o unirte a la lista VIP",
     "err_forbidden": "Acceso denegado.",
     "err_count": "La cantidad debe ser de 1 a 500.",
     "err_label": "El nombre del lote es obligatorio.",
@@ -877,7 +878,9 @@
     "field_saved": "{code} entregado a {shop}",
     "field_none": "Aún no has entregado stickers.",
     "field_waiting": "Esperando configuración",
-    "field_live": "Configurado"
+    "field_live": "Configurado",
+    "points_to": "Cada QR abre {url}/s/CODE. Verifica que sea tu sitio en vivo antes de imprimir.",
+    "print_bilingual": "Los stickers impresos van en inglés y español."
   },
   "errors": {
     "Unauthorized": "Inicia sesión para continuar.",

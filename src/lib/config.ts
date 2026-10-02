@@ -4,7 +4,7 @@ export const APP_NAME = "LineCatch";
 
 /** Public URL of the app, without a trailing slash. */
 export function appUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.app").replace(/\/+$/, "");
+  return (process.env.NEXT_PUBLIC_APP_URL || "https://www.linecatch.app").replace(/\/+$/, "");
 }
 
 /** Where barbers and clients reach LineCatch (HELP replies, legal pages, Settings). */

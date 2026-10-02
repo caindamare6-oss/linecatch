@@ -5,7 +5,7 @@ import { resolveTemplate } from "@/lib/messages";
 import { cookies } from "next/headers";
 import { LANG_COOKIE } from "@/lib/i18n-shared";
 import { ensureReferralCode, normalizeCode, REF_COOKIE } from "@/lib/referrals";
-import { normalizeSticker, STICKER_COOKIE } from "@/lib/sticker-claim";
+import { claimOnSignIn, normalizeSticker, STICKER_COOKIE } from "@/lib/sticker-claim";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -54,7 +54,12 @@ export async function GET(request: Request) {
         }
       }
 
-      return carryCodes(NextResponse.redirect(`${origin}/dashboard`), searchParams);
+      // Signing in from a sticker with an existing account: connect it now (setup won't run again).
+      const pendingSticker = searchParams.get("sticker") || (await cookies()).get(STICKER_COOKIE)?.value;
+      const claimed = await claimOnSignIn(createAdminClient(), data.user.id, pendingSticker);
+      const res = carryCodes(NextResponse.redirect(`${origin}/dashboard`), searchParams);
+      if (claimed) res.cookies.delete(STICKER_COOKIE);
+      return res;
     }
   }
 

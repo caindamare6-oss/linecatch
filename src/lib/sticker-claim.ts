@@ -53,3 +53,15 @@ export async function claimSticker(db: Admin, userId: string, raw: unknown): Pro
   });
   return { ok: true, code: data.code };
 }
+
+/**
+ * A barber who already has an account signs in from a sticker ("Already have an account?").
+ * Setup won't run again, so the sticker connects at sign-in. Accounts still in setup connect it
+ * when they finish, as usual.
+ */
+export async function claimOnSignIn(db: Admin, userId: string, raw: unknown) {
+  if (!normalizeSticker(raw)) return null;
+  const { data: u } = await db.from("users").select("onboarding_completed").eq("user_id", userId).maybeSingle();
+  if (!u?.onboarding_completed) return null;
+  return claimSticker(db, userId, raw);
+}

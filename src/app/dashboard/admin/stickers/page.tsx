@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import JSZip from "jszip";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { useT, useFormat } from "@/lib/i18n";
+import { translate } from "@/lib/i18n-shared";
 import { appUrl } from "@/lib/config";
 
 type StickerCode = {
@@ -27,8 +28,17 @@ const PNG_H = 2400;
 
 type StickerText = { tagline: string; scan: string; hint1: string; hint2: string };
 
-/** Print artwork for one sticker. Its words follow the admin's current language. */
-async function renderStickerPNG(code: string, text: StickerText): Promise<Blob> {
+const stickerText = (l: "en" | "es"): StickerText => ({
+  tagline: translate(l, "admin.sticker_tagline"),
+  scan: translate(l, "admin.sticker_scan"),
+  hint1: translate(l, "admin.sticker_hint_1"),
+  hint2: translate(l, "admin.sticker_hint_2"),
+});
+
+/** Print artwork for one sticker, in English and Spanish so one print run works in any shop. */
+async function renderStickerPNG(code: string): Promise<Blob> {
+  const text = stickerText("en");
+  const es = stickerText("es");
   const site = appUrl();
   const canvas = document.createElement("canvas");
   canvas.width = PNG_W;
@@ -43,6 +53,7 @@ async function renderStickerPNG(code: string, text: StickerText): Promise<Blob> 
   const borderInset = 60;
   ctx.strokeStyle = "#B8914F";
   ctx.lineWidth = 6;
+  ctx.beginPath();
   ctx.roundRect(borderInset, borderInset, PNG_W - borderInset * 2, PNG_H - borderInset * 2, 40);
   ctx.stroke();
 
@@ -57,7 +68,9 @@ async function renderStickerPNG(code: string, text: StickerText): Promise<Blob> 
   // Tagline
   ctx.fillStyle = "#948C80";
   ctx.font = "44px sans-serif";
-  ctx.fillText(text.tagline, PNG_W / 2, 360);
+  ctx.fillText(text.tagline, PNG_W / 2, 350);
+  ctx.font = "38px sans-serif";
+  ctx.fillText(es.tagline, PNG_W / 2, 400);
 
   // QR code — render to a temporary canvas then draw centered
   const qrUrl = `${site}/s/${code}`;
@@ -76,11 +89,13 @@ async function renderStickerPNG(code: string, text: StickerText): Promise<Blob> 
 
   const qrSize = 900;
   const qrX = (PNG_W - qrSize) / 2;
-  const qrY = 460;
+  const qrY = 490;
 
   // White background behind QR
   ctx.fillStyle = "#ffffff";
   const qrPad = 40;
+  // A fresh path: without it the fill also floods the outer border shape and whites out the card.
+  ctx.beginPath();
   ctx.roundRect(qrX - qrPad, qrY - qrPad, qrSize + qrPad * 2, qrSize + qrPad * 2, 24);
   ctx.fill();
 
@@ -90,17 +105,22 @@ async function renderStickerPNG(code: string, text: StickerText): Promise<Blob> 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 72px sans-serif";
   ctx.fillText(text.scan, PNG_W / 2, 1540);
+  ctx.fillStyle = "#D8D2C8";
+  ctx.font = "bold 56px sans-serif";
+  ctx.fillText(es.scan, PNG_W / 2, 1620);
 
   // Code display
   ctx.fillStyle = "#B8914F";
   ctx.font = "bold 64px monospace";
-  ctx.fillText(code, PNG_W / 2, 1660);
+  ctx.fillText(code, PNG_W / 2, 1740);
 
   // Instructions at bottom
-  ctx.fillStyle = "#666666";
+  ctx.fillStyle = "#777777";
   ctx.font = "36px sans-serif";
-  ctx.fillText(text.hint1, PNG_W / 2, 1800);
-  ctx.fillText(text.hint2, PNG_W / 2, 1850);
+  ctx.fillText(text.hint1, PNG_W / 2, 1860);
+  ctx.fillText(text.hint2, PNG_W / 2, 1906);
+  ctx.fillText(es.hint1, PNG_W / 2, 1980);
+  ctx.fillText(es.hint2, PNG_W / 2, 2026);
 
   // LineCatch small mark at very bottom
   ctx.fillStyle = "#333333";
@@ -221,12 +241,11 @@ export default function AdminStickersPage() {
 
     try {
       const zip = new JSZip();
-      const text = { tagline: t("admin.sticker_tagline"), scan: t("admin.sticker_scan"), hint1: t("admin.sticker_hint_1"), hint2: t("admin.sticker_hint_2") };
 
       for (let i = 0; i < batchCodes.length; i++) {
         const c = batchCodes[i];
         setDownloadProgress(`${i + 1} / ${batchCodes.length}`);
-        const pngBlob = await renderStickerPNG(c.code, text);
+        const pngBlob = await renderStickerPNG(c.code);
         zip.file(`${c.code}.png`, pngBlob);
       }
 
@@ -329,6 +348,9 @@ export default function AdminStickersPage() {
         <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium">
           {t("admin.generate_batch")}
         </h3>
+        <p className="text-[12px] text-white/45 leading-relaxed">
+          {t("admin.points_to", { url: appUrl() })} {t("admin.print_bilingual")}
+        </p>
         <div className="flex gap-2">
           <input
             type="number"

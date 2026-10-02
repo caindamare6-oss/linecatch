@@ -560,7 +560,8 @@
     "email_placeholder": "you@example.com",
     "sticker_banner": "QR sticker {code} is ready",
     "sticker_banner_shop": "QR sticker {code} for {shop} is ready",
-    "sticker_sub": "Sign up and it connects to your shop. No address needed."
+    "sticker_sub": "Sign up and it connects to your shop. No address needed.",
+    "sticker_sub_in": "Sign in and it connects to your shop."
   },
   "book": {
     "morning": "Morning",
@@ -857,10 +858,10 @@
     "clear": "Clear",
     "retire": "Retire",
     "no_codes": "No codes found",
-    "sticker_tagline": "Never miss a client again",
+    "sticker_tagline": "Book your next cut in a few taps",
     "sticker_scan": "Scan to book",
-    "sticker_hint_1": "Open your camera app and point it at the QR code",
-    "sticker_hint_2": "to sign up as a VIP client",
+    "sticker_hint_1": "Open your camera and point it at the code",
+    "sticker_hint_2": "to book or join the VIP list",
     "err_forbidden": "Access denied.",
     "err_count": "Count must be 1–500.",
     "err_label": "Batch label is required.",
@@ -877,7 +878,9 @@
     "field_saved": "{code} handed to {shop}",
     "field_none": "No stickers handed out yet.",
     "field_waiting": "Waiting for setup",
-    "field_live": "Set up"
+    "field_live": "Set up",
+    "points_to": "Each QR opens {url}/s/CODE. Check this is your live site before printing.",
+    "print_bilingual": "Printed stickers are in English and Spanish."
   },
   "vip": {
     "your_barber": "your barber",
