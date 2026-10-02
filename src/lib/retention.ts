@@ -1,5 +1,5 @@
 /**
- * The Wednesday Engine. It only ever texts on Wednesday at noon (barber's time), no matter which
+ * The Wednesday Engine. It only ever texts on Wednesday (from noon, barber's time), no matter which
  * day the client last came in or booked:
  *
  *   first text   the first Wednesday at least 2 weeks after their last cut (so 2–3 weeks after it)
@@ -60,10 +60,17 @@ export function wednesdayText(c: WednesdayClient, opts: { now: Date; offer: stri
   return { templateKey: `winback_${v + 1}`, first: false, usesOffer: false, nextVariantIndex: c.variantIndex + 1 };
 }
 
-/** Wednesday, 12:00–12:59 on the barber's wall clock. */
+/**
+ * Wednesday, from noon until 6pm on the barber's wall clock. Texts go out at the noon run; the later
+ * hourly runs only pick up anyone a failed or slow noon run missed (each client is marked before
+ * their text goes out, so nobody gets two). Never any other day.
+ */
+export const WEDNESDAY_FIRST_HOUR = 12;
+export const WEDNESDAY_LAST_HOUR = 17;
 export function inWednesdayWindow(now: Date, tz: string): boolean {
   const p = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short", hour: "numeric", hour12: false }).formatToParts(now);
-  return p.find((x) => x.type === "weekday")?.value === "Wed" && Number(p.find((x) => x.type === "hour")?.value) % 24 === 12;
+  const hour = Number(p.find((x) => x.type === "hour")?.value) % 24;
+  return p.find((x) => x.type === "weekday")?.value === "Wed" && hour >= WEDNESDAY_FIRST_HOUR && hour <= WEDNESDAY_LAST_HOUR;
 }
 
 /** The start of the next Wednesday-noon window (now, if we're in it). */

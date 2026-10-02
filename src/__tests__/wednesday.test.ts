@@ -70,10 +70,15 @@ describe("Wednesday reminders", () => {
     expect(wednesdayText(client({ lastCutDate: daysBefore(15), lastSentAt: daysBefore(30) }), opts)).toMatchObject({ first: true });
   });
 
-  it("only Wednesday at noon, barber's time", () => {
+  it("only Wednesday, noon to 6pm, barber's time", () => {
     expect(inWednesdayWindow(WED, "America/New_York")).toBe(true);
     expect(inWednesdayWindow(WED, "America/Los_Angeles")).toBe(false);
     expect(inWednesdayWindow(new Date("2026-10-08T16:30:00Z"), "America/New_York")).toBe(false);
+    // Noon to 6pm so a failed noon run is caught up the same afternoon; never before noon or after 6.
+    expect(inWednesdayWindow(new Date("2026-10-07T19:00:00Z"), "America/New_York")).toBe(true); // 3pm
+    expect(inWednesdayWindow(new Date("2026-10-07T21:59:00Z"), "America/New_York")).toBe(true); // 5:59pm
+    expect(inWednesdayWindow(new Date("2026-10-07T22:00:00Z"), "America/New_York")).toBe(false); // 6pm
+    expect(inWednesdayWindow(new Date("2026-10-07T15:59:00Z"), "America/New_York")).toBe(false); // 11:59am
     expect(nextWednesdayNoon(new Date("2026-10-09T15:00:00Z"), "America/New_York").toISOString()).toBe("2026-10-14T16:00:00.000Z");
   });
 });
