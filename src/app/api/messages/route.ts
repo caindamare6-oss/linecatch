@@ -83,7 +83,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: barber } = await admin.from("users").select("phone_number, is_locked_out").eq("user_id", user.id).single();
   if (!barber?.phone_number) return NextResponse.json({ error: "Your LineCatch number isn't set up yet" }, { status: 400 });
-  if (barber.is_locked_out) return NextResponse.json({ error: "Texting turns on once your QR sticker is activated" }, { status: 402 });
+  if (barber.is_locked_out) return NextResponse.json({ error: "Texting is paused on your account. Contact support." }, { status: 402 });
 
   const allowed = await canText(admin, user.id, p.e164);
   if (!allowed.ok) return NextResponse.json({ error: allowed.reason }, { status: 403 });

@@ -61,6 +61,7 @@ export function HomeClient(props: {
   vips: number;
   callsCaught: number;
   autotextOn: boolean;
+  marketing: "off" | "awaiting_sticker" | "on";
   wednesdayOn: boolean;
   wednesdayTargeted: number;
   reviewsOn: boolean;
@@ -121,7 +122,7 @@ export function HomeClient(props: {
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${props.paused ? "bg-[#E0926A]" : "bg-[var(--accent-color)]"}`} />
-            {!props.paused ? "Active" : props.hasActiveSticker ? "Paused" : "Setup"}
+            {props.paused ? "Paused" : "Active"}
           </span>
           <Link
             href="/dashboard/settings"
@@ -141,14 +142,14 @@ export function HomeClient(props: {
         <p className="text-[13px] text-white/40 mt-0.5">{props.dateLine}</p>
       </div>
 
-      {props.paused && props.hasActiveSticker && (
+      {props.paused && (
         <Card className="p-4 border-[#E0926A]/25">
           <p className="text-sm font-semibold text-[#E0926A]">Texting is paused</p>
           <p className="text-xs text-white/45 mt-1 leading-relaxed">Missed calls are still logged, but no texts go out right now. Contact support to turn it back on.</p>
         </Card>
       )}
 
-      {!props.hasActiveSticker && !stickerDone && !bannerHidden && (
+      {props.marketing === "awaiting_sticker" && !stickerDone && !bannerHidden && (
         <Card className="relative p-4">
           <button onClick={() => setBannerHidden(true)} aria-label="Dismiss" className="absolute top-2.5 right-2.5 w-8 h-8 flex items-center justify-center text-white/30 hover:text-white/60">
             <Icon d={I.x} size={15} />
@@ -158,8 +159,8 @@ export function HomeClient(props: {
               <Icon d={I.qr} size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold">Activate your sticker</p>
-              <p className="text-xs text-white/45 mt-1 leading-relaxed">Scan the QR on your LineCatch sticker to turn on missed-call texts, confirmations, reminders and review requests.</p>
+              <p className="text-sm font-semibold">Your QR sticker is on its way</p>
+              <p className="text-xs text-white/45 mt-1 leading-relaxed">When it arrives, scan it to start SMS marketing: Wednesday check-ins, win-backs, broadcasts and review requests. Missed-call texts and reminders already work.</p>
               <button
                 onClick={() => setShowScanner(true)}
                 className="mt-3 h-9 px-3.5 rounded-[10px] bg-[var(--accent-color)] text-[var(--accent-fg)] text-xs font-semibold"
@@ -167,7 +168,7 @@ export function HomeClient(props: {
                 Scan your sticker
               </button>
               <p className="text-[11px] text-white/35 mt-2.5 leading-relaxed">
-                Sticker still in the mail? Clients can already book at <span className="text-white/55 break-all">{props.bookingLink.replace(/^https?:\/\//, "")}</span>
+                Meanwhile, clients can book at <span className="text-white/55 break-all">{props.bookingLink.replace(/^https?:\/\//, "")}</span>
               </p>
             </div>
           </div>
@@ -213,11 +214,19 @@ export function HomeClient(props: {
           sub={props.autotextOn ? "texted back this week" : "auto-text is off"}
         />
         <Tile
-          href="/dashboard/settings#features"
+          href="/dashboard/settings#marketing"
           label="Wed engine"
           icon={I.bolt}
-          value={props.wednesdayOn ? props.wednesdayTargeted : "Off"}
-          sub={props.wednesdayOn ? "due for a nudge this week" : "turn on in settings"}
+          value={props.marketing === "on" && props.wednesdayOn ? props.wednesdayTargeted : "Off"}
+          sub={
+            props.marketing === "off"
+              ? "SMS marketing is off"
+              : props.marketing === "awaiting_sticker"
+                ? "starts when your sticker is scanned"
+                : props.wednesdayOn
+                  ? "due for a nudge this week"
+                  : "turn on in settings"
+          }
           warm
         />
         <Tile href="/dashboard/schedule" label="Bookings" value={revenue.cuts} sub="completed this month" />

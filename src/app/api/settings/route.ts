@@ -3,9 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/admin";
 import { cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
+import { hasActiveSticker, marketingState } from "@/lib/marketing";
+import { cleanAddress, requestSticker } from "@/lib/sticker-request";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out";
+  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at";
 
 export async function GET() {
   const supabase = await createClient();
@@ -13,7 +15,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { data, error } = await supabase.from("users").select(FIELDS).eq("user_id", user.id).single();
   if (error || !data) return NextResponse.json({ error: "Couldn't load settings" }, { status: 500 });
-  return NextResponse.json({ ...data, user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.app" });
+  const sticker = await hasActiveSticker(createAdminClient(), user.id);
+  return NextResponse.json({ ...data, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing, sticker), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.app" });
 }
 
 /** Partial update: only the keys sent are validated and saved. */
@@ -71,12 +74,37 @@ export async function PATCH(request: Request) {
     const { data } = await supabase.from("users").select("google_review_url").eq("user_id", user.id).single();
     if (!data?.google_review_url) return bad("Add your Google review link first");
   }
+  // SMS marketing: turning it on queues a QR sticker, so an address is required (sent now or already on file).
+  let shipTo: Parameters<typeof requestSticker>[2] | null = null;
+  if ("shipping_address" in body) {
+    const a = cleanAddress(body.shipping_address);
+    if (!a.ok) return bad(a.error);
+    update.shipping_address = a.value;
+    shipTo = a.value;
+  }
+  if ("feature_marketing" in body) {
+    if (typeof body.feature_marketing !== "boolean") return bad("Invalid toggle");
+    update.feature_marketing = body.feature_marketing;
+    if (body.feature_marketing && !shipTo) {
+      const { data } = await supabase.from("users").select("shipping_address").eq("user_id", user.id).single();
+      const onFile = cleanAddress(data?.shipping_address);
+      if (!onFile.ok) return bad("Add a shipping address for your QR sticker");
+      shipTo = onFile.value;
+    }
+    if (!body.feature_marketing) {
+      // Marketing off also stops the marketing automations.
+      update.feature_wednesday = false;
+      update.feature_reviews = false;
+    }
+  }
   if (Object.keys(update).length === 0) return bad("Nothing to save");
 
-  const { error } = await createAdminClient().from("users").update(update).eq("user_id", user.id);
+  const admin = createAdminClient();
+  const { error } = await admin.from("users").update(update).eq("user_id", user.id);
   if (error) {
     console.error("[settings]", error);
     return NextResponse.json({ error: "Couldn't save. Try again." }, { status: 500 });
   }
+  if (update.feature_marketing === true && shipTo) await requestSticker(admin, user.id, shipTo);
   return NextResponse.json({ ok: true, saved: update });
 }

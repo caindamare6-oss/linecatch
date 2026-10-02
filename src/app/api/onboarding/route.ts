@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { cleanAddress, requestSticker } from "@/lib/sticker-request";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
 
 export async function POST(request: Request) {
@@ -127,6 +128,16 @@ export async function POST(request: Request) {
     if (typeof data.featureAutotext === "boolean") update.feature_autotext = data.featureAutotext;
     if (typeof data.featureWednesday === "boolean") update.feature_wednesday = data.featureWednesday;
     if (typeof data.featureReviews === "boolean") update.feature_reviews = data.featureReviews;
+    if (typeof data.featureMarketing === "boolean") {
+      update.feature_marketing = data.featureMarketing;
+      if (data.featureMarketing) {
+        // Marketing needs the QR sticker at the chair, so we need somewhere to ship it.
+        const addr = cleanAddress(data.shippingAddress);
+        if (!addr.ok) return NextResponse.json({ error: addr.error }, { status: 400 });
+        update.shipping_address = addr.value;
+        await requestSticker(admin, user.id, addr.value);
+      }
+    }
     if (data.googleReviewUrl !== undefined) {
       const url = cleanUrl(data.googleReviewUrl);
       if (!url.ok) return NextResponse.json({ error: url.error }, { status: 400 });
@@ -148,7 +159,8 @@ export async function POST(request: Request) {
   if (step === "complete") {
     const { error } = await admin
       .from("users")
-      .update({ onboarding_completed: true, is_locked_out: true })
+      // Service texts work right away; marketing waits for the QR sticker (see lib/marketing).
+      .update({ onboarding_completed: true })
       .eq("user_id", user.id);
 
     if (error) {
@@ -174,7 +186,7 @@ export async function GET() {
   const { data: profile } = await admin
     .from("users")
     .select(
-      "first_name, email, business_name, forwarding_number, accent_color, business_hours, barber_language, timezone, avatar_url, feature_autotext, feature_wednesday, feature_reviews, google_review_url"
+      "first_name, email, business_name, forwarding_number, accent_color, business_hours, barber_language, timezone, avatar_url, feature_autotext, feature_wednesday, feature_reviews, feature_marketing, shipping_address, google_review_url"
     )
     .eq("user_id", user.id)
     .single();

@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { monthBounds, monthRevenue, greetingFor } from "@/lib/revenue";
 import { HomeClient } from "@/app/dashboard/home-client";
+import { marketingState } from "@/lib/marketing";
+import { nextRung } from "@/lib/retention";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -11,7 +13,7 @@ export default async function DashboardPage() {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("first_name, business_name, timezone, google_review_url, feature_wednesday, feature_autotext, is_locked_out")
+    .select("first_name, business_name, timezone, google_review_url, feature_wednesday, feature_autotext, feature_marketing, is_locked_out, rebook_interval_days")
     .eq("user_id", user.id)
     .single();
 
@@ -19,8 +21,6 @@ export default async function DashboardPage() {
   const now = new Date();
   const bounds = monthBounds(now, tz);
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
-  const day = 86_400_000;
-  const iso = (ms: number) => new Date(ms).toISOString().split("T")[0];
 
   const [sticker, services, completed, vipCount, caughtThisWeek, wedCandidates, upcoming, feed, suppressed] = await Promise.all([
     supabase.from("sticker_codes").select("code").eq("owner_user_id", user.id).eq("status", "active").limit(1).maybeSingle(),
@@ -34,15 +34,14 @@ export default async function DashboardPage() {
       .lt("booking_time", bounds.end.toISOString()),
     supabase.from("vip_clients").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_opted_in", true).is("opted_out_at", null),
     supabase.from("missed_calls").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("sms_dispatched", true).gte("received_at", weekAgo),
-    // Same window as the Wednesday cron: last cut 14–28 days ago, not nudged in 21 days.
+    // Same rules as the Wednesday cron (lib/retention).
     supabase
       .from("vip_clients")
-      .select("phone_number, last_reengagement_sent_at")
+      .select("phone_number, last_cut_date, reengagement_stage, reengagement_index, last_reengagement_sent_at, has_claimed_winback")
       .eq("user_id", user.id)
       .eq("is_opted_in", true)
       .is("opted_out_at", null)
-      .gte("last_cut_date", iso(now.getTime() - 28 * day))
-      .lte("last_cut_date", iso(now.getTime() - 14 * day)),
+      .not("last_cut_date", "is", null),
     supabase.from("bookings").select("customer_phone").eq("user_id", user.id).eq("status", "confirmed").gt("booking_time", now.toISOString()),
     supabase
       .from("activity_feed")
@@ -64,9 +63,20 @@ export default async function DashboardPage() {
   const revenue = monthRevenue(completed.data || [], prices, tz, now);
 
   const booked = new Set((upcoming.data || []).map((b) => b.customer_phone));
-  const nudgeCutoff = now.getTime() - 21 * day;
-  const wednesdayTargeted = (wedCandidates.data || []).filter(
-    (c) => !booked.has(c.phone_number) && !(c.last_reengagement_sent_at && new Date(c.last_reengagement_sent_at).getTime() > nudgeCutoff)
+  const wednesdayTargeted = (wedCandidates.data || []).filter((c) =>
+    nextRung(
+      {
+        lastCutDate: c.last_cut_date,
+        stage: c.reengagement_stage ?? 0,
+        lastSentAt: c.last_reengagement_sent_at,
+        variantIndex: c.reengagement_index ?? 0,
+        claimedOffer: !!c.has_claimed_winback,
+        optedOut: false,
+        hasFutureBooking: booked.has(c.phone_number),
+        lastInboundAt: null,
+      },
+      { now, rebookDays: barber?.rebook_interval_days || 18, offer: null }
+    )
   ).length;
 
   const firstName = barber?.first_name?.trim() || "";
@@ -83,6 +93,7 @@ export default async function DashboardPage() {
       vips={vipCount.count || 0}
       callsCaught={caughtThisWeek.count || 0}
       autotextOn={barber?.feature_autotext !== false}
+      marketing={marketingState(barber?.feature_marketing, !!sticker.data)}
       wednesdayOn={barber?.feature_wednesday !== false}
       wednesdayTargeted={wednesdayTargeted}
       reviewsOn={!!barber?.google_review_url}

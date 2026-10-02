@@ -158,6 +158,9 @@ function OnboardingFlow({
   const [featureAutotext, setFeatureAutotext] = useState(true);
   const [featureWednesday, setFeatureWednesday] = useState(true);
   const [featureReviews, setFeatureReviews] = useState(false);
+  // SMS marketing is off by default; turning it on means shipping a QR sticker to the shop.
+  const [featureMarketing, setFeatureMarketing] = useState(false);
+  const [shipping, setShipping] = useState({ name: "", line1: "", line2: "", city: "", state: "", zip: "" });
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
 
   const [confettiDone, setConfettiDone] = useState(false);
@@ -188,6 +191,11 @@ function OnboardingFlow({
     if (typeof p.feature_autotext === "boolean") setFeatureAutotext(p.feature_autotext);
     if (typeof p.feature_wednesday === "boolean") setFeatureWednesday(p.feature_wednesday);
     if (typeof p.feature_reviews === "boolean") setFeatureReviews(p.feature_reviews);
+    if (typeof p.feature_marketing === "boolean") setFeatureMarketing(p.feature_marketing);
+    if (p.shipping_address && typeof p.shipping_address === "object") {
+      const a = p.shipping_address as Record<string, string | null>;
+      setShipping({ name: a.name || "", line1: a.line1 || "", line2: a.line2 || "", city: a.city || "", state: a.state || "", zip: a.zip || "" });
+    }
     if (p.google_review_url) setGoogleReviewUrl(p.google_review_url as string);
     if (initialData.googleName && !p.first_name) setFirstName(initialData.googleName);
     if (initialData.googleEmail && !p.email) setEmail(initialData.googleEmail);
@@ -302,7 +310,16 @@ function OnboardingFlow({
       }
     }
     else if (step === 4) result = await saveStep("hours", { businessHours, timezone });
-    else if (step === 5) result = await saveStep("preferences", { featureAutotext, featureWednesday, featureReviews, googleReviewUrl });
+    else if (step === 5)
+      result = await saveStep("preferences", {
+        featureAutotext,
+        featureMarketing,
+        // Check-ins and review requests are marketing: off unless marketing is on.
+        featureWednesday: featureMarketing && featureWednesday,
+        featureReviews: featureMarketing && featureReviews,
+        googleReviewUrl,
+        ...(featureMarketing ? { shippingAddress: { ...shipping, name: shipping.name || businessName || firstName } } : {}),
+      });
 
     if (result && !result.ok) {
       setError(result.error || "Failed to save");
@@ -778,15 +795,41 @@ function OnboardingFlow({
           {/* Step 5: Preferences */}
           {step === 5 && (
             <StepContainer title={t("step5.title")} subtitle={t("step5.subtitle")} stepNum={5}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.8px] mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("step5.included")}</p>
               <div className="space-y-3">
                 <ToggleCard label={t("step5.autotext_label")} description={t("step5.autotext_desc")} checked={featureAutotext} onChange={setFeatureAutotext} />
-                <ToggleCard label={t("step5.wednesday_label")} description={t("step5.wednesday_desc")} checked={featureWednesday} onChange={setFeatureWednesday} />
-                <ToggleCard label={t("step5.reviews_label")} description={t("step5.reviews_desc")} checked={featureReviews} onChange={setFeatureReviews} />
+                <div className="rounded-xl px-4 py-3 text-xs leading-relaxed" style={{ backgroundColor: "var(--ob-surface)", border: "1px solid var(--ob-border)", color: "var(--ob-text-secondary)" }}>
+                  {t("step5.service_note")}
+                </div>
               </div>
-              {featureReviews && (
-                <div className="mt-4" style={{ animation: "ob-fade-up 300ms ease-out" }}>
-                  <InputField label={t("step5.review_url_label")} value={googleReviewUrl} onChange={setGoogleReviewUrl} placeholder={t("step5.review_url_placeholder")} />
-                  <p className="text-[11px] mt-1" style={{ color: "var(--ob-text-muted)" }}>{t("step5.review_url_hint")}</p>
+
+              <p className="text-[11px] font-semibold uppercase tracking-[0.8px] mt-6 mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("step5.marketing_section")}</p>
+              <ToggleCard label={t("step5.marketing_label")} description={t("step5.marketing_desc")} checked={featureMarketing} onChange={setFeatureMarketing} />
+
+              {featureMarketing && (
+                <div className="mt-3 space-y-3" style={{ animation: "ob-fade-up 300ms ease-out" }}>
+                  <div className="rounded-xl px-4 py-3 flex gap-3" style={{ backgroundColor: "var(--ob-accent-glow)", border: "1px solid var(--ob-border-focus)" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ob-accent)" strokeWidth="2" className="shrink-0 mt-0.5" aria-hidden><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4" /></svg>
+                    <p className="text-xs leading-relaxed" style={{ color: "var(--ob-text)" }}>{t("step5.sticker_note")}</p>
+                  </div>
+                  <ToggleCard label={t("step5.wednesday_label")} description={t("step5.wednesday_desc")} checked={featureWednesday} onChange={setFeatureWednesday} />
+                  <ToggleCard label={t("step5.reviews_label")} description={t("step5.reviews_desc")} checked={featureReviews} onChange={setFeatureReviews} />
+                  {featureReviews && (
+                    <div style={{ animation: "ob-fade-up 300ms ease-out" }}>
+                      <InputField label={t("step5.review_url_label")} value={googleReviewUrl} onChange={setGoogleReviewUrl} placeholder={t("step5.review_url_placeholder")} />
+                      <p className="text-[11px] mt-1" style={{ color: "var(--ob-text-muted)" }}>{t("step5.review_url_hint")}</p>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.8px] pt-2" style={{ color: "var(--ob-text-muted)" }}>{t("step5.ship_to")}</p>
+                  <InputField label={t("step5.ship_name")} value={shipping.name} onChange={(v) => setShipping((a) => ({ ...a, name: v }))} placeholder={businessName || t("step5.ship_name_placeholder")} />
+                  <InputField label={t("step5.ship_street")} value={shipping.line1} onChange={(v) => setShipping((a) => ({ ...a, line1: v }))} placeholder="123 Main St" />
+                  <InputField label={t("step5.ship_unit")} value={shipping.line2} onChange={(v) => setShipping((a) => ({ ...a, line2: v }))} placeholder={t("step5.ship_unit_placeholder")} />
+                  <div className="grid grid-cols-[1fr_72px_96px] gap-2">
+                    <InputField label={t("step5.ship_city")} value={shipping.city} onChange={(v) => setShipping((a) => ({ ...a, city: v }))} placeholder="Boston" />
+                    <InputField label={t("step5.ship_state")} value={shipping.state} onChange={(v) => setShipping((a) => ({ ...a, state: v.toUpperCase().slice(0, 2) }))} placeholder="MA" />
+                    <InputField label="ZIP" value={shipping.zip} onChange={(v) => setShipping((a) => ({ ...a, zip: v.replace(/[^\d-]/g, "").slice(0, 10) }))} placeholder="02118" />
+                  </div>
                 </div>
               )}
             </StepContainer>
@@ -834,6 +877,10 @@ function OnboardingFlow({
                 <div className="flex items-center justify-between">
                   <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>{t("done.working_days")}</span>
                   <span className="text-[11px]" style={{ color: "var(--ob-text-secondary)" }}>{t("done.days_per_week", { count: DAYS.filter((d) => businessHours[d]).length })}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>{t("done.marketing")}</span>
+                  <span className="text-[11px]" style={{ color: featureMarketing ? "var(--ob-accent)" : "var(--ob-text-secondary)" }}>{featureMarketing ? t("done.marketing_on") : t("done.marketing_off")}</span>
                 </div>
               </div>
             </div>
@@ -896,8 +943,8 @@ function InputField({ label, value, onChange, placeholder, type = "text", classN
   label: string; value: string; onChange: (v: string) => void; placeholder: string; type?: string; className?: string;
 }) {
   return (
-    <div className={className}>
-      <label className="text-xs uppercase tracking-wider font-medium block mb-2" style={{ color: "var(--ob-text-muted)", fontFamily: "var(--ob-font-heading)" }}>{label}</label>
+    <label className={`block ${className}`}>
+      <span className="text-xs uppercase tracking-wider font-medium block mb-2" style={{ color: "var(--ob-text-muted)", fontFamily: "var(--ob-font-heading)" }}>{label}</span>
       <input
         type={type}
         value={value}
@@ -906,7 +953,7 @@ function InputField({ label, value, onChange, placeholder, type = "text", classN
         className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-colors"
         style={{ backgroundColor: "var(--ob-input-bg)", border: `1px solid ${value ? "var(--ob-border-focus)" : "var(--ob-border)"}`, color: "var(--ob-text)" }}
       />
-    </div>
+    </label>
   );
 }
 
@@ -921,11 +968,15 @@ function ToggleCard({ label, description, checked, onChange }: {
           <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--ob-text-muted)" }}>{description}</p>
         </div>
         <button
+          role="switch"
+          aria-checked={checked}
+          aria-label={label}
           onClick={() => onChange(!checked)}
-          className="w-10 h-5 rounded-full relative transition-colors duration-200 shrink-0 mt-0.5"
-          style={{ backgroundColor: checked ? "var(--ob-accent)" : "var(--ob-input-bg)" }}
+          className="relative shrink-0 -m-3 p-3"
         >
-          <div className="w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-200 shadow-sm" style={{ left: checked ? "22px" : "2px" }} />
+          <span className="block w-10 h-5 rounded-full relative transition-colors duration-200" style={{ backgroundColor: checked ? "var(--ob-accent)" : "rgba(242,238,230,0.16)" }}>
+            <span className="block w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-200 shadow-sm" style={{ left: checked ? "22px" : "2px" }} />
+          </span>
         </button>
       </div>
     </div>

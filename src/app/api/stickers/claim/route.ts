@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   // barbers won't be allowed to claim a sticker at all.
   await admin
     .from("users")
-    .update({ is_locked_out: false, plan: "full" })
+    .update({ is_locked_out: false, plan: "full", feature_marketing: true })
     .eq("user_id", user.id);
 
   return NextResponse.json({ success: true, code: data.code });

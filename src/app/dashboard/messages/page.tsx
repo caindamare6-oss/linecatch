@@ -152,6 +152,7 @@ function BroadcastRow({ g }: { g: BroadcastGroup }) {
 function BroadcastSheet({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
   const [count, setCount] = useState<number | null>(null);
+  const [blocked, setBlocked] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "confirm" | "sending" | "done">("idle");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -159,7 +160,10 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     fetch("/api/broadcast")
       .then((r) => r.json())
-      .then((d) => setCount(typeof d.total === "number" ? d.total : 0))
+      .then((d) => {
+        setCount(typeof d.total === "number" ? d.total : 0);
+        setBlocked(d.blockedReason || null);
+      })
       .catch(() => setCount(0));
   }, []);
 
@@ -194,11 +198,18 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
-        <p className="text-[13px] text-white/45 mb-4">
+        <p className={`text-[13px] text-white/45 mb-4 ${blocked ? "hidden" : ""}`}>
           {count === null ? "Counting VIPs…" : count === 0 ? "No VIPs have opted in yet." : `Goes to your ${count} opted-in VIP${count === 1 ? "" : "s"}.`}
         </p>
 
-        {state === "done" ? (
+        {blocked ? (
+          <>
+            <p className="text-sm text-[#E0926A] leading-relaxed">{blocked}</p>
+            <Link href="/dashboard/settings#marketing" className="mt-4 w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold flex items-center justify-center">
+              Open SMS marketing settings
+            </Link>
+          </>
+        ) : state === "done" ? (
           <>
             <p className="text-sm text-[#A8C49A] font-medium">{result}</p>
             <button onClick={onClose} className="mt-4 w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold">Done</button>

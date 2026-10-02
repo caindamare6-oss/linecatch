@@ -64,7 +64,7 @@
   "step5": {
     "badge": "5",
     "title": "Preferencias",
-    "subtitle": "Elige qué funciones activar.",
+    "subtitle": "Elige lo que LineCatch hace por ti. Puedes cambiarlo cuando quieras en Ajustes.",
     "autotext_label": "Auto-texto en llamadas perdidas",
     "autotext_desc": "Cuando un cliente no te encuentra, LineCatch le envía un enlace de reserva.",
     "wednesday_label": "Reactivación de miércoles",
@@ -73,7 +73,21 @@
     "reviews_desc": "Después del segundo corte de un cliente, pídele que deje una reseña en Google.",
     "review_url_label": "Enlace de reseña de Google",
     "review_url_placeholder": "https://g.page/tu-local/review",
-    "review_url_hint": "Encuéntralo en tu Perfil de Negocio de Google, en \"Obtener más reseñas\"."
+    "review_url_hint": "Encuéntralo en tu Perfil de Negocio de Google, en \"Obtener más reseñas\".",
+    "included": "Incluido",
+    "service_note": "Las confirmaciones de citas y los recordatorios siempre están activos para clientes que aceptan mensajes.",
+    "marketing_section": "Marketing por SMS",
+    "marketing_label": "Marketing por SMS",
+    "marketing_desc": "Mensajes de los miércoles, mensajes para recuperar clientes, envíos masivos y solicitudes de reseñas en Google. Apagado hasta que lo actives.",
+    "sticker_note": "Los mensajes de marketing necesitan un sticker QR en tu silla para que los clientes acepten recibirlos. Te lo enviamos. Todo lo demás funciona sin él, y el marketing empieza cuando escanees tu sticker.",
+    "ship_to": "Enviar mi sticker a",
+    "ship_name": "Nombre o negocio",
+    "ship_name_placeholder": "Fresh Cuts",
+    "ship_street": "Calle",
+    "ship_unit": "Apto / local (opcional)",
+    "ship_unit_placeholder": "Local 2",
+    "ship_city": "Ciudad",
+    "ship_state": "Estado"
   },
   "step6": {
     "badge": "6",
@@ -86,7 +100,10 @@
     "working_days": "Días laborales",
     "days_per_week": "{count} días/semana",
     "more_services": "+{count} más",
-    "cta": "Ir al Panel"
+    "cta": "Ir al Panel",
+    "marketing": "Marketing por SMS",
+    "marketing_on": "Sticker en camino",
+    "marketing_off": "Apagado"
   },
   "days": {
     "monday": "Lun",

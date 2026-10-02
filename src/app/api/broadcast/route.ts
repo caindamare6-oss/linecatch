@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
+import { getMarketingState, MARKETING_BLOCKED } from "@/lib/marketing";
 
 async function broadcastRecipients(admin: ReturnType<typeof createAdminClient>, userId: string) {
   const [{ data: vips }, { data: optOuts }] = await Promise.all([
@@ -17,8 +18,9 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const recipients = await broadcastRecipients(createAdminClient(), user.id);
-  return NextResponse.json({ total: recipients.length });
+  const admin = createAdminClient();
+  const [recipients, marketing] = await Promise.all([broadcastRecipients(admin, user.id), getMarketingState(admin, user.id)]);
+  return NextResponse.json({ total: recipients.length, marketing, blockedReason: marketing === "on" ? null : MARKETING_BLOCKED[marketing] });
 }
 
 export async function POST(request: Request) {
@@ -49,7 +51,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No phone number configured" }, { status: 400 });
   }
   if (barber.is_locked_out) {
-    return NextResponse.json({ error: "Texting turns on once your QR sticker is activated" }, { status: 402 });
+    return NextResponse.json({ error: "Texting is paused on your account. Contact support." }, { status: 402 });
+  }
+  // A broadcast is marketing.
+  const marketing = await getMarketingState(admin, user.id);
+  if (marketing !== "on") {
+    return NextResponse.json({ error: MARKETING_BLOCKED[marketing], marketing }, { status: 403 });
   }
 
   // Marketing texts go only to people who opted in. Callers who never signed up are not recipients.

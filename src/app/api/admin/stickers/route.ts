@@ -57,7 +57,17 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ codes: data || [], barbers });
+  // Barbers who turned SMS marketing on and are waiting for a sticker in the mail.
+  const { data: requested } = await admin
+    .from("users")
+    .select("user_id, business_name, first_name, email, shipping_address, sticker_requested_at")
+    .eq("feature_marketing", true)
+    .not("sticker_requested_at", "is", null)
+    .order("sticker_requested_at", { ascending: true });
+  const activeOwners = new Set((data || []).filter((d) => d.status === "active").map((d) => d.owner_user_id));
+  const toShip = (requested || []).filter((u) => !activeOwners.has(u.user_id));
+
+  return NextResponse.json({ codes: data || [], barbers, toShip });
 }
 
 export async function POST(request: Request) {

@@ -9,6 +9,8 @@ import { PageHeader, SectionLabel, Card, SERIF } from "../ui";
 import { formatPhone } from "@/lib/clients";
 import { DAY_KEYS, type Hours } from "@/lib/validate";
 
+type Address = { name: string; line1: string; line2: string | null; city: string; state: string; zip: string };
+
 type Settings = {
   user_id: string;
   first_name: string | null;
@@ -28,6 +30,10 @@ type Settings = {
   winback_offer: string | null;
   slug: string | null;
   is_locked_out: boolean;
+  feature_marketing: boolean;
+  shipping_address: Address | null;
+  sticker_requested_at: string | null;
+  marketing: "off" | "awaiting_sticker" | "on";
   isAdmin: boolean;
   appUrl: string;
 };
@@ -139,7 +145,7 @@ export default function SettingsPage() {
       </section>
 
       <section id="features">
-        <SectionLabel>Automations</SectionLabel>
+        <SectionLabel>Included</SectionLabel>
         <div className="space-y-2">
           <Toggle
             label="Auto-text missed calls"
@@ -147,27 +153,40 @@ export default function SettingsPage() {
             on={s.feature_autotext !== false}
             onChange={async (v) => (await patch({ feature_autotext: v })) ?? (set({ feature_autotext: v }), null)}
           />
-          <Toggle
-            label="Wednesday re-engagement"
-            hint="A midweek check-in to clients who haven't booked in 2+ weeks."
-            on={s.feature_wednesday !== false}
-            onChange={async (v) => (await patch({ feature_wednesday: v })) ?? (set({ feature_wednesday: v }), null)}
-          />
-          <Toggle
-            label="Google review requests"
-            hint={s.google_review_url ? "After a visit, ask happy clients for a review." : "Add your Google review link above first."}
-            on={!!s.feature_reviews}
-            disabled={!s.google_review_url}
-            onChange={async (v) => (await patch({ feature_reviews: v })) ?? (set({ feature_reviews: v }), null)}
-          />
-          <EditRow
-            label="Win-back offer"
-            hint="Included in the last check-in to clients who stopped coming. Leave empty for none."
-            value={s.winback_offer || ""}
-            placeholder="$5 off"
-            onSave={async (v) => (await patch({ winback_offer: v })) ?? (set({ winback_offer: v || null }), null)}
-          />
+          <Card className="px-4 py-3.5">
+            <p className="text-[14px] text-white/85">Confirmations & reminders</p>
+            <p className="text-[12px] text-white/40 mt-0.5">Always on for clients who opt in. No sticker needed.</p>
+          </Card>
         </div>
+      </section>
+
+      <section id="marketing">
+        <SectionLabel>SMS marketing</SectionLabel>
+        <MarketingCard s={s} onChange={async () => setS(await fetch("/api/settings").then((r) => r.json()))} />
+        {s.feature_marketing && (
+          <div className="space-y-2 mt-2">
+            <Toggle
+              label="Wednesday re-engagement"
+              hint="A midweek check-in to clients who haven't booked in 2+ weeks, then win-back texts if they stay quiet."
+              on={!!s.feature_wednesday}
+              onChange={async (v) => (await patch({ feature_wednesday: v })) ?? (set({ feature_wednesday: v }), null)}
+            />
+            <Toggle
+              label="Google review requests"
+              hint={s.google_review_url ? "A few hours after a visit, ask happy clients for a review." : "Add your Google review link above first."}
+              on={!!s.feature_reviews}
+              disabled={!s.google_review_url}
+              onChange={async (v) => (await patch({ feature_reviews: v })) ?? (set({ feature_reviews: v }), null)}
+            />
+            <EditRow
+              label="Win-back offer"
+              hint="Included in the last check-in to clients who stopped coming. Leave empty for none."
+              value={s.winback_offer || ""}
+              placeholder="$5 off"
+              onSave={async (v) => (await patch({ winback_offer: v })) ?? (set({ winback_offer: v || null }), null)}
+            />
+          </div>
+        )}
       </section>
 
       <section>
@@ -538,5 +557,96 @@ function StickerSection() {
         )}
       </Card>
     </section>
+  );
+}
+
+function MarketingCard({ s, onChange }: { s: Settings; onChange: () => Promise<void> }) {
+  const a = s.shipping_address;
+  const [form, setForm] = useState<Address>({ name: a?.name || s.business_name || "", line1: a?.line1 || "", line2: a?.line2 || "", city: a?.city || "", state: a?.state || "", zip: a?.zip || "" });
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function turnOn(e?: React.FormEvent) {
+    e?.preventDefault();
+    setBusy(true);
+    setErr("");
+    const er = await patch({ feature_marketing: true, shipping_address: form });
+    setBusy(false);
+    if (er) return setErr(er);
+    setAsking(false);
+    await onChange();
+  }
+  async function turnOff() {
+    setBusy(true);
+    const er = await patch({ feature_marketing: false });
+    setBusy(false);
+    if (er) return setErr(er);
+    await onChange();
+  }
+
+  const status =
+    s.marketing === "on"
+      ? { tone: "#A8C49A", text: "On. Your QR sticker is active." }
+      : s.marketing === "awaiting_sticker"
+        ? { tone: "#E0926A", text: `Waiting for your QR sticker${s.shipping_address ? ` (shipping to ${s.shipping_address.city}, ${s.shipping_address.state})` : ""}. Scan it from Home when it arrives.` }
+        : { tone: "rgba(242,238,230,0.4)", text: "Off. Check-ins, win-backs, broadcasts and review requests don't go out." };
+  const field = "w-full h-11 rounded-xl bg-white/[0.04] border border-white/[0.12] px-3.5 text-[15px] placeholder-white/25 outline-none focus:border-[var(--accent-color)]/50";
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] text-white/85">SMS marketing</p>
+          <p className="text-[12px] mt-0.5 leading-snug" style={{ color: status.tone }}>{status.text}</p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={s.feature_marketing}
+          aria-label="SMS marketing"
+          disabled={busy}
+          onClick={() => (s.feature_marketing ? turnOff() : setAsking(true))}
+          className={`relative w-[46px] h-[26px] rounded-full shrink-0 transition-colors disabled:opacity-40 ${s.feature_marketing ? "bg-[var(--accent-color)]" : "bg-white/[0.14]"}`}
+        >
+          <span className={`absolute top-[3px] w-5 h-5 rounded-full bg-[#FAF7F2] shadow transition-[left] duration-200 ${s.feature_marketing ? "left-[23px]" : "left-[3px]"}`} />
+        </button>
+      </div>
+
+      {asking && !s.feature_marketing && (
+        <form onSubmit={turnOn} className="mt-4 space-y-2.5" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
+          <p className="text-[12px] text-white/55 leading-relaxed">
+            Marketing texts need a QR sticker at your chair so clients can opt in. We&apos;ll ship you one free. Everything else keeps working while it&apos;s on the way.
+          </p>
+          <label className="block text-[12px] text-white/45" htmlFor="ship-name">Name or shop</label>
+          <input id="ship-name" className={field} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <label className="block text-[12px] text-white/45" htmlFor="ship-line1">Street</label>
+          <input id="ship-line1" className={field} value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} placeholder="123 Main St" autoComplete="address-line1" />
+          <label className="block text-[12px] text-white/45" htmlFor="ship-line2">Apt / suite (optional)</label>
+          <input id="ship-line2" className={field} value={form.line2 || ""} onChange={(e) => setForm({ ...form, line2: e.target.value })} autoComplete="address-line2" />
+          <div className="grid grid-cols-[1fr_64px_92px] gap-2">
+            <div>
+              <label className="block text-[12px] text-white/45 mb-1" htmlFor="ship-city">City</label>
+              <input id="ship-city" className={field} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} autoComplete="address-level2" />
+            </div>
+            <div>
+              <label className="block text-[12px] text-white/45 mb-1" htmlFor="ship-state">State</label>
+              <input id="ship-state" className={field} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase().slice(0, 2) })} placeholder="MA" autoComplete="address-level1" />
+            </div>
+            <div>
+              <label className="block text-[12px] text-white/45 mb-1" htmlFor="ship-zip">ZIP</label>
+              <input id="ship-zip" className={field} value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value.replace(/[^\d-]/g, "").slice(0, 10) })} inputMode="numeric" autoComplete="postal-code" />
+            </div>
+          </div>
+          {err && <p className="text-[12px] text-[#F08A8A]" role="alert">{err}</p>}
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={() => setAsking(false)} className="h-11 px-4 rounded-xl border border-white/[0.12] text-[13px] text-white/70">Cancel</button>
+            <button type="submit" disabled={busy} className="flex-1 h-11 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[13px] font-semibold disabled:opacity-50">
+              {busy ? "Saving…" : "Turn on & ship my sticker"}
+            </button>
+          </div>
+        </form>
+      )}
+      {!asking && err && <p className="text-[12px] text-[#F08A8A] mt-2" role="alert">{err}</p>}
+    </Card>
   );
 }

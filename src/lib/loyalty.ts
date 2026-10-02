@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getMarketingState } from "@/lib/marketing";
 import { toPlan, visitReward, nextRewardCut, REWARD_CENTS, type Plan } from "@/lib/loyalty-rules";
 
 export * from "@/lib/loyalty-rules";
@@ -169,7 +170,10 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
   // The review cron keys off the last completed person's booking_completed event.
   const lastCompleted = completed[completed.length - 1];
   const cooldownStart = new Date(Date.now() - REVIEW_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  // Review requests are marketing: they need SMS marketing on and an active QR sticker.
+  const marketingOn = (await getMarketingState(db, row.user_id)) === "on";
   const reviewDue =
+    marketingOn &&
     !!barber?.google_review_url &&
     barber.feature_reviews !== false &&
     !!vip?.is_opted_in &&

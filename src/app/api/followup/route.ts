@@ -49,9 +49,19 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // Check if the caller replied (any inbound SMS cancels the followup)
-    // We detect this by checking if there's a more recent sms_sent to this
-    // caller (would mean a new call cycle started, so skip this old one)
+    // No second text if they already acted on the first: replied, tapped the link, or booked.
+    const since = call.last_message_at;
+    const [{ count: replied }, { count: clicked }, { count: booked }] = await Promise.all([
+      supabase.from("sms_log").select("id", { count: "exact", head: true }).eq("user_id", call.user_id).eq("direction", "inbound").eq("from_number", call.caller_phone).gt("created_at", since),
+      supabase.from("link_clicks").select("click_id", { count: "exact", head: true }).eq("call_id", call.call_id),
+      supabase.from("bookings").select("id", { count: "exact", head: true }).eq("user_id", call.user_id).eq("customer_phone", call.caller_phone).gt("created_at", since),
+    ]);
+    if ((replied ?? 0) > 0 || (clicked ?? 0) > 0 || (booked ?? 0) > 0) {
+      await supabase.from("missed_calls_log").update({ followed_up: true }).eq("call_id", call.call_id);
+      continue;
+    }
+
+    // A newer missed-call text to this caller starts a fresh cycle; skip this old one.
     const { data: newerCall } = await supabase
       .from("missed_calls_log")
       .select("call_id")
@@ -100,9 +110,8 @@ export async function GET(request: Request) {
     }
 
     try {
-      const trackingUrl = barber.booking_link
-        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${call.call_id}`
-        : "";
+      // Always the tracked link: it forwards to the barber's booking page or their outside booking site.
+      const trackingUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${call.call_id}`;
 
       const sms = await buildSMS({
         userId: call.user_id,

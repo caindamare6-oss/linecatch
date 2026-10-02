@@ -12,3 +12,14 @@ export async function isOptedOut(db: Db, userId: string, phone: string): Promise
   ]);
   return !!vip?.opted_out_at || !!optOut;
 }
+
+/** Normalize an inbound text for keyword matching (STOP, HELP, LATE…). */
+export function keyword(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}

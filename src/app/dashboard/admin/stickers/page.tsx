@@ -103,9 +103,19 @@ async function renderStickerPNG(code: string): Promise<Blob> {
   });
 }
 
+type ShipRequest = {
+  user_id: string;
+  business_name: string | null;
+  first_name: string | null;
+  email: string | null;
+  sticker_requested_at: string;
+  shipping_address: { name: string; line1: string; line2: string | null; city: string; state: string; zip: string } | null;
+};
+
 export default function AdminStickersPage() {
   const [codes, setCodes] = useState<StickerCode[]>([]);
   const [barbers, setBarbers] = useState<Record<string, string>>({});
+  const [toShip, setToShip] = useState<ShipRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [authorized, setAuthorized] = useState<boolean | null>(null);
@@ -150,6 +160,7 @@ export default function AdminStickersPage() {
       const data = await res.json();
       setCodes(data.codes);
       setBarbers(data.barbers);
+      setToShip(data.toShip || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
@@ -276,6 +287,28 @@ export default function AdminStickersPage() {
   return (
     <div className="space-y-6 pb-8">
       <h2 className="text-lg font-bold text-white">Sticker Admin</h2>
+
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
+        <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium mb-3">To ship ({toShip.length})</h3>
+        {toShip.length === 0 ? (
+          <p className="text-sm text-white/40">Nobody is waiting on a sticker.</p>
+        ) : (
+          <ul className="space-y-3">
+            {toShip.map((r) => (
+              <li key={r.user_id} className="text-sm">
+                <p className="text-white/85 font-medium">{r.business_name || r.first_name || r.email}</p>
+                {r.shipping_address && (
+                  <p className="text-white/50 text-xs leading-relaxed">
+                    {r.shipping_address.name}, {r.shipping_address.line1}
+                    {r.shipping_address.line2 ? `, ${r.shipping_address.line2}` : ""}, {r.shipping_address.city}, {r.shipping_address.state} {r.shipping_address.zip}
+                  </p>
+                )}
+                <p className="text-white/30 text-[11px]">Requested {new Date(r.sticker_requested_at).toLocaleDateString()}{r.email ? ` · ${r.email}` : ""}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* Generate Batch */}
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5 space-y-3">

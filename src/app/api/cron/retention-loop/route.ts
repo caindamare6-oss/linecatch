@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
+import { marketingAllowedIds } from "@/lib/marketing";
+import { nextRung, inWednesdayWindow, cronNow } from "@/lib/retention";
+import { issueToken } from "@/lib/client-session";
 
+/** Wednesday Engine: check-ins, then the win-back ladder (see lib/retention). Runs hourly. */
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -10,13 +14,13 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
+  const now = cronNow(request);
   let sent = 0;
   let checked = 0;
 
-  // Find barbers where local time is Wednesday 12:00–12:59 PM
   const { data: barbers } = await supabase
     .from("users")
-    .select("user_id, phone_number, business_name, first_name, booking_link, timezone, is_locked_out, is_active, feature_wednesday")
+    .select("user_id, phone_number, business_name, first_name, booking_link, timezone, rebook_interval_days, winback_offer")
     .eq("is_active", true)
     .eq("is_locked_out", false)
     .neq("feature_wednesday", false);
@@ -25,100 +29,92 @@ export async function GET(request: Request) {
     return NextResponse.json({ sent: 0, checked: 0 });
   }
 
-  const now = new Date();
+  // Marketing texts: only barbers who turned SMS marketing on and activated their QR sticker.
+  const allowed = await marketingAllowedIds(supabase, barbers.map((b) => b.user_id));
 
   for (const barber of barbers) {
-    // Check if it's Wednesday 12:00-12:59 in barber's timezone
-    const localTime = new Date(now.toLocaleString("en-US", { timeZone: barber.timezone || "America/New_York" }));
-    const dayOfWeek = localTime.getDay(); // 0=Sun, 3=Wed
-    const hour = localTime.getHours();
-
-    if (dayOfWeek !== 3 || hour !== 12) continue;
-
+    if (!allowed.has(barber.user_id) || !barber.phone_number) continue;
+    if (!inWednesdayWindow(now, barber.timezone || "America/New_York")) continue;
     checked++;
 
-    // Find VIP clients due for re-engagement
-    const fourteenDaysAgo = new Date(now);
-    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-    const twentyEightDaysAgo = new Date(now);
-    twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
-    const twentyOneDaysAgo = new Date(now);
-    twentyOneDaysAgo.setDate(twentyOneDaysAgo.getDate() - 21);
+    const since = new Date(now.getTime() - 120 * 86_400_000).toISOString();
+    const [{ data: clients }, { data: upcoming }, { data: optOuts }, { data: inbound }] = await Promise.all([
+      supabase
+        .from("vip_clients")
+        .select("id, phone_number, first_name, last_cut_date, reengagement_stage, reengagement_index, last_reengagement_sent_at, has_claimed_winback")
+        .eq("user_id", barber.user_id)
+        .eq("is_opted_in", true)
+        .is("opted_out_at", null)
+        .not("last_cut_date", "is", null),
+      supabase.from("bookings").select("customer_phone").eq("user_id", barber.user_id).eq("status", "confirmed").gt("booking_time", now.toISOString()),
+      supabase.from("opt_outs").select("caller_phone").eq("user_id", barber.user_id),
+      supabase.from("sms_log").select("from_number, created_at").eq("user_id", barber.user_id).eq("direction", "inbound").gte("created_at", since),
+    ]);
 
-    const { data: clients } = await supabase
-      .from("vip_clients")
-      .select("id, phone_number, client_language, first_name, last_reengagement_sent_at")
-      .eq("user_id", barber.user_id)
-      .eq("is_opted_in", true)
-      .is("opted_out_at", null)
-      .gte("last_cut_date", twentyEightDaysAgo.toISOString().split("T")[0])
-      .lte("last_cut_date", fourteenDaysAgo.toISOString().split("T")[0]);
+    const booked = new Set((upcoming || []).map((b) => b.customer_phone));
+    const out = new Set((optOuts || []).map((o) => o.caller_phone));
+    const lastInbound = new Map<string, string>();
+    for (const m of inbound || []) {
+      if (m.from_number && (!lastInbound.has(m.from_number) || m.created_at > lastInbound.get(m.from_number)!)) lastInbound.set(m.from_number, m.created_at);
+    }
+    const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
 
-    if (!clients || clients.length === 0) continue;
+    for (const client of clients || []) {
+      const rung = nextRung(
+        {
+          lastCutDate: client.last_cut_date,
+          stage: client.reengagement_stage ?? 0,
+          lastSentAt: client.last_reengagement_sent_at,
+          variantIndex: client.reengagement_index ?? 0,
+          claimedOffer: !!client.has_claimed_winback,
+          optedOut: out.has(client.phone_number),
+          hasFutureBooking: booked.has(client.phone_number),
+          lastInboundAt: lastInbound.get(client.phone_number) ?? null,
+        },
+        { now, rebookDays: barber.rebook_interval_days || 18, offer: barber.winback_offer }
+      );
+      if (!rung) continue;
 
-    for (const client of clients) {
-      // 21-day re-engagement guard
-      if (client.last_reengagement_sent_at) {
-        const lastSent = new Date(client.last_reengagement_sent_at);
-        if (lastSent > twentyOneDaysAgo) continue;
+      // Their own link: opening it recognizes them, so rebooking is a couple of taps.
+      let link: string;
+      if (barber.booking_link) {
+        const u = new URL(barber.booking_link);
+        u.searchParams.set("src", "cron_reengagement");
+        link = u.toString();
+      } else {
+        const token = await issueToken(supabase, { userId: barber.user_id, phone: client.phone_number, kind: "link", verified: true });
+        link = `${process.env.NEXT_PUBLIC_APP_URL}/book/${barber.user_id}?src=cron_reengagement${token ? `&t=${token}` : ""}`;
       }
-
-      // Check no active booking (must be a live subquery, not a cached boolean)
-      const { data: activeBooking } = await supabase
-        .from("bookings")
-        .select("id")
-        .eq("user_id", barber.user_id)
-        .eq("customer_phone", client.phone_number)
-        .eq("status", "confirmed")
-        .gt("booking_time", now.toISOString())
-        .limit(1)
-        .single();
-
-      if (activeBooking) continue;
-
-      // Check opt_outs table too
-      const { data: optOut } = await supabase
-        .from("opt_outs")
-        .select("caller_phone")
-        .eq("user_id", barber.user_id)
-        .eq("caller_phone", client.phone_number)
-        .single();
-
-      if (optOut) continue;
-
-      const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
-      const baseLink = barber.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${barber.user_id}`;
-      const linkUrl = new URL(baseLink);
-      linkUrl.searchParams.set("src", "cron_reengagement");
-      const link = linkUrl.toString();
 
       const sms = await buildSMS({
         userId: barber.user_id,
-        templateKey: "winback_1",
+        templateKey: rung.templateKey,
         clientPhone: client.phone_number,
         vars: { shop_name: shopName, link },
       });
-
       if (!sms) continue;
 
       try {
-        await sendSMS({ to: client.phone_number, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: "winback_1", language: sms.language });
+        const ok = await sendSMS({ to: client.phone_number, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: rung.templateKey, language: sms.language });
+        if (!ok) continue;
         await markFirstMessageSent(barber.user_id, client.phone_number);
-
         await supabase
           .from("vip_clients")
-          .update({ last_reengagement_sent_at: now.toISOString() })
+          .update({
+            reengagement_stage: rung.stage,
+            reengagement_index: rung.nextVariantIndex,
+            last_reengagement_sent_at: now.toISOString(),
+            ...(rung.usesOffer ? { has_claimed_winback: true } : {}),
+          })
           .eq("id", client.id);
-
         await supabase.from("activity_feed").insert({
           user_id: barber.user_id,
           event_type: "cron_reengagement",
           client_name: client.first_name || null,
           client_phone: client.phone_number,
-          description: `Re-engagement text sent to ${client.first_name || "client"}`,
-          metadata: {},
+          description: `${rung.stage === 1 ? "Check-in" : rung.stage === 4 ? "Last win-back" : "Win-back"} text sent to ${client.first_name || "client"}`,
+          metadata: { stage: rung.stage, template: rung.templateKey },
         });
-
         sent++;
       } catch (err) {
         console.error(`Re-engagement failed for ${client.phone_number}:`, err);

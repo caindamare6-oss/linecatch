@@ -106,6 +106,12 @@ export async function sendSMS(opts: {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`SMS send failed to ${to}:`, errorMsg);
+    // 21610: the carrier has this number unsubscribed (they texted STOP at the carrier level).
+    // Record it so every later text, including the next missed-call text, is skipped up front.
+    if ((err as { code?: number })?.code === 21610 && audience === "client") {
+      await admin.from("opt_outs").upsert({ user_id: userId, caller_phone: to, opted_out_at: new Date().toISOString() }, { onConflict: "user_id,caller_phone" });
+      await admin.from("vip_clients").update({ opted_out_at: new Date().toISOString() }).eq("user_id", userId).eq("phone_number", to).is("opted_out_at", null);
+    }
     if (logId) {
       await admin
         .from("sms_log")

@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { getMarketingState } from "@/lib/marketing";
+import { cronNow } from "@/lib/retention";
+
+const REVIEW_DELAY_HOURS = 2;
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
@@ -12,7 +16,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = createAdminClient();
-  const now = new Date();
+  const now = cronNow(request);
   let sent = 0;
 
   const horizon = new Date(now.getTime() + 25 * 60 * 60 * 1000);
@@ -24,11 +28,8 @@ export async function GET(request: Request) {
     .gte("booking_time", now.toISOString())
     .lte("booking_time", horizon.toISOString());
 
-  if (!upcomingBookings || upcomingBookings.length === 0) {
-    return NextResponse.json({ sent: 0 });
-  }
-
-  for (const booking of upcomingBookings) {
+  // No early return when nothing is coming up: review requests below still need to go out.
+  for (const booking of upcomingBookings || []) {
     // One reminder per group, keyed to the first person's slot.
     if (booking.group_id) {
       const { data: earlier } = await supabase
@@ -133,7 +134,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Delayed review requests: send 3h after booking completion
+  // Delayed review requests: 2 hours after the visit is marked done (cron runs every 15 min, so 2–2¼h).
   const { data: pendingReviews } = await supabase
     .from("booking_reminders")
     .select("booking_id")
@@ -142,7 +143,7 @@ export async function GET(request: Request) {
   let reviewsSent = 0;
 
   if (pendingReviews && pendingReviews.length > 0) {
-    const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    const reviewAfter = new Date(now.getTime() - REVIEW_DELAY_HOURS * 60 * 60 * 1000);
 
     for (const pr of pendingReviews) {
       const { data: completionEvent } = await supabase
@@ -152,7 +153,7 @@ export async function GET(request: Request) {
         .eq("metadata->>booking_id", pr.booking_id)
         .single();
 
-      if (!completionEvent || new Date(completionEvent.created_at) > threeHoursAgo) continue;
+      if (!completionEvent || new Date(completionEvent.created_at) > reviewAfter) continue;
 
       const { data: barber } = await supabase
         .from("users")
@@ -160,7 +161,7 @@ export async function GET(request: Request) {
         .eq("user_id", completionEvent.user_id)
         .single();
 
-      if (!barber?.google_review_url || barber.feature_reviews === false) {
+      if (!barber?.google_review_url || barber.feature_reviews === false || (await getMarketingState(supabase, completionEvent.user_id)) !== "on") {
         await supabase.from("booking_reminders").delete()
           .eq("booking_id", pr.booking_id).eq("reminder_type", "review");
         continue;
@@ -185,7 +186,8 @@ export async function GET(request: Request) {
         userId: completionEvent.user_id,
         templateKey: "review_request",
         clientPhone: completionEvent.client_phone,
-        vars: { shop_name: shopName, review_url: barber.google_review_url },
+        // {link} too, so a custom template written with {link} still carries the review link.
+        vars: { shop_name: shopName, review_url: barber.google_review_url, link: barber.google_review_url },
       });
 
       if (reviewSms) {
@@ -215,5 +217,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ sent, reviewsSent, checked: upcomingBookings.length });
+  return NextResponse.json({ sent, reviewsSent, checked: upcomingBookings?.length ?? 0 });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateTwilioRequest } from "@/lib/twilio";
+import { keyword } from "@/lib/opt-out";
 import { barberLocalToUTC } from "@/lib/format";
 import { localParts } from "@/lib/revenue";
 import { issueToken } from "@/lib/client-session";
@@ -52,7 +53,8 @@ export async function POST(request: Request) {
   const from = params.From;
   const to = params.To;
   const rawBody = (params.Body || "").trim();
-  const body = rawBody.toLowerCase();
+  // Keywords match the whole message, ignoring case and punctuation: "Stop.", "STOP!" and " stop " all count.
+  const body = keyword(rawBody);
 
   const supabase = createAdminClient();
 

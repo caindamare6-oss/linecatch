@@ -64,7 +64,7 @@
   "step5": {
     "badge": "5",
     "title": "Preferences",
-    "subtitle": "Choose which features to turn on.",
+    "subtitle": "Pick what LineCatch does for you. You can change this anytime in Settings.",
     "autotext_label": "Auto-text missed calls",
     "autotext_desc": "When a client's call goes unanswered, LineCatch sends them a booking link automatically.",
     "wednesday_label": "Wednesday re-engagement",
@@ -73,7 +73,21 @@
     "reviews_desc": "After a client's second cut, ask them to leave a Google review.",
     "review_url_label": "Google review link",
     "review_url_placeholder": "https://g.page/your-shop/review",
-    "review_url_hint": "Find this in Google Business Profile under \"Get more reviews.\""
+    "review_url_hint": "Find this in Google Business Profile under \"Get more reviews.\"",
+    "included": "Included",
+    "service_note": "Booking confirmations and appointment reminders are always on for clients who opt in.",
+    "marketing_section": "SMS marketing",
+    "marketing_label": "SMS marketing",
+    "marketing_desc": "Wednesday check-ins, win-back texts, broadcasts and Google review requests. Off until you turn it on.",
+    "sticker_note": "Marketing texts need a QR sticker at your chair so clients can opt in. We'll ship you one. Everything else works without it, and marketing starts once you scan your sticker.",
+    "ship_to": "Ship my sticker to",
+    "ship_name": "Name or shop",
+    "ship_name_placeholder": "Fresh Cuts",
+    "ship_street": "Street",
+    "ship_unit": "Apt / suite (optional)",
+    "ship_unit_placeholder": "Suite 2",
+    "ship_city": "City",
+    "ship_state": "State"
   },
   "step6": {
     "badge": "6",
@@ -86,7 +100,10 @@
     "working_days": "Working days",
     "days_per_week": "{count} days/week",
     "more_services": "+{count} more",
-    "cta": "Go to Dashboard"
+    "cta": "Go to Dashboard",
+    "marketing": "SMS marketing",
+    "marketing_on": "Sticker on its way",
+    "marketing_off": "Off"
   },
   "days": {
     "monday": "Mon",
