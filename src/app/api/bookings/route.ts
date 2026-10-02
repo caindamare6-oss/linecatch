@@ -7,26 +7,39 @@ import { CONSENT_TEXT } from "@/lib/consent";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
 import { isSlotFree, withinBusinessHours, MAX_PARTY_SIZE } from "@/lib/availability";
 import { projectVisit, rewardVars } from "@/lib/loyalty";
+import { findToken, issueToken, touchToken } from "@/lib/client-session";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { userId, serviceId, customerPhone, bookingTime, firstName, consentText, source } = body;
+  const { userId, serviceId, customerPhone, bookingTime, consentText, source, sessionToken } = body;
   const partySize = Number(body.partySize ?? 1);
 
-  if (!userId || !serviceId || !customerPhone || !bookingTime) {
+  if (!userId || !serviceId || !bookingTime || (!customerPhone && !sessionToken)) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
   if (!Number.isInteger(partySize) || partySize < 1 || partySize > MAX_PARTY_SIZE) {
     return NextResponse.json({ error: `Party size must be 1 to ${MAX_PARTY_SIZE}` }, { status: 400 });
   }
 
-  const phoneResult = normalizePhone(customerPhone);
-  if (!phoneResult.valid) {
-    return NextResponse.json({ error: phoneResult.error }, { status: 400 });
-  }
-  const normalized = phoneResult.e164;
-
   const supabase = createAdminClient();
+
+  // Returning clients book with their saved token instead of retyping their phone.
+  const session = sessionToken ? await findToken(supabase, userId, sessionToken) : null;
+  let normalized: string;
+  if (customerPhone) {
+    const phoneResult = normalizePhone(customerPhone);
+    if (!phoneResult.valid) {
+      return NextResponse.json({ error: phoneResult.error }, { status: 400 });
+    }
+    normalized = phoneResult.e164;
+  } else if (session) {
+    normalized = session.phone_number;
+  } else {
+    return NextResponse.json({ error: "Session expired. Enter your phone number.", sessionExpired: true }, { status: 401 });
+  }
+  const sameClient = session?.phone_number === normalized;
+  const firstName: string | undefined =
+    body.firstName?.trim() || (sameClient ? session?.display_name ?? undefined : undefined);
 
   // Check vip_clients for consent
   const { data: vipClient } = await supabase
@@ -275,5 +288,21 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ success: true, bookingId: booking.id, bookingIds: createdIds, partySize, rewardDue });
+  // Remember this device for next time. A typed phone number is unverified: the token
+  // only ever shows back the name typed here, never what's on file for that number.
+  let nextToken: string | null = null;
+  if (session && sameClient && session.kind === "session") {
+    nextToken = sessionToken;
+    await touchToken(supabase, session.id);
+  } else {
+    nextToken = await issueToken(supabase, {
+      userId,
+      phone: normalized,
+      kind: "session",
+      verified: sameClient && !!session?.verified,
+      displayName: firstName,
+    });
+  }
+
+  return NextResponse.json({ success: true, bookingId: booking.id, bookingIds: createdIds, partySize, rewardDue, sessionToken: nextToken });
 }

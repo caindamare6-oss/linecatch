@@ -28,13 +28,19 @@ export async function GET(
       .eq("user_id", call.user_id)
       .single();
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
     let url: URL;
     try {
-      url = new URL(barber?.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${call.user_id}`);
+      url = new URL(barber?.booking_link || `${appUrl}/book/${call.user_id}`);
     } catch {
-      url = new URL(`${process.env.NEXT_PUBLIC_APP_URL}/book/${call.user_id}`);
+      url = new URL(`${appUrl}/book/${call.user_id}`);
     }
     url.searchParams.set("src", "missed_call");
+    // Only hand the client token to our own booking page, never a third-party link.
+    const token = new URL(request.url).searchParams.get("t");
+    if (token && url.origin === new URL(appUrl).origin && url.pathname.startsWith("/book/")) {
+      url.searchParams.set("t", token);
+    }
     return NextResponse.redirect(url.toString());
   }
 

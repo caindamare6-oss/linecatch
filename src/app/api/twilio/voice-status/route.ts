@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS, validateTwilioRequest } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
+import { issueToken } from "@/lib/client-session";
 
 const COOLDOWN_HOURS = 3;
 
@@ -117,9 +118,17 @@ export async function POST(request: Request) {
     );
 
     const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
+    // Phone-mapped link token: opening the text recognizes the caller, no typing needed.
+    const linkToken = await issueToken(supabase, {
+      userId: barber.user_id,
+      phone: from,
+      kind: "link",
+      verified: true,
+    });
+    const tokenParam = linkToken ? `t=${linkToken}` : "";
     const trackingUrl = callLog?.call_id
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${callLog.call_id}`
-      : barber.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${barber.user_id}?src=missed_call`;
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/track/${callLog.call_id}${tokenParam ? `?${tokenParam}` : ""}`
+      : barber.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${barber.user_id}?src=missed_call${tokenParam ? `&${tokenParam}` : ""}`;
 
     const sms = await buildSMS({
       userId: barber.user_id,

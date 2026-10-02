@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Calendar, Check, ChevronLeft, ChevronRight, Mess
 import { normalizePhone } from "@/lib/phone";
 import { formatBarberDate, barberLocalToUTC } from "@/lib/format";
 import { CONSENT_TEXT } from "@/lib/consent";
+import { saveToken, useClientSession } from "./use-client-session";
 
 type Service = {
   id: string;
@@ -51,10 +52,12 @@ function BookingContent() {
   const searchParams = useSearchParams();
   const barberId = params.id as string;
   const bookingSource = searchParams.get("src") || "direct";
+  const { session, forget } = useClientSession(barberId, searchParams.get("t"));
+  const known = session.status === "recognized" ? session : null;
 
   const [step, setStep] = useState<Step>("service");
   const [services, setServices] = useState<Service[]>([]);
-  const [service, setService] = useState<Service | null>(null);
+  const [pickedService, setService] = useState<Service | null>(null);
   const [partySize, setPartySize] = useState(1);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
@@ -75,6 +78,9 @@ function BookingContent() {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+
+  // 1-tap rebook: a returning client's last service is preselected until they pick another.
+  const service = pickedService ?? services.find((s) => s.id === known?.client.lastServiceId) ?? null;
 
   useEffect(() => {
     async function load() {
@@ -124,13 +130,25 @@ function BookingContent() {
   const dateLabel = bookingDate ? formatBarberDate(bookingDate, timezone, "short") : "";
   const partyLabel = partySize > 1 ? `Party of ${partySize}` : "Just me";
 
+  function notMe() {
+    forget();
+    setFirstName("");
+    setPhone("");
+    setConsentChecked(false);
+    setService(null);
+  }
+
   async function handleBook() {
     if (!service || !bookingDate) return;
     setError("");
-    const phoneResult = normalizePhone(phone);
-    if (!phoneResult.valid) {
-      setError(phoneResult.error);
-      return;
+    let customerPhone: string | undefined;
+    if (!known) {
+      const phoneResult = normalizePhone(phone);
+      if (!phoneResult.valid) {
+        setError(phoneResult.error);
+        return;
+      }
+      customerPhone = phoneResult.e164;
     }
     setSubmitting(true);
     try {
@@ -141,15 +159,17 @@ function BookingContent() {
           userId: barberId,
           serviceId: service.id,
           partySize,
-          customerPhone: phoneResult.e164,
+          customerPhone,
+          sessionToken: known?.token,
           bookingTime: bookingDate.toISOString(),
-          firstName: firstName.trim() || undefined,
+          firstName: known ? undefined : firstName.trim() || undefined,
           consentText: consentChecked ? CONSENT_TEXT : undefined,
           source: bookingSource,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.sessionExpired) forget();
         setError(data.error || "Booking failed");
         if (res.status === 409) {
           setSelectedTime("");
@@ -157,6 +177,7 @@ function BookingContent() {
         }
         return;
       }
+      if (data.sessionToken) saveToken(barberId, data.sessionToken);
       setBookingId(data.bookingId);
       setRewardDue(!!data.rewardDue);
       setStep("done");
@@ -167,7 +188,9 @@ function BookingContent() {
     }
   }
 
-  if (loading) {
+  const getsTexts = consentChecked || !!known?.client.smsOptedIn;
+
+  if (loading || session.status === "checking") {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
         <div
@@ -191,7 +214,7 @@ function BookingContent() {
           <h1 className={`${HEADING} text-[28px] font-bold tracking-tight`}>You&apos;re Booked!</h1>
           <p className="text-sm text-white/35 mt-2 leading-relaxed">
             Your appointment is confirmed.
-            {consentChecked && <><br />A confirmation text is on its way.</>}
+            {getsTexts && <><br />A confirmation text is on its way.</>}
           </p>
         </div>
 
@@ -218,7 +241,7 @@ function BookingContent() {
           </a>
         )}
 
-        {!consentChecked && (
+        {!getsTexts && (
           <div className="mt-8 w-full max-w-[340px] rounded-xl bg-white/[0.02] border border-white/[0.04] px-4 py-3 text-xs text-white/30 flex items-center gap-2" style={fadeUp(500)}>
             <MessageSquare className="w-3.5 h-3.5 shrink-0" />
             Save your manage link. You won&apos;t get text reminders for this booking.
@@ -241,8 +264,13 @@ function BookingContent() {
                 <Scissors className="w-5 h-5 text-[var(--accent-color)]" />
                 <span className={`${HEADING} text-lg font-bold text-[var(--accent-color)]`}>LineCatch</span>
               </div>
-              <h1 className={`${HEADING} text-[22px] font-bold tracking-tight`}>Book an Appointment</h1>
+              <h1 className={`${HEADING} text-[22px] font-bold tracking-tight`}>
+                {known ? known.greeting : "Book an Appointment"}
+              </h1>
               {shopName && <p className="text-[13px] text-white/30 mt-1">{shopName}</p>}
+              {known && (
+                <NotMe name={known.client.firstName} onClick={notMe} />
+              )}
             </>
           ) : (
             <div className="flex items-center gap-2 mb-1">
@@ -449,6 +477,15 @@ function BookingContent() {
 
               <div className="mt-6" style={fadeUp(200)}>
                 <SectionLabel>Your info</SectionLabel>
+                {known ? (
+                  <div className="rounded-xl px-4 py-3.5 border-[1.5px] border-white/[0.08] bg-white/[0.04] flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[15px] font-semibold">{known.client.firstName || "Welcome back"}</div>
+                      <div className="text-xs text-white/25">Phone ending in {known.client.phoneLast4}</div>
+                    </div>
+                    <NotMe name={known.client.firstName} onClick={notMe} />
+                  </div>
+                ) : (
                 <div className="flex flex-col gap-2.5">
                   <input
                     type="text"
@@ -467,7 +504,10 @@ function BookingContent() {
                     className="w-full px-4 py-3.5 rounded-xl border-[1.5px] border-white/[0.08] bg-white/[0.04] text-[15px] text-white placeholder-white/20 outline-none focus:border-[var(--accent-color)]/40 transition-colors"
                   />
                 </div>
+                )}
 
+                {!known?.client.smsOptedIn && (
+                <>
                 <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
@@ -496,17 +536,27 @@ function BookingContent() {
                     You&apos;ll get a text reminder 24 hours and 2 hours before your appointment.
                   </div>
                 )}
+                </>
+                )}
 
                 {error && <div className="mt-4"><ErrorBox>{error}</ErrorBox></div>}
               </div>
             </div>
-            <BottomCta disabled={!phone.trim() || submitting} onClick={handleBook}>
+            <BottomCta disabled={(!known && !phone.trim()) || submitting} onClick={handleBook}>
               {submitting ? "Booking..." : <><Check className="w-4 h-4" strokeWidth={2.5} /> Confirm Booking</>}
             </BottomCta>
           </>
         )}
       </div>
     </div>
+  );
+}
+
+function NotMe({ name, onClick }: { name: string | null; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="mt-1 text-xs text-white/30 hover:text-white/60 underline underline-offset-2 transition-colors shrink-0">
+      {name ? `Not ${name}?` : "Not you?"}
+    </button>
   );
 }
 
