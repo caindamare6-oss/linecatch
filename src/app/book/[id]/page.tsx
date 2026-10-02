@@ -5,8 +5,11 @@ import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Calendar, Check, ChevronLeft, ChevronRight, MessageSquare, Scissors, User, Users, Wallet } from "lucide-react";
 import { normalizePhone } from "@/lib/phone";
-import { formatBarberDate, barberLocalToUTC } from "@/lib/format";
-import { CONSENT_TEXT } from "@/lib/consent";
+import { barberLocalToUTC } from "@/lib/format";
+import { consentText } from "@/lib/consent";
+import { DEFAULT_TZ, money } from "@/lib/config";
+import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { saveToken, useClientSession } from "./use-client-session";
 
@@ -33,9 +36,9 @@ const FEW_SPOTS = 3;
 
 function groupSlots(slots: string[]) {
   const groups = [
-    { name: "Morning", times: [] as string[] },
-    { name: "Afternoon", times: [] as string[] },
-    { name: "Evening", times: [] as string[] },
+    { name: "morning", times: [] as string[] },
+    { name: "afternoon", times: [] as string[] },
+    { name: "evening", times: [] as string[] },
   ];
   for (const t of slots) {
     const h = Number(t.split(":")[0]);
@@ -44,11 +47,18 @@ function groupSlots(slots: string[]) {
   return groups.filter((g) => g.times.length > 0);
 }
 
-function formatSlot(t: string) {
-  const [h, m] = t.split(":").map(Number);
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return `${hour}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+/** "16:30" (shop wall clock) → "4:30 PM" / "4:30 p. m." */
+function useSlotLabel() {
+  const f = useFormat();
+  return (t: string) => {
+    if (!t) return "";
+    const [h, m] = t.split(":").map(Number);
+    return f.time(new Date(2000, 0, 1, h, m));
+  };
 }
+
+/** Prices are whole dollars on services. */
+const usd = (dollars: number, locale: "en" | "es") => money(Math.round(dollars * 100), locale);
 
 export default function BookingPage() {
   return (
@@ -68,6 +78,10 @@ function BookingContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
+  const locale = useLocale();
+  const formatSlot = useSlotLabel();
   const barberId = params.id as string;
   const bookingSource = searchParams.get("src") || "direct";
   // The barber booking someone in from their dashboard: no device recognition, no consent box (only the client can consent).
@@ -82,13 +96,14 @@ function BookingContent() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
+  // Which date/service/party the current `slots` are for; anything else is still loading.
+  const [slotsFor, setSlotsFor] = useState("");
   const [firstName, setFirstName] = useState(() => (forBarber ? (searchParams.get("name") || "").slice(0, 40) : ""));
   const [phone, setPhone] = useState(() => (forBarber ? (searchParams.get("phone") || "").replace(/[^\d]/g, "").slice(0, 11) : ""));
   const [consentChecked, setConsentChecked] = useState(false);
   const [shopName, setShopName] = useState("");
   const [openDays, setOpenDays] = useState<string[]>(DAY_NAMES);
-  const [timezone, setTimezone] = useState("America/New_York");
+  const [timezone, setTimezone] = useState(DEFAULT_TZ);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -124,10 +139,13 @@ function BookingContent() {
     load();
   }, [barberId]);
 
+  const slotKey = selectedDate && service ? `${selectedDate}|${service.id}|${partySize}` : "";
+  const slotsLoading = !!slotKey && slotsFor !== slotKey;
+
   useEffect(() => {
     if (!selectedDate || !service) return;
     let cancelled = false;
-    setSlotsLoading(true);
+    const key = `${selectedDate}|${service.id}|${partySize}`;
     fetch(`/api/bookings/slots?userId=${barberId}&date=${selectedDate}&serviceId=${service.id}&partySize=${partySize}`)
       .then((r) => r.json())
       .then((data) => {
@@ -137,7 +155,7 @@ function BookingContent() {
         if (!cancelled) setSlots([]);
       })
       .finally(() => {
-        if (!cancelled) setSlotsLoading(false);
+        if (!cancelled) setSlotsFor(key);
       });
     return () => {
       cancelled = true;
@@ -147,8 +165,9 @@ function BookingContent() {
   const total = service ? service.price * partySize : 0;
   const totalMinutes = service ? service.duration_minutes * partySize : 0;
   const bookingDate = selectedDate && selectedTime ? barberLocalToUTC(selectedDate, selectedTime, timezone) : null;
-  const dateLabel = bookingDate ? formatBarberDate(bookingDate, timezone, "short") : "";
-  const partyLabel = partySize > 1 ? `Party of ${partySize}` : "Just me";
+  const dateLabel = bookingDate ? f.date(bookingDate, { weekday: "short", month: "short", day: "numeric", timeZone: timezone }) : "";
+  const partyLabel = partySize > 1 ? t("book.party_of", { n: partySize }) : t("book.just_me");
+  const shownConsent = consentText(locale);
 
   function notMe() {
     forget();
@@ -165,7 +184,7 @@ function BookingContent() {
     if (!known) {
       const phoneResult = normalizePhone(phone);
       if (!phoneResult.valid) {
-        setError(phoneResult.error);
+        setError(t("book.err_phone"));
         return;
       }
       customerPhone = phoneResult.e164;
@@ -183,14 +202,16 @@ function BookingContent() {
           sessionToken: known?.token,
           bookingTime: bookingDate.toISOString(),
           firstName: known ? undefined : firstName.trim() || undefined,
-          consentText: consentChecked && !forBarber ? CONSENT_TEXT : undefined,
+          consentText: consentChecked && !forBarber ? shownConsent : undefined,
+          // The client's language for later texts. Not when the barber books for them.
+          language: forBarber ? undefined : locale,
           source: bookingSource,
         }),
       });
       const data = await res.json();
       if (!res.ok) {
         if (data.sessionExpired) forget();
-        setError(data.error || "Booking failed");
+        setError(data.error || t("book.booking_failed"));
         if (res.status === 409) {
           setSelectedTime("");
           setStep("time");
@@ -202,7 +223,7 @@ function BookingContent() {
       setRewardDue(!!data.rewardDue);
       setStep("done");
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("book.something_wrong"));
     } finally {
       setSubmitting(false);
     }
@@ -229,22 +250,22 @@ function BookingContent() {
         </div>
         <div style={fadeUp(300)}>
           <h1 className={`${HEADING} text-[34px] font-semibold tracking-[-0.8px]`}>
-            {forBarber ? "Booked " : "You're "}
-            <em className="text-[var(--accent-color)]">{forBarber ? "in." : "booked."}</em>
+            {forBarber ? t("book.done_barber_a") : t("book.done_a")}
+            <em className="text-[var(--accent-color)]">{forBarber ? t("book.done_barber_b") : t("book.done_b")}</em>
           </h1>
           <p className="text-sm text-white/45 mt-2 leading-relaxed">
-            {service?.name}{partySize > 1 ? ` · party of ${partySize}` : ""} · {dateLabel}, {formatSlot(selectedTime)}
-            {getsTexts && !forBarber && <><br />A confirmation text is on its way.</>}
+            {service?.name}{partySize > 1 ? t("book.party_suffix", { n: partySize }) : ""} · {dateLabel}, {formatSlot(selectedTime)}
+            {getsTexts && !forBarber && <><br />{t("book.confirmation_coming")}</>}
           </p>
         </div>
 
         <div className="mt-7 w-full max-w-[300px] rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 text-left" style={fadeUp(500)}>
-          <SummaryRow label="Service" value={service?.name || ""} />
-          <SummaryRow label="Party" value={partyLabel} />
-          <SummaryRow label="Date" value={dateLabel} />
-          <SummaryRow label="Time" value={formatSlot(selectedTime)} />
-          {total > 0 && <SummaryRow label="Total" value={rewardDue ? `$${Math.max(total - 5, 0)}` : `$${total}`} accent last={!rewardDue} />}
-          {rewardDue && <SummaryRow label="Loyalty reward" value="$5 off this visit" accent last />}
+          <SummaryRow label={t("book.service")} value={service?.name || ""} />
+          <SummaryRow label={t("book.party")} value={partyLabel} />
+          <SummaryRow label={t("book.date")} value={dateLabel} />
+          <SummaryRow label={t("book.time")} value={formatSlot(selectedTime)} />
+          {total > 0 && <SummaryRow label={t("book.total")} value={rewardDue ? money(Math.max(Math.round(total * 100) - REWARD_CENTS, 0), locale) : usd(total, locale)} accent last={!rewardDue} />}
+          {rewardDue && <SummaryRow label={t("book.loyalty_reward")} value={t("book.reward_off", { amount: money(REWARD_CENTS, locale) })} accent last />}
         </div>
 
         <div className="mt-4 w-full max-w-[300px]" style={fadeUp(500)}>
@@ -257,20 +278,20 @@ function BookingContent() {
             className="mt-5 text-[13px] text-[var(--accent-color)]/60 hover:text-[var(--accent-color)] transition-colors"
             style={fadeUp(500)}
           >
-            Need to reschedule or cancel? Manage booking →
+            {t("book.manage_link")}
           </a>
         )}
 
         {forBarber && (
           <Link href="/dashboard/schedule" className="mt-6 h-12 px-6 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold flex items-center" style={fadeUp(500)}>
-            Back to schedule
+            {t("book.back_to_schedule")}
           </Link>
         )}
 
         {!getsTexts && !forBarber && (
           <div className="mt-8 w-full max-w-[340px] rounded-xl bg-white/[0.02] border border-white/[0.04] px-4 py-3 text-xs text-white/30 flex items-center gap-2" style={fadeUp(500)}>
             <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-            Save your manage link. You won&apos;t get text reminders for this booking.
+            {t("book.no_texts_note")}
           </div>
         )}
       </div>
@@ -294,17 +315,18 @@ function BookingContent() {
                 } else setStep(step === "confirm" ? "time" : "service");
               }}
               className="w-11 h-11 shrink-0 rounded-xl border border-white/[0.1] bg-white/[0.03] text-white/70 hover:text-white flex items-center justify-center transition-colors"
-              aria-label="Back"
+              aria-label={t("common.back")}
             >
               <ArrowLeft className="w-[18px] h-[18px]" strokeWidth={2.4} />
             </button>
-            <div className="min-w-0">
-              <p className="text-[12px] text-white/45">{forBarber ? "Booking a client for" : "Booking with"}</p>
-              <p className="text-[15px] font-bold truncate">{shopName || "your barber"}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] text-white/45">{forBarber ? t("book.booking_client_for") : t("book.booking_with")}</p>
+              <p className="text-[15px] font-bold truncate">{shopName || t("book.your_barber")}</p>
             </div>
+            <LanguageToggle className="shrink-0" />
           </div>
 
-          <div className="flex gap-1.5 mt-4" aria-label={`Step ${progress} of 3`}>
+          <div className="flex gap-1.5 mt-4" aria-label={t("book.step_of", { n: progress })}>
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -316,16 +338,16 @@ function BookingContent() {
 
           {step === "service" && known && (
             <p className="mt-5 text-[13px] text-white/55 flex items-center gap-2 flex-wrap">
-              {known.greeting}
+              {known.client.firstName ? t("book.greet_name", { name: known.client.firstName }) : t("book.greet")}
               <NotMe name={known.client.firstName} onClick={notMe} />
             </p>
           )}
           <h1 className={`${HEADING} ${step === "service" && known ? "mt-1" : "mt-5"} text-[34px] leading-[1.05] font-semibold tracking-[-0.8px]`}>
-            {step === "service" ? <>What are we doing <em className="text-[var(--accent-color)]">today?</em></> : step === "time" ? <>Pick a <em className="text-[var(--accent-color)]">time</em></> : <>Almost <em className="text-[var(--accent-color)]">done</em></>}
+            {step === "service" ? <>{t("book.title_service_a")}<em className="text-[var(--accent-color)]">{t("book.title_service_b")}</em></> : step === "time" ? <>{t("book.title_time_a")}<em className="text-[var(--accent-color)]">{t("book.title_time_b")}</em></> : <>{t("book.title_confirm_a")}<em className="text-[var(--accent-color)]">{t("book.title_confirm_b")}</em></>}
           </h1>
           {step === "time" && service && (
             <p className="text-[13px] text-white/40 mt-1.5">
-              {service.name} · {partyLabel.toLowerCase()} · {totalMinutes} min{total > 0 && ` · $${total}`}
+              {service.name} · {partyLabel.toLowerCase()} · {t("book.minutes", { n: totalMinutes })}{total > 0 && ` · ${usd(total, locale)}`}
             </p>
           )}
         </div>
@@ -334,7 +356,7 @@ function BookingContent() {
         {step === "service" && (
           <>
             <div className="flex-1 px-6 py-5 overflow-y-auto" style={fadeUp(100)}>
-              <SectionLabel>How many people?</SectionLabel>
+              <SectionLabel>{t("book.how_many")}</SectionLabel>
               <div className="grid grid-cols-4 gap-2 mb-2">
                 {PARTY_SIZES.map((n) => (
                   <button
@@ -356,12 +378,12 @@ function BookingContent() {
                 ))}
               </div>
               <p className="text-xs text-white/25 mb-6">
-                {partySize > 1 ? `Everyone gets the same service, back to back.` : "Booking for yourself."}
+                {partySize > 1 ? t("book.same_service") : t("book.for_yourself")}
               </p>
 
-              <SectionLabel>Choose a service</SectionLabel>
+              <SectionLabel>{t("book.choose_service")}</SectionLabel>
               {services.length === 0 ? (
-                <p className="text-white/30 text-sm text-center py-8">No services available right now.</p>
+                <p className="text-white/30 text-sm text-center py-8">{t("book.no_services")}</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {services.map((s) => {
@@ -389,12 +411,12 @@ function BookingContent() {
                         </span>
                         <span className="flex-1">
                           <span className="block text-[15px] font-semibold">{s.name}</span>
-                          <span className="block text-xs text-white/25 mt-0.5">{s.duration_minutes} min</span>
+                          <span className="block text-xs text-white/25 mt-0.5">{t("book.minutes", { n: s.duration_minutes })}</span>
                         </span>
                         {s.price > 0 && (
                           <span className={`${HEADING} text-base font-bold text-[var(--accent-color)]`}>
-                            ${s.price}
-                            {partySize > 1 && <span className="text-xs text-white/30 font-medium"> ea</span>}
+                            {usd(s.price, locale)}
+                            {partySize > 1 && <span className="text-xs text-white/30 font-medium">{t("book.each_short")}</span>}
                           </span>
                         )}
                       </button>
@@ -403,8 +425,8 @@ function BookingContent() {
                 </div>
               )}
             </div>
-            <BottomCta disabled={!service} onClick={() => setStep("time")} note="Pay in person · No card needed">
-              {service ? "Pick a time" : "Choose a service"} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+            <BottomCta disabled={!service} onClick={() => setStep("time")} note={t("book.pay_note")}>
+              {service ? t("book.pick_time") : t("book.choose_service")} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
         )}
@@ -429,10 +451,10 @@ function BookingContent() {
               {selectedDate && (
                 <div className="mt-5">
                   <div className="flex items-baseline justify-between">
-                    <SectionLabel>Available times</SectionLabel>
+                    <SectionLabel>{t("book.available_times")}</SectionLabel>
                     {!slotsLoading && slots.length > 0 && slots.length <= FEW_SPOTS && (
                       <span className="text-xs font-semibold text-[var(--accent-color)]">
-                        {slots.length === 1 ? "Only 1 spot left" : `Only ${slots.length} spots left`}
+                        {slots.length === 1 ? t("book.one_spot_left") : t("book.n_spots_left", { n: slots.length })}
                       </span>
                     )}
                   </div>
@@ -443,14 +465,14 @@ function BookingContent() {
                     </div>
                   ) : slots.length === 0 ? (
                     <p className="text-white/25 text-sm text-center py-6">
-                      {partySize > 1 ? `No back-to-back openings for ${partySize} this day` : "No openings this day"}
+                      {partySize > 1 ? t("book.no_openings_party", { n: partySize }) : t("book.no_openings")}
                     </p>
                   ) : (
                     // Keyed by day so the pills slide in again whenever a new day is picked.
                     <div key={`${selectedDate}-${partySize}`} className="flex flex-col gap-4">
                       {groupSlots(slots).map((group) => (
                         <div key={group.name}>
-                          <div className="text-[11px] text-white/35 font-medium mb-2">{group.name}</div>
+                          <div className="text-[11px] text-white/35 font-medium mb-2">{t(`book.${group.name}`)}</div>
                           <div className="flex gap-2 overflow-x-auto -mx-6 px-6 pb-1 [scrollbar-width:none]">
                             {group.times.map((t, i) => (
                               <button
@@ -478,9 +500,9 @@ function BookingContent() {
             <BottomCta
               disabled={!selectedTime}
               onClick={() => { setError(""); setStep("confirm"); }}
-              note={partySize > 1 ? `Showing times that fit all ${partySize} back to back` : "Times shown in the shop's time zone"}
+              note={partySize > 1 ? t("book.note_party", { n: partySize }) : t("book.note_tz")}
             >
-              {selectedTime ? "Review booking" : selectedDate ? "Pick a time" : "Pick a day"} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+              {selectedTime ? t("book.review") : selectedDate ? t("book.pick_time") : t("book.pick_day")} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
         )}
@@ -490,20 +512,20 @@ function BookingContent() {
           <>
             <div className="flex-1 px-6 py-5 overflow-y-auto">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-[18px]" style={fadeUp(100)}>
-                <SectionLabel>Your appointment</SectionLabel>
-                <DetailRow icon={<Scissors className="w-4 h-4" />} title={service.name} sub={`${service.duration_minutes} min${service.price > 0 ? ` · $${service.price}` : ""}${partySize > 1 ? " each" : ""}`} />
+                <SectionLabel>{t("book.your_appointment")}</SectionLabel>
+                <DetailRow icon={<Scissors className="w-4 h-4" />} title={service.name} sub={`${t("book.minutes", { n: service.duration_minutes })}${service.price > 0 ? ` · ${usd(service.price, locale)}` : ""}${partySize > 1 ? t("book.each") : ""}`} />
                 <Divider />
-                <DetailRow icon={<Users className="w-4 h-4" />} title={partyLabel} sub={partySize > 1 ? `${totalMinutes} min back to back` : undefined} />
+                <DetailRow icon={<Users className="w-4 h-4" />} title={partyLabel} sub={partySize > 1 ? t("book.back_to_back", { n: totalMinutes }) : undefined} />
                 <Divider />
                 <DetailRow icon={<Calendar className="w-4 h-4" />} title={dateLabel} sub={formatSlot(selectedTime)} />
                 <Divider />
-                <DetailRow icon={<User className="w-4 h-4" />} title={shopName || "Your barber"} />
+                <DetailRow icon={<User className="w-4 h-4" />} title={shopName || t("book.your_barber_cap")} />
                 {total > 0 && (
                   <>
                     <Divider />
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-white/40">Total</span>
-                      <span className={`${HEADING} text-lg font-bold text-[var(--accent-color)]`}>${total}</span>
+                      <span className="text-sm text-white/40">{t("book.total")}</span>
+                      <span className={`${HEADING} text-lg font-bold text-[var(--accent-color)]`}>{usd(total, locale)}</span>
                     </div>
                   </>
                 )}
@@ -514,12 +536,12 @@ function BookingContent() {
               </div>
 
               <div className="mt-6" style={fadeUp(200)}>
-                <SectionLabel>Your info</SectionLabel>
+                <SectionLabel>{t("book.your_info")}</SectionLabel>
                 {known ? (
                   <div className="rounded-xl px-4 py-3.5 border-[1.5px] border-white/[0.08] bg-white/[0.04] flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-[15px] font-semibold">{known.client.firstName || "Welcome back"}</div>
-                      <div className="text-xs text-white/25">Phone ending in {known.client.phoneLast4}</div>
+                      <div className="text-[15px] font-semibold">{known.client.firstName || t("book.welcome_back")}</div>
+                      <div className="text-xs text-white/25">{t("book.phone_ending", { last4: known.client.phoneLast4 })}</div>
                     </div>
                     <NotMe name={known.client.firstName} onClick={notMe} />
                   </div>
@@ -529,7 +551,7 @@ function BookingContent() {
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="First name"
+                    placeholder={t("common.first_name")}
                     autoComplete="given-name"
                     className="w-full px-4 py-3.5 rounded-xl border-[1.5px] border-white/[0.08] bg-white/[0.04] text-[15px] text-white placeholder-white/20 outline-none focus:border-[var(--accent-color)]/40 transition-colors"
                   />
@@ -537,7 +559,7 @@ function BookingContent() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Phone number"
+                    placeholder={t("book.phone_placeholder")}
                     autoComplete="tel"
                     className="w-full px-4 py-3.5 rounded-xl border-[1.5px] border-white/[0.08] bg-white/[0.04] text-[15px] text-white placeholder-white/20 outline-none focus:border-[var(--accent-color)]/40 transition-colors"
                   />
@@ -561,17 +583,17 @@ function BookingContent() {
                     {consentChecked && <Check className="w-3 h-3 text-[#0C0B0A]" strokeWidth={3} />}
                   </span>
                   <span className="text-xs text-white/30 leading-relaxed">
-                    {CONSENT_TEXT}{" "}
-                    <Link href="/privacy" className="text-[var(--accent-color)]/70 hover:underline">Privacy</Link>
+                    {shownConsent}{" "}
+                    <Link href="/privacy" className="text-[var(--accent-color)]/70 hover:underline">{t("common.privacy")}</Link>
                     {" & "}
-                    <Link href="/terms" className="text-[var(--accent-color)]/70 hover:underline">Terms</Link>
+                    <Link href="/terms" className="text-[var(--accent-color)]/70 hover:underline">{t("common.terms")}</Link>
                   </span>
                 </label>
 
                 {consentChecked && (
                   <div className="mt-4 rounded-xl px-3.5 py-3 flex items-start gap-2 text-xs text-white/35 bg-[var(--accent-color)]/[0.03] border border-[var(--accent-color)]/[0.08]">
                     <Check className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0 mt-px" />
-                    You&apos;ll get a text reminder 24 hours and 2 hours before your appointment.
+                    {t("book.reminder_note")}
                   </div>
                 )}
                 </>
@@ -583,9 +605,9 @@ function BookingContent() {
             <BottomCta
               disabled={(!known && !phone.trim()) || submitting}
               onClick={handleBook}
-              note={forBarber ? "Texts go out only if they've opted in" : getsTexts ? "You'll get a text confirmation" : "Texts are optional"}
+              note={forBarber ? t("book.note_barber") : getsTexts ? t("book.note_gets_texts") : t("book.note_optional")}
             >
-              {submitting ? "Booking..." : <><Check className="w-4 h-4" strokeWidth={2.5} /> Confirm Booking</>}
+              {submitting ? t("book.booking") : <><Check className="w-4 h-4" strokeWidth={2.5} /> {t("book.confirm")}</>}
             </BottomCta>
           </>
         )}
@@ -595,22 +617,24 @@ function BookingContent() {
 }
 
 function NotMe({ name, onClick }: { name: string | null; onClick: () => void }) {
+  const t = useT();
   return (
     <button onClick={onClick} className="mt-1 text-xs text-white/30 hover:text-white/60 underline underline-offset-2 transition-colors shrink-0">
-      {name ? `Not ${name}?` : "Not you?"}
+      {name ? t("book.not_name", { name }) : t("book.not_you")}
     </button>
   );
 }
 
 function PayInPerson() {
+  const t = useT();
   return (
     <div className="rounded-xl px-4 py-3 flex items-center gap-3 text-left bg-emerald-500/15 border-[1.5px] border-emerald-400/60 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
       <div className="w-9 h-9 rounded-lg bg-emerald-400 text-[#0C0B0A] flex items-center justify-center shrink-0">
         <Wallet className="w-5 h-5" strokeWidth={2.25} />
       </div>
       <div>
-        <div className="text-sm font-bold text-emerald-300">Pay in person</div>
-        <div className="text-xs text-emerald-100/70">No card needed. You pay at your appointment.</div>
+        <div className="text-sm font-bold text-emerald-300">{t("book.pay_in_person")}</div>
+        <div className="text-xs text-emerald-100/70">{t("book.pay_in_person_sub")}</div>
       </div>
     </div>
   );
@@ -679,6 +703,8 @@ function CalendarGrid({
   selectedDate: string;
   onPick: (date: string) => void;
 }) {
+  const t = useT();
+  const f = useFormat();
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
@@ -697,24 +723,25 @@ function CalendarGrid({
           onClick={() => canGoPrev && setViewMonth(new Date(year, month - 1, 1))}
           disabled={!canGoPrev}
           className={`${navBtn} ${canGoPrev ? "text-white/50 hover:border-[var(--accent-color)]/30 hover:text-[var(--accent-color)]" : "text-white/10 cursor-default"}`}
-          aria-label="Previous month"
+          aria-label={t("book.prev_month")}
         >
           <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.5} />
         </button>
         <span className={`${HEADING} text-base font-bold`}>
-          {viewMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+          {f.date(viewMonth, { month: "long", year: "numeric" })}
         </span>
         <button
           onClick={() => setViewMonth(new Date(year, month + 1, 1))}
           className={`${navBtn} text-white/50 hover:border-[var(--accent-color)]/30 hover:text-[var(--accent-color)]`}
-          aria-label="Next month"
+          aria-label={t("book.next_month")}
         >
           <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
         </button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-1.5">
-        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+        {/* Jan 7 2024 was a Sunday. */}
+        {Array.from({ length: 7 }, (_, i) => f.date(new Date(2024, 0, 7 + i), { weekday: "narrow" })).map((d, i) => (
           <div key={i} className="text-[11px] text-white/20 font-medium text-center">{d}</div>
         ))}
       </div>

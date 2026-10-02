@@ -106,14 +106,15 @@ export function formatPhone(phone: string): string {
   return phone;
 }
 
-/** "3d", "2w", "4mo" — compact age for list rows. */
-export function shortAgo(iso: string | null, now = new Date()): string {
+/** "3d", "2w", "4mo": compact age for list rows. Pass `t` to get it in the app's language. */
+export function shortAgo(iso: string | null, now = new Date(), t?: (k: string, v?: Record<string, number>) => string): string {
   if (!iso) return "";
   const days = Math.floor((now.getTime() - new Date(iso).getTime()) / 86_400_000);
-  if (days < 1) return "today";
-  if (days < 7) return `${days}d`;
-  if (days < 60) return `${Math.floor(days / 7)}w`;
-  return `${Math.floor(days / 30)}mo`;
+  const out = (unit: "today" | "d" | "w" | "mo", n = 0) => (t ? t(`ago.${unit}`, { n }) : unit === "today" ? "today" : `${n}${unit}`);
+  if (days < 1) return out("today");
+  if (days < 7) return out("d", days);
+  if (days < 60) return out("w", Math.floor(days / 7));
+  return out("mo", Math.floor(days / 30));
 }
 
 /** Path segment for a client: digits only, so no "+" in URLs. */

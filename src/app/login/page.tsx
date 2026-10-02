@@ -1,17 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { normalizePhone } from "@/lib/phone";
+import { useT, LanguageToggle } from "@/lib/i18n";
+
+type Invite = { code: string; name: string | null; percentOff: number };
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <Login />
+    </Suspense>
+  );
+}
+
+function Login() {
   const router = useRouter();
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const t = useT();
+  const params = useSearchParams();
+  const refParam = params.get("ref");
+  const [mode, setMode] = useState<"in" | "up">(params.get("mode") === "up" || refParam ? "up" : "in");
+  const [invite, setInvite] = useState<Invite | null>(null);
   const [method, setMethod] = useState<"email" | "phone">("email");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -21,6 +36,17 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // A referral link (/join/CODE) lands here with ?ref=CODE; the code also lives in a cookie for onboarding.
+  useEffect(() => {
+    const cookieRef = document.cookie.match(/(?:^|; )lc_ref=([^;]+)/)?.[1];
+    const code = refParam || (cookieRef ? decodeURIComponent(cookieRef) : null);
+    if (!code) return;
+    fetch(`/api/referrals/check?code=${encodeURIComponent(code)}`)
+      .then((r) => r.json())
+      .then((d) => d.valid && setInvite({ code: d.code, name: d.name, percentOff: d.percentOff }))
+      .catch(() => {});
+  }, [refParam]);
 
   async function handleGoogleLogin() {
     setGoogleLoading(true);
@@ -60,7 +86,7 @@ export default function LoginPage() {
       return;
     }
 
-    setMessage(mode === "up" ? "Check your inbox. Your link starts your setup." : "Check your inbox. We sent you a sign-in link.");
+    setMessage(mode === "up" ? t("login.sent_up") : t("login.sent_in"));
     setLoading(false);
   }
 
@@ -71,7 +97,7 @@ export default function LoginPage() {
 
     const parsed = normalizePhone(phone);
     if (!parsed.valid) {
-      setError(parsed.error);
+      setError(t("login.bad_phone"));
       setLoading(false);
       return;
     }
@@ -127,6 +153,7 @@ export default function LoginPage() {
   return (
     <div className="relative min-h-screen bg-[#121110] text-white flex items-center justify-center px-6 py-10 overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--accent-color)_8%,transparent)_0%,transparent_70%)]" />
+      <LanguageToggle className="absolute top-4 right-4 z-10" />
       <div className="relative w-full max-w-sm">
         <div className="text-center mb-7" style={{ animation: "ob-fade-up 500ms ease-out both" }}>
           <svg className="mx-auto" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -137,11 +164,21 @@ export default function LoginPage() {
           <h1 className="font-heading text-[32px] font-bold tracking-[-1px] mt-3">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </h1>
-          <p className="text-[14px] text-white/40 mt-1.5">Never lose a customer to a missed call</p>
+          <p className="text-[14px] text-white/40 mt-1.5">{t("login.tagline")}</p>
         </div>
 
+        {invite && (
+          <div className="mb-4 rounded-2xl border border-[var(--accent-color)]/30 bg-[var(--accent-color)]/[0.07] px-4 py-3 text-center" style={{ animation: "ob-fade-up 500ms ease-out 60ms both" }}>
+            <p className="text-[14px] font-semibold text-[var(--accent-color)]">
+              {invite.name ? `${t("login.invited", { name: invite.name })} · ` : ""}
+              {t("login.invite_deal", { percent: invite.percentOff })}
+            </p>
+            <p className="text-[12px] text-white/45 mt-0.5">{t("login.invite_code", { code: invite.code })}</p>
+          </div>
+        )}
+
         <div className="bg-white/[0.03] border border-white/[0.07] rounded-[20px] p-6" style={{ animation: "ob-fade-up 500ms ease-out 120ms both" }}>
-          <div role="tablist" aria-label="Account" className="relative grid grid-cols-2 p-1 rounded-[14px] bg-white/[0.04] border border-white/[0.06] mb-5">
+          <div role="tablist" aria-label={t("login.account")} className="relative grid grid-cols-2 p-1 rounded-[14px] bg-white/[0.04] border border-white/[0.06] mb-5">
             <span
               aria-hidden
               className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-[10px] bg-[var(--accent-color)] transition-transform duration-300 [transition-timing-function:cubic-bezier(0.3,1.3,0.5,1)]"
@@ -155,14 +192,14 @@ export default function LoginPage() {
                 onClick={() => { setMode(m); setError(""); setMessage(""); }}
                 className={`relative z-10 h-10 text-sm font-semibold transition-colors ${mode === m ? "text-[var(--accent-fg)]" : "text-white/55"}`}
               >
-                {m === "in" ? "Sign in" : "Sign up"}
+                {m === "in" ? t("login.sign_in") : t("login.sign_up")}
               </button>
             ))}
           </div>
 
           <div className="text-center mb-5">
-            <h2 className="font-heading text-[22px] font-semibold">{up ? "Create your account" : "Welcome back"}</h2>
-            <p className="text-[13px] text-white/45 mt-1">{up ? "30-day free trial · no card needed" : "Sign in to your shop"}</p>
+            <h2 className="font-heading text-[22px] font-semibold">{up ? t("login.create") : t("login.welcome")}</h2>
+            <p className="text-[13px] text-white/45 mt-1">{up ? t("login.trial") : t("login.sign_in_shop")}</p>
           </div>
 
           <button
@@ -177,12 +214,12 @@ export default function LoginPage() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
-            {googleLoading ? "Redirecting…" : up ? "Sign up with Google" : "Sign in with Google"}
+            {googleLoading ? t("login.redirecting") : up ? t("login.google_up") : t("login.google_in")}
           </button>
 
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-white/[0.07]" />
-            <span className="text-[11px] text-white/25 uppercase tracking-[1px]">or</span>
+            <span className="text-[11px] text-white/25 uppercase tracking-[1px]">{t("common.or")}</span>
             <div className="flex-1 h-px bg-white/[0.07]" />
           </div>
 
@@ -198,7 +235,7 @@ export default function LoginPage() {
                       method === m ? "border-[var(--accent-color)] text-[var(--accent-color)]" : "border-transparent text-white/40 hover:text-white/75"
                     }`}
                   >
-                    {m}
+                    {t(`login.${m}`)}
                   </button>
                 ))}
               </div>
@@ -207,61 +244,61 @@ export default function LoginPage() {
                 <form onSubmit={handleSendEmailLink} className="space-y-4">
                   <div>
                     <Label htmlFor="email" className="text-[12px] text-white/45">
-                      Email address
+                      {t("login.email_label")}
                     </Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder={t("login.email_placeholder")}
                       required
                       className="mt-1.5 h-12 rounded-xl bg-white/[0.04] border-white/[0.08] text-white text-[15px] placeholder:text-white/25 focus-visible:border-[var(--accent-color)]/50"
                     />
                     <p className="text-xs text-stone-500 mt-1.5">
-                      {up ? "We'll email you a link. Then you'll set up your shop in a few quick steps." : "We'll send you a magic link to sign in"}
+                      {up ? t("login.email_hint_up") : t("login.email_hint_in")}
                     </p>
                   </div>
 
                   {message && <p className="text-[var(--accent-color)] text-sm">{message}</p>}
-                  {error && <p className="text-red-400 text-sm">{error}</p>}
+                  {error && <p className="text-red-400 text-sm">{t(error)}</p>}
 
                   <Button
                     type="submit"
                     disabled={loading}
                     className="w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[15px] font-semibold hover:brightness-95 disabled:opacity-50"
                   >
-                    {loading ? "Sending…" : up ? "Send sign-up link" : "Send sign-in link"}
+                    {loading ? t("login.sending") : up ? t("login.send_up") : t("login.send_in")}
                   </Button>
                 </form>
               ) : (
                 <form onSubmit={handleSendCode} className="space-y-4">
                   <div>
                     <Label htmlFor="phone" className="text-[12px] text-white/45">
-                      Phone number
+                      {t("login.phone_label")}
                     </Label>
                     <Input
                       id="phone"
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="(857) 505-2551"
+                      placeholder="(555) 234-5678"
                       required
                       className="mt-1.5 h-12 rounded-xl bg-white/[0.04] border-white/[0.08] text-white text-[15px] placeholder:text-white/25 focus-visible:border-[var(--accent-color)]/50"
                     />
                     <p className="text-xs text-stone-500 mt-1.5">
-                      We&apos;ll text you a verification code
+                      {t("login.phone_hint")}
                     </p>
                   </div>
 
-                  {error && <p className="text-red-400 text-sm">{error}</p>}
+                  {error && <p className="text-red-400 text-sm">{t(error)}</p>}
 
                   <Button
                     type="submit"
                     disabled={loading}
                     className="w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[15px] font-semibold hover:brightness-95 disabled:opacity-50"
                   >
-                    {loading ? "Sending..." : "Send verification code"}
+                    {loading ? t("login.sending") : t("login.send_code")}
                   </Button>
                 </form>
               )}
@@ -270,7 +307,7 @@ export default function LoginPage() {
             <form onSubmit={handleVerifyCode} className="space-y-4">
               <div className="text-center mb-2">
                 <p className="text-sm text-stone-300">
-                  Enter the 6-digit code sent to
+                  {t("login.enter_code")}
                 </p>
                 <p className="text-white font-medium">{phone}</p>
               </div>
@@ -288,14 +325,14 @@ export default function LoginPage() {
                 />
               </div>
 
-              {error && <p className="text-red-400 text-sm">{error}</p>}
+              {error && <p className="text-red-400 text-sm">{t(error)}</p>}
 
               <Button
                 type="submit"
                 disabled={loading || otp.length < 6}
                 className="w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[15px] font-semibold hover:brightness-95 disabled:opacity-50"
               >
-                {loading ? "Verifying..." : "Verify & sign in"}
+                {loading ? t("login.verifying") : t("login.verify")}
               </Button>
 
               <button
@@ -303,7 +340,7 @@ export default function LoginPage() {
                 onClick={resetToInput}
                 className="w-full text-sm text-stone-500 hover:text-stone-300 transition-colors"
               >
-                Use a different number
+                {t("login.different")}
               </button>
             </form>
           )}
@@ -311,15 +348,15 @@ export default function LoginPage() {
 
         <div className="text-center mt-6" style={{ animation: "ob-fade-up 500ms ease-out 240ms both" }}>
           <p className="text-[13px] text-white/40">
-            {up ? "Already have an account?" : "New to LineCatch?"}{" "}
+            {up ? t("login.have_account") : t("login.new_here")}{" "}
             <button onClick={() => { setMode(up ? "in" : "up"); setError(""); setMessage(""); }} className="text-[var(--accent-color)] font-semibold">
-              {up ? "Sign in" : "Create an account"}
+              {up ? t("login.sign_in") : t("login.create_link")}
             </button>
           </p>
           <p className="text-[11px] text-white/25 mt-3.5">
-            <Link href="/privacy" className="hover:text-white/50">Privacy</Link>
+            <Link href="/privacy" className="hover:text-white/50">{t("common.privacy")}</Link>
             <span className="mx-2">·</span>
-            <Link href="/terms" className="hover:text-white/50">Terms</Link>
+            <Link href="/terms" className="hover:text-white/50">{t("common.terms")}</Link>
           </p>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualTime } from "@/lib/format";
 import { projectVisit, rewardVars } from "@/lib/loyalty";
+import { DEFAULT_TZ } from "@/lib/config";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
 
     if (!barber) continue;
 
-    const tz = barber.timezone || "America/New_York";
+    const tz = barber.timezone || DEFAULT_TZ;
     const timeStr = formatCasualTime(bookingTime, tz);
     const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
     const templateKey = reminderType === "24h" ? "reminder_24h" : "reminder_2h";

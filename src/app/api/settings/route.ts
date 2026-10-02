@@ -1,3 +1,4 @@
+import { appUrl } from "@/lib/config";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -16,7 +17,7 @@ export async function GET() {
   const { data, error } = await supabase.from("users").select(FIELDS).eq("user_id", user.id).single();
   if (error || !data) return NextResponse.json({ error: "Couldn't load settings" }, { status: 500 });
   const sticker = await hasActiveSticker(createAdminClient(), user.id);
-  return NextResponse.json({ ...data, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing, sticker), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.app" });
+  return NextResponse.json({ ...data, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
 }
 
 /** Partial update: only the keys sent are validated and saved. */
@@ -67,14 +68,14 @@ export async function PATCH(request: Request) {
     }
   }
   if ("barber_language" in body) {
-    if (!["en", "es", "pt"].includes(body.barber_language)) return bad("Unsupported language");
+    if (!["en", "es"].includes(body.barber_language)) return bad("Unsupported language");
     update.barber_language = body.barber_language;
   }
   if (update.feature_reviews === true && !("google_review_url" in update)) {
     const { data } = await supabase.from("users").select("google_review_url").eq("user_id", user.id).single();
     if (!data?.google_review_url) return bad("Add your Google review link first");
   }
-  // SMS marketing: turning it on queues a QR sticker, so an address is required (sent now or already on file).
+  // Optional paid QR sticker add-on: ordered with request_sticker plus a shop address.
   let shipTo: Parameters<typeof requestSticker>[2] | null = null;
   if ("shipping_address" in body) {
     const a = cleanAddress(body.shipping_address);
@@ -82,15 +83,11 @@ export async function PATCH(request: Request) {
     update.shipping_address = a.value;
     shipTo = a.value;
   }
+  // SMS marketing is the barber's call; texts still only reach clients who opted in.
   if ("feature_marketing" in body) {
     if (typeof body.feature_marketing !== "boolean") return bad("Invalid toggle");
     update.feature_marketing = body.feature_marketing;
-    if (body.feature_marketing && !shipTo) {
-      const { data } = await supabase.from("users").select("shipping_address").eq("user_id", user.id).single();
-      const onFile = cleanAddress(data?.shipping_address);
-      if (!onFile.ok) return bad("Add a shipping address for your QR sticker");
-      shipTo = onFile.value;
-    }
+    if (body.feature_marketing) update.feature_wednesday = true;
     if (!body.feature_marketing) {
       // Marketing off also stops the marketing automations.
       update.feature_wednesday = false;
@@ -105,6 +102,6 @@ export async function PATCH(request: Request) {
     console.error("[settings]", error);
     return NextResponse.json({ error: "Couldn't save. Try again." }, { status: 500 });
   }
-  if (update.feature_marketing === true && shipTo) await requestSticker(admin, user.id, shipTo);
+  if (shipTo && body.request_sticker === true) await requestSticker(admin, user.id, shipTo);
   return NextResponse.json({ ok: true, saved: update });
 }

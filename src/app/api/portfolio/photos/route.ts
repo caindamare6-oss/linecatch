@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getT } from "@/lib/i18n-server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MAX_PORTFOLIO_PHOTOS } from "@/lib/portfolio";
@@ -9,14 +10,15 @@ const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png",
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { t } = await getT();
+  if (!user) return NextResponse.json({ error: t("portfolio.unauthorized") }, { status: 401 });
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("photo");
-  if (!(file instanceof File)) return NextResponse.json({ error: "No photo provided" }, { status: 400 });
+  if (!(file instanceof File)) return NextResponse.json({ error: t("portfolio.err_no_photo") }, { status: 400 });
   const ext = TYPES[file.type];
-  if (!ext) return NextResponse.json({ error: "Use a JPG, PNG or WebP photo." }, { status: 400 });
-  if (file.size > MAX_SIZE) return NextResponse.json({ error: "Photo is over 5 MB." }, { status: 400 });
+  if (!ext) return NextResponse.json({ error: t("portfolio.err_type") }, { status: 400 });
+  if (file.size > MAX_SIZE) return NextResponse.json({ error: t("portfolio.err_size") }, { status: 400 });
 
   const toDim = (v: FormDataEntryValue | null | undefined) => {
     const n = Number(v);
@@ -26,7 +28,7 @@ export async function POST(request: Request) {
   const db = createAdminClient();
   const { data: existing } = await db.from("portfolio_photos").select("sort_order").eq("user_id", user.id).order("sort_order", { ascending: false });
   if ((existing?.length ?? 0) >= MAX_PORTFOLIO_PHOTOS) {
-    return NextResponse.json({ error: `You can show up to ${MAX_PORTFOLIO_PHOTOS} photos. Remove one first.` }, { status: 400 });
+    return NextResponse.json({ error: t("portfolio.err_max", { max: MAX_PORTFOLIO_PHOTOS }) }, { status: 400 });
   }
 
   const id = crypto.randomUUID();
@@ -34,7 +36,10 @@ export async function POST(request: Request) {
   const { error: uploadError } = await db.storage
     .from("portfolio")
     .upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, cacheControl: "31536000" });
-  if (uploadError) return NextResponse.json({ error: `Upload failed: ${uploadError.message}` }, { status: 500 });
+  if (uploadError) {
+    console.error("[portfolio upload]", uploadError);
+    return NextResponse.json({ error: t("portfolio.err_upload") }, { status: 500 });
+  }
 
   const { data: urlData } = db.storage.from("portfolio").getPublicUrl(path);
 
@@ -67,7 +72,7 @@ export async function POST(request: Request) {
 
   if (insertError || !photo) {
     await db.storage.from("portfolio").remove(thumbPath ? [path, thumbPath] : [path]);
-    return NextResponse.json({ error: "Could not save the photo." }, { status: 500 });
+    return NextResponse.json({ error: t("portfolio.err_save_photo") }, { status: 500 });
   }
   return NextResponse.json({ photo });
 }

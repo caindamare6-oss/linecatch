@@ -5,6 +5,7 @@ import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { marketingAllowedIds } from "@/lib/marketing";
 import { nextRung, inWednesdayWindow, cronNow } from "@/lib/retention";
 import { issueToken } from "@/lib/client-session";
+import { DEFAULT_TZ } from "@/lib/config";
 
 /** Wednesday Engine: check-ins, then the win-back ladder (see lib/retention). Runs hourly. */
 export async function GET(request: Request) {
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
 
   for (const barber of barbers) {
     if (!allowed.has(barber.user_id) || !barber.phone_number) continue;
-    if (!inWednesdayWindow(now, barber.timezone || "America/New_York")) continue;
+    if (!inWednesdayWindow(now, barber.timezone || DEFAULT_TZ)) continue;
     checked++;
 
     const since = new Date(now.getTime() - 120 * 86_400_000).toISOString();

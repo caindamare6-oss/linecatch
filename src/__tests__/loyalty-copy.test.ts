@@ -70,3 +70,17 @@ describe("client texts after the template-copy migration", () => {
     expect(interpolateTemplate("Hi {first_name}.{reward} Bye", { first_name: "Ana" })).toBe("Hi Ana. Bye");
   });
 });
+
+describe("copy update for the repeating re-engagement", () => {
+  const f = readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261002f_winback_copy.sql"), "utf8");
+  it("the last win-back no longer promises it's the last text", () => {
+    expect(f).toMatch(/template_key = 'winback_final'/);
+    expect(f).toMatch(/template_key = 'winback_final_offer'/);
+    expect(f.split("\n").filter((l) => !l.startsWith("--")).join("\n")).not.toMatch(/Last one|Último mensaje/);
+  });
+  it("progress text reads right after one cut", () => {
+    const m = f.match(/set custom_message = '([^']+)',\s*custom_message_es = '([^']+)',[^;]*template_key = 'loyalty_progress'/);
+    expect(interpolateTemplate(m![1], { cuts: "1", next_cut: "3" })).toBe("Cuts so far: 1. Cut #3 is $5 off.");
+    expect(interpolateTemplate(m![2], { cuts: "1", next_cut: "3" })).toBe("Cortes hasta ahora: 1. El corte #3 lleva $5 de descuento.");
+  });
+});

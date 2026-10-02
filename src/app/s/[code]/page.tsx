@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { ClaimSticker } from "./claim-client";
+import { getT } from "@/lib/i18n-server";
+import { LanguageToggle } from "@/lib/i18n";
 
 export default async function StickerPage({
   params,
@@ -11,6 +13,7 @@ export default async function StickerPage({
 }) {
   const { code } = await params;
   const normalized = code.trim().toUpperCase();
+  const { t } = await getT();
 
   const admin = createAdminClient();
   const { data: sticker } = await admin
@@ -22,15 +25,16 @@ export default async function StickerPage({
   if (!sticker || sticker.status === "retired") {
     return (
       <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <LanguageToggle className="fixed top-4 right-4 z-40" />
         <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
           <div className="text-3xl font-bold mb-4 text-white">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
           <p className="text-stone-400 mb-2">
-            This barber isn&apos;t available here anymore.
+            {t("claim.gone_title")}
           </p>
           <p className="text-stone-500 text-sm">
-            The sticker may have been moved or retired.
+            {t("claim.gone_body")}
           </p>
         </div>
       </div>
@@ -81,21 +85,22 @@ export default async function StickerPage({
   // Not signed in
   return (
     <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <LanguageToggle className="fixed top-4 right-4 z-40" />
       <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
         <div className="text-3xl font-bold mb-4 text-white">
           Line<span className="text-[var(--accent-color)]">Catch</span>
         </div>
         <p className="text-stone-400 mb-4">
-          This sticker isn&apos;t set up yet.
+          {t("claim.unset_title")}
         </p>
         <p className="text-stone-500 text-sm mb-6">
-          If you&apos;re a barber, sign up to claim this sticker and start catching missed calls.
+          {t("claim.unset_body")}
         </p>
         <Link
           href="/login"
           className="inline-block bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
         >
-          Sign Up as a Barber
+          {t("claim.unset_cta")}
         </Link>
       </div>
     </div>

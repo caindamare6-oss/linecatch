@@ -1,4 +1,4 @@
-const DEFAULT_TZ = "America/New_York";
+import { DEFAULT_TZ } from "@/lib/config";
 
 export function formatBarberDate(
   date: Date,

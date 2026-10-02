@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ShippingAddress } from "@/lib/marketing";
+import { STICKER_PRICE_CENTS } from "@/lib/config";
 
 export { cleanAddress } from "@/lib/marketing";
 
@@ -21,8 +22,9 @@ export async function requestSticker(db: Admin, userId: string, address: Shippin
   await db.from("activity_feed").insert({
     user_id: userId,
     event_type: "sticker_request",
-    description: `QR sticker requested, shipping to ${address.city}, ${address.state}`,
-    metadata: { address, email: user?.email ?? null },
+    description: `QR sticker ordered, shipping to ${address.city}, ${address.state}`,
+    // No payment processor yet: the order is recorded with its price and collected separately.
+    metadata: { address, email: user?.email ?? null, price_cents: STICKER_PRICE_CENTS, paid: false },
   });
   return { queued: true };
 }

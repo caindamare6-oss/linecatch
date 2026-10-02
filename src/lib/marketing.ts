@@ -5,21 +5,21 @@ type Admin = ReturnType<typeof createAdminClient>;
 /**
  * Two kinds of texts:
  * - Service: missed-call text and follow-up, booking confirmations, reminders, reschedule/cancel notices,
- *   loyalty updates, replies. Every barber gets these (clients still have to have opted in).
- * - Marketing: Wednesday check-ins, rebook nudges and win-backs, broadcasts, Google review requests.
- *   These need the barber to turn SMS marketing on AND have an active QR sticker at the chair.
+ *   loyalty updates, replies. Every barber gets these.
+ * - Marketing: Wednesday check-ins and win-backs, broadcasts, Google review requests.
+ *   These go out only when the barber turns SMS marketing on.
+ * Either way, a text only ever goes to a client who opted in (booking checkbox, VIP page or QR sticker)
+ * and hasn't opted out. The QR sticker is optional: it's just another way for clients to opt in.
  */
-export type MarketingState = "off" | "awaiting_sticker" | "on";
+export type MarketingState = "off" | "on";
 
-export function marketingState(featureMarketing: boolean | null | undefined, hasActiveSticker: boolean): MarketingState {
-  if (!featureMarketing) return "off";
-  return hasActiveSticker ? "on" : "awaiting_sticker";
+export function marketingState(featureMarketing: boolean | null | undefined): MarketingState {
+  return featureMarketing ? "on" : "off";
 }
 
-export const MARKETING_BLOCKED: Record<Exclude<MarketingState, "on">, string> = {
-  off: "SMS marketing is off. Turn it on in Settings to send this.",
-  awaiting_sticker: "SMS marketing starts once your QR sticker arrives and you scan it.",
-};
+export const MARKETING_BLOCKED = {
+  off: { en: "SMS marketing is off. Turn it on in Settings to send this.", es: "El marketing por SMS está apagado. Actívalo en Ajustes para enviar esto." },
+} as const;
 
 export async function hasActiveSticker(db: Admin, userId: string): Promise<boolean> {
   const { data } = await db.from("sticker_codes").select("code").eq("owner_user_id", userId).eq("status", "active").limit(1).maybeSingle();
@@ -27,22 +27,15 @@ export async function hasActiveSticker(db: Admin, userId: string): Promise<boole
 }
 
 export async function getMarketingState(db: Admin, userId: string): Promise<MarketingState> {
-  const [{ data: user }, sticker] = await Promise.all([
-    db.from("users").select("feature_marketing").eq("user_id", userId).single(),
-    hasActiveSticker(db, userId),
-  ]);
-  return marketingState(user?.feature_marketing, sticker);
+  const { data: user } = await db.from("users").select("feature_marketing").eq("user_id", userId).single();
+  return marketingState(user?.feature_marketing);
 }
 
 /** Barbers (from a list) whose marketing texts may go out right now. */
 export async function marketingAllowedIds(db: Admin, userIds: string[]): Promise<Set<string>> {
   if (userIds.length === 0) return new Set();
-  const [{ data: users }, { data: stickers }] = await Promise.all([
-    db.from("users").select("user_id").in("user_id", userIds).eq("feature_marketing", true),
-    db.from("sticker_codes").select("owner_user_id").in("owner_user_id", userIds).eq("status", "active"),
-  ]);
-  const withSticker = new Set((stickers || []).map((s) => s.owner_user_id));
-  return new Set((users || []).map((u) => u.user_id).filter((id) => withSticker.has(id)));
+  const { data: users } = await db.from("users").select("user_id").in("user_id", userIds).eq("feature_marketing", true);
+  return new Set((users || []).map((u) => u.user_id));
 }
 
 export type ShippingAddress = { name: string; line1: string; line2: string | null; city: string; state: string; zip: string };

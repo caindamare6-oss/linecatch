@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { normalizePhone } from "@/lib/phone";
 import { summarizeClients } from "@/lib/clients";
 import { toPlan } from "@/lib/loyalty-rules";
+import { appUrl } from "@/lib/config";
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
 
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get("phone");
   if (!raw) {
     const { clients } = await loadAll(supabase, user.id);
-    return NextResponse.json({ clients, vipLink: `${process.env.NEXT_PUBLIC_APP_URL || "https://linecatch.app"}/vip/${user.id}` });
+    return NextResponse.json({ clients, vipLink: `${appUrl()}/vip/${user.id}` });
   }
 
   const p = normalizePhone(raw);

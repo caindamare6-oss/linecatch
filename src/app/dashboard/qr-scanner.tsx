@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import jsQR from "jsqr";
+import { useT } from "@/lib/i18n";
+import { appUrl } from "@/lib/config";
 
 type ScanState =
   | { type: "scanning" }
@@ -12,7 +14,7 @@ type ScanState =
 function extractStickerCode(url: string): string | null {
   try {
     const parsed = new URL(url);
-    if (!parsed.hostname.endsWith("linecatch.app")) return null;
+    if (!parsed.hostname.endsWith("linecatch.app") && parsed.host !== new URL(appUrl()).host) return null;
     const segments = parsed.pathname.split("/").filter(Boolean);
     if (segments.length === 2 && segments[0] === "s") return segments[1];
     return null;
@@ -21,7 +23,17 @@ function extractStickerCode(url: string): string | null {
   }
 }
 
-const CAMERA_FALLBACK = "Or use your phone’s Camera app to scan the sticker directly. It’ll open the activation page.";
+/** Renders a translated sentence with the sticker code set in monospace where {code} sits. */
+function Coded({ text, code }: { text: string; code: string }) {
+  const [before, after = ""] = text.split("{code}");
+  return (
+    <>
+      {before}
+      <span className="font-mono text-white">{code}</span>
+      {after}
+    </>
+  );
+}
 
 export function QRScanner({
   onClose,
@@ -30,6 +42,7 @@ export function QRScanner({
   onClose: () => void;
   onActivated: (code: string) => void;
 }) {
+  const t = useT();
   const [state, setState] = useState<ScanState>({ type: "scanning" });
   const [claiming, setClaiming] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -77,14 +90,14 @@ export function QRScanner({
         if (data.existingCode) {
           setState({ type: "existing", code: data.existingCode });
         } else {
-          setState({ type: "error", message: data.error || "This code has already been claimed." });
+          setState({ type: "error", message: data.error || t("qr.already_claimed") });
         }
         return;
       }
 
-      setState({ type: "error", message: data.error || "Failed to activate." });
+      setState({ type: "error", message: data.error || t("qr.failed") });
     } catch {
-      setState({ type: "error", message: "Network error. Check your connection and try again." });
+      setState({ type: "error", message: t("qr.network") });
     } finally {
       setClaiming(false);
     }
@@ -142,7 +155,7 @@ export function QRScanner({
               claimCode(code);
               return;
             }
-            setState({ type: "error", message: "That’s not a LineCatch sticker code." });
+            setState({ type: "error", message: t("qr.not_linecatch") });
             setTimeout(() => {
               if (!claimedRef.current) setState({ type: "scanning" });
             }, 2000);
@@ -158,19 +171,19 @@ export function QRScanner({
         if (name === "NotAllowedError") {
           setState({
             type: "error",
-            message: "Camera access was denied. On iPhone, go to Settings → Safari → Camera and set it to “Allow.” Then reload this page.",
+            message: t("qr.denied"),
             fallback: true,
           });
         } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
           setState({
             type: "error",
-            message: "No camera found on this device.",
+            message: t("qr.no_camera"),
             fallback: true,
           });
         } else {
           setState({
             type: "error",
-            message: "Could not start the camera. Make sure you’re on HTTPS and camera access is enabled.",
+            message: t("qr.start_failed"),
             fallback: true,
           });
         }
@@ -182,6 +195,8 @@ export function QRScanner({
       cancelled = true;
       stopCamera();
     };
+    // Start the camera once per open; restarting it on every render (claimCode, t) would flicker the video.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stopCamera]);
 
   return (
@@ -189,6 +204,7 @@ export function QRScanner({
       {/* Close button */}
       <button
         onClick={handleClose}
+        aria-label={t("qr.close")}
         className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
       >
         <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -215,12 +231,12 @@ export function QRScanner({
             </div>
           </div>
           <p className="text-white/60 text-sm mt-4 text-center px-6">
-            Point your camera at the QR code on your LineCatch sticker
+            {t("qr.point")}
           </p>
           {claiming && (
             <div className="mt-3 flex items-center gap-2 text-[var(--accent-color)] text-sm">
               <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'transparent', borderTopColor: 'var(--accent-color)' }} />
-              Activating...
+              {t("qr.activating")}
             </div>
           )}
         </>
@@ -233,16 +249,16 @@ export function QRScanner({
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
           </div>
-          <p className="text-white text-lg font-semibold mb-2">Can&apos;t scan</p>
+          <p className="text-white text-lg font-semibold mb-2">{t("qr.cant_scan")}</p>
           <p className="text-white/60 text-sm mb-4">{state.message}</p>
           {state.fallback && (
-            <p className="text-white/40 text-xs mb-6">{CAMERA_FALLBACK}</p>
+            <p className="text-white/40 text-xs mb-6">{t("qr.fallback")}</p>
           )}
           <button
             onClick={handleClose}
             className="px-6 py-2.5 rounded-xl text-sm font-medium bg-white/10 text-white hover:bg-white/15 transition-colors"
           >
-            Close
+            {t("qr.close_btn")}
           </button>
         </div>
       )}
@@ -254,18 +270,18 @@ export function QRScanner({
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-white text-lg font-semibold mb-2">You already have a sticker</p>
+          <p className="text-white text-lg font-semibold mb-2">{t("qr.existing_title")}</p>
           <p className="text-white/60 text-sm mb-2">
-            Your active code is <span className="font-mono text-white">{state.code}</span>.
+            <Coded text={t("qr.existing_code")} code={state.code} />
           </p>
           <p className="text-white/40 text-xs mb-6">
-            Each barber gets one code. Need more copies? Request them from Settings.
+            {t("qr.existing_note")}
           </p>
           <button
             onClick={handleClose}
             className="px-6 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[var(--accent-fg)] hover:brightness-90 transition-colors"
           >
-            Got it
+            {t("qr.got_it")}
           </button>
         </div>
       )}
@@ -277,24 +293,24 @@ export function QRScanner({
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-white text-xl font-bold mb-2">Sticker Activated!</p>
+          <p className="text-white text-xl font-bold mb-2">{t("qr.success_title")}</p>
           <p className="text-white/60 text-sm mb-1">
-            Code <span className="font-mono text-white">{state.code}</span> is yours.
+            <Coded text={t("qr.success_code")} code={state.code} />
           </p>
           <p className="text-white/50 text-sm mb-4">
-            SMS is now live &mdash; missed-call auto-replies, booking confirmations, reminders, and review requests are all turned on.
+            {t("qr.success_body")}
           </p>
           <div className="bg-white/[0.06] border border-white/[0.1] rounded-xl p-4 mb-6">
-            <p className="text-[var(--accent-color)] text-sm font-semibold mb-1">What&apos;s next?</p>
+            <p className="text-[var(--accent-color)] text-sm font-semibold mb-1">{t("qr.next_title")}</p>
             <p className="text-white/50 text-xs leading-relaxed">
-              Place the sticker on your mirror where clients can see it from the chair. When they scan it, they&apos;ll sign up as a VIP and start getting booking reminders and review requests automatically.
+              {t("qr.next_body")}
             </p>
           </div>
           <button
             onClick={handleClose}
             className="px-6 py-2.5 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[var(--accent-fg)] hover:brightness-90 transition-colors"
           >
-            Go to Dashboard
+            {t("qr.go_dashboard")}
           </button>
         </div>
       )}

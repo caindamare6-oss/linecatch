@@ -3,8 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { formatBarberDate, formatBarberTime, barberLocalToUTC } from "@/lib/format";
+import { barberLocalToUTC } from "@/lib/format";
+import { money } from "@/lib/config";
+import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
+
+const CUTOFF_HOURS = 3;
 
 type BookingData = {
   id: string;
@@ -22,6 +27,9 @@ type BookingData = {
 export default function ManageBookingPage() {
   const params = useParams();
   const bookingId = params.id as string;
+  const t = useT();
+  const f = useFormat();
+  const locale = useLocale();
 
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +40,7 @@ export default function ManageBookingPage() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsFor, setSlotsFor] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [submitting, setSubmitting] = useState(false);
 
@@ -49,29 +57,40 @@ export default function ManageBookingPage() {
         setLoading(false);
       })
       .catch(() => {
-        setError("Could not load booking");
+        setError(t("manage.load_error"));
         setLoading(false);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once per booking, not per language
   }, [bookingId]);
+
+  // Slots shown are for `slotsFor`; a different picked date is still loading.
+  const slotsLoading = !!selectedDate && slotsFor !== selectedDate;
 
   useEffect(() => {
     if (!selectedDate || !booking?.serviceId) return;
-    setSlotsLoading(true);
+    let cancelled = false;
     fetch(`/api/bookings/slots?userId=${booking.userId}&date=${selectedDate}&serviceId=${booking.serviceId}&partySize=${booking.partySize || 1}`)
       .then((r) => r.json())
       .then((data) => {
-        setSlots(data.slots || []);
-        setSlotsLoading(false);
+        if (!cancelled) setSlots(data.slots || []);
       })
-      .catch(() => setSlotsLoading(false));
-  }, [selectedDate, booking?.serviceId, booking?.userId]);
+      .catch(() => {
+        if (!cancelled) setSlots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsFor(selectedDate);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedDate, booking?.serviceId, booking?.userId, booking?.partySize]);
 
   function isWithinWindow(): boolean {
     if (!booking) return false;
     const bt = new Date(booking.bookingTime);
     const now = new Date();
     const hoursUntil = (bt.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return hoursUntil > 3;
+    return hoursUntil > CUTOFF_HOURS;
   }
 
   async function handleCancel() {
@@ -87,7 +106,7 @@ export default function ManageBookingPage() {
       setActionResult("cancelled");
       setView("done");
     } else {
-      setError(data.error || "Failed to cancel");
+      setError(data.error || t("manage.failed_cancel"));
     }
   }
 
@@ -106,15 +125,14 @@ export default function ManageBookingPage() {
       setActionResult("rescheduled");
       setView("done");
     } else {
-      setError(data.error || "Failed to reschedule");
+      setError(data.error || t("manage.failed_reschedule"));
     }
   }
 
-  function formatTime(t: string) {
-    const [h, m] = t.split(":").map(Number);
-    const ampm = h >= 12 ? "PM" : "AM";
-    const hour = h > 12 ? h - 12 : h === 0 ? 12 : h;
-    return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
+  // "16:30" on the shop's clock → "4:30 PM" / "4:30 p. m."
+  function formatTime(slot: string) {
+    const [h, m] = slot.split(":").map(Number);
+    return f.time(new Date(2000, 0, 1, h, m));
   }
 
   function renderCalendar() {
@@ -125,7 +143,8 @@ export default function ManageBookingPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const dayHeaders = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    // Jan 7 2024 was a Sunday.
+    const dayHeaders = Array.from({ length: 7 }, (_, i) => f.date(new Date(2024, 0, 7 + i), { weekday: "narrow" }));
     const cells: (number | null)[] = [];
     for (let i = 0; i < firstDay; i++) cells.push(null);
     for (let d = 1; d <= daysInMonth; d++) cells.push(d);
@@ -137,23 +156,25 @@ export default function ManageBookingPage() {
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => canGoPrev && setCurrentMonth(new Date(year, month - 1, 1))}
+            aria-label={t("manage.prev_month")}
             className={`p-1 rounded ${canGoPrev ? "text-white/50 hover:text-white" : "text-white/10 cursor-default"}`}
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <span className="text-sm font-medium text-white/70">
-            {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+            {f.date(currentMonth, { month: "long", year: "numeric" })}
           </span>
           <button
             onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+            aria-label={t("manage.next_month")}
             className="p-1 rounded text-white/50 hover:text-white"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
         <div className="grid grid-cols-7 gap-1 mb-1">
-          {dayHeaders.map((d) => (
-            <div key={d} className="text-center text-[11px] text-white/30 py-1">{d}</div>
+          {dayHeaders.map((d, i) => (
+            <div key={i} className="text-center text-[11px] text-white/30 py-1">{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-1">
@@ -196,7 +217,7 @@ export default function ManageBookingPage() {
       <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-red-400 mb-2">{error}</p>
-          <p className="text-white/30 text-sm">This booking may not exist or the link may have expired.</p>
+          <p className="text-white/30 text-sm">{t("manage.maybe_expired")}</p>
         </div>
       </div>
     );
@@ -205,7 +226,9 @@ export default function ManageBookingPage() {
   if (!booking) return null;
 
   const bt = new Date(booking.bookingTime);
-  const displayName = booking.businessName || "your barber";
+  const displayName = booking.businessName || t("manage.your_barber");
+  const dateLabel = f.date(bt, { weekday: "long", month: "long", day: "numeric", timeZone: booking.timezone });
+  const timeLabel = f.time(bt, { hour: "numeric", minute: "2-digit", timeZone: booking.timezone });
   const canModify = booking.status === "confirmed" && isWithinWindow();
   const tooLate = booking.status === "confirmed" && !isWithinWindow();
 
@@ -219,12 +242,12 @@ export default function ManageBookingPage() {
             </svg>
           </div>
           <h2 className="text-xl font-bold text-white mb-2">
-            {actionResult === "cancelled" ? "Booking Cancelled" : "Booking Rescheduled"}
+            {actionResult === "cancelled" ? t("manage.cancelled_title") : t("manage.rescheduled_title")}
           </h2>
           <p className="text-stone-400 text-sm">
             {actionResult === "cancelled"
-              ? `Your appointment with ${displayName} has been cancelled. Your barber has been notified.`
-              : `Your appointment has been moved. Your barber has been notified.`}
+              ? t("manage.cancelled_body", { name: displayName })
+              : t("manage.rescheduled_body")}
           </p>
         </div>
       </div>
@@ -235,11 +258,9 @@ export default function ManageBookingPage() {
     return (
       <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
         <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-6 border border-[#2C2A27]">
-          <h2 className="text-lg font-bold text-white mb-2">Cancel this appointment?</h2>
+          <h2 className="text-lg font-bold text-white mb-2">{t("manage.cancel_q")}</h2>
           <p className="text-stone-400 text-sm mb-6">
-            {booking.service?.name} with {displayName} on{" "}
-            {formatBarberDate(bt, booking.timezone)} at{" "}
-            {formatBarberTime(bt, booking.timezone)}
+            {t("manage.cancel_summary", { service: booking.service?.name || "", name: displayName, date: dateLabel, time: timeLabel })}
           </p>
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
           <div className="flex gap-3">
@@ -247,14 +268,14 @@ export default function ManageBookingPage() {
               onClick={() => { setView("details"); setError(""); }}
               className="flex-1 py-3 rounded-xl border border-white/[0.08] text-white/50 text-sm hover:bg-white/[0.04]"
             >
-              Go back
+              {t("manage.go_back")}
             </button>
             <button
               onClick={handleCancel}
               disabled={submitting}
               className="flex-1 py-3 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 disabled:opacity-50"
             >
-              {submitting ? "Cancelling..." : "Yes, cancel"}
+              {submitting ? t("manage.cancelling") : t("manage.yes_cancel")}
             </button>
           </div>
         </div>
@@ -270,10 +291,10 @@ export default function ManageBookingPage() {
             onClick={() => { setView("details"); setSelectedDate(""); setSelectedTime(""); setError(""); }}
             className="text-sm text-white/30 hover:text-white/50 mb-4 flex items-center gap-1"
           >
-            <ChevronLeft className="w-4 h-4" /> Back
+            <ChevronLeft className="w-4 h-4" /> {t("common.back")}
           </button>
 
-          <h2 className="text-lg font-bold text-white mb-4">Pick a new time</h2>
+          <h2 className="text-lg font-bold text-white mb-4">{t("manage.pick_new_time")}</h2>
 
           <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 mb-4">
             {renderCalendar()}
@@ -281,27 +302,27 @@ export default function ManageBookingPage() {
 
           {selectedDate && (
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4">
-              <p className="text-xs text-white/30 mb-3">Available times</p>
+              <p className="text-xs text-white/30 mb-3">{t("manage.available_times")}</p>
               {slotsLoading ? (
                 <div className="flex justify-center py-4">
                   <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'color-mix(in srgb, var(--accent-color) 30%, transparent)', borderTopColor: 'var(--accent-color)' }} />
                 </div>
               ) : slots.length === 0 ? (
-                <p className="text-white/20 text-sm text-center py-4">No available slots this day</p>
+                <p className="text-white/20 text-sm text-center py-4">{t("manage.no_slots")}</p>
               ) : (
                 <>
                   <div className="grid grid-cols-3 gap-2">
-                    {slots.map((t) => (
+                    {slots.map((slot) => (
                       <button
-                        key={t}
-                        onClick={() => setSelectedTime(t)}
+                        key={slot}
+                        onClick={() => setSelectedTime(slot)}
                         className={`py-2 px-1 rounded-lg text-sm transition-all ${
-                          selectedTime === t
+                          selectedTime === slot
                             ? "bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold"
                             : "bg-white/[0.04] text-white/50 hover:bg-white/[0.08]"
                         }`}
                       >
-                        {formatTime(t)}
+                        {formatTime(slot)}
                       </button>
                     ))}
                   </div>
@@ -311,7 +332,7 @@ export default function ManageBookingPage() {
                       disabled={submitting}
                       className="w-full mt-4 bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold py-3 rounded-xl hover:brightness-90 disabled:opacity-50 transition"
                     >
-                      {submitting ? "Rescheduling..." : "Confirm new time"}
+                      {submitting ? t("manage.rescheduling") : t("manage.confirm_new_time")}
                     </button>
                   )}
                 </>
@@ -325,7 +346,8 @@ export default function ManageBookingPage() {
   }
 
   const statusTone = booking.status === "confirmed" ? "var(--accent-color)" : booking.status === "completed" ? "#A8C49A" : "#F08A8A";
-  const price = booking.service ? Math.max(booking.service.price * (booking.partySize || 1) - (booking.rewardDue ? 5 : 0), 0) : 0;
+  const priceCents = booking.service ? Math.max(Math.round(booking.service.price * 100) * (booking.partySize || 1) - (booking.rewardDue ? REWARD_CENTS : 0), 0) : 0;
+  const statusLabel = ["confirmed", "completed", "cancelled", "no_show"].includes(booking.status) ? t(`manage.status_${booking.status}`) : booking.status;
 
   return (
     <div className="min-h-screen bg-[#121110] text-white flex flex-col">
@@ -334,8 +356,9 @@ export default function ManageBookingPage() {
           <div className="flex items-center gap-2.5 mb-5">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-color)" strokeWidth="2" aria-hidden><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z" /></svg>
             <span className="font-heading text-lg font-bold text-[var(--accent-color)]">LineCatch</span>
+            <LanguageToggle className="ml-auto" />
           </div>
-          <h1 className="font-heading text-[26px] font-semibold tracking-[-0.5px]">Manage booking</h1>
+          <h1 className="font-heading text-[26px] font-semibold tracking-[-0.5px]">{t("manage.title")}</h1>
           <p className="text-[13px] text-white/40 mt-1">{displayName}</p>
         </header>
 
@@ -345,15 +368,15 @@ export default function ManageBookingPage() {
             style={{ color: statusTone, borderColor: `color-mix(in srgb, ${statusTone} 25%, transparent)`, background: `color-mix(in srgb, ${statusTone} 8%, transparent)` }}
           >
             <span className="w-2 h-2 rounded-full" style={{ background: statusTone }} />
-            {booking.status === "no_show" ? "Missed" : booking.status}
+            {statusLabel}
           </span>
 
           <div className="mt-4 rounded-[18px] bg-white/[0.025] border border-white/[0.07] px-5 py-1">
             {booking.service && (
-              <Detail tone="var(--accent-color)" label="Service" title={`${booking.service.name}${booking.partySize > 1 ? ` · party of ${booking.partySize}` : ""}`} sub={`${booking.service.duration_minutes * (booking.partySize || 1)} min${price > 0 ? ` · $${price}` : ""}${booking.rewardDue ? " ($5 loyalty reward applied)" : ""}`} icon={<><path d="M6 3a3 3 0 100 6 3 3 0 000-6zM6 15a3 3 0 100 6 3 3 0 000-6z" /><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" /></>} />
+              <Detail tone="var(--accent-color)" label={t("manage.service")} title={`${booking.service.name}${booking.partySize > 1 ? t("manage.party_suffix", { n: booking.partySize }) : ""}`} sub={`${t("manage.minutes", { n: booking.service.duration_minutes * (booking.partySize || 1) })}${priceCents > 0 ? ` · ${money(priceCents, locale)}` : ""}${booking.rewardDue ? t("manage.reward_applied", { amount: money(REWARD_CENTS, locale) }) : ""}`} icon={<><path d="M6 3a3 3 0 100 6 3 3 0 000-6zM6 15a3 3 0 100 6 3 3 0 000-6z" /><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" /></>} />
             )}
-            <Detail tone="#8FB8DE" label="Date" title={formatBarberDate(bt, booking.timezone)} icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
-            <Detail tone="#E0926A" label="Time" title={formatBarberTime(bt, booking.timezone)} icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} last />
+            <Detail tone="#8FB8DE" label={t("manage.date")} title={dateLabel} icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
+            <Detail tone="#E0926A" label={t("manage.time")} title={timeLabel} icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} last />
           </div>
 
           {canModify && (
@@ -362,13 +385,13 @@ export default function ManageBookingPage() {
                 onClick={() => setView("reschedule")}
                 className="h-[52px] rounded-[14px] bg-[var(--accent-color)] text-[var(--accent-fg)] font-bold flex items-center justify-center gap-2 hover:shadow-[0_6px_24px_color-mix(in_srgb,var(--accent-color)_30%,transparent)] transition-shadow"
               >
-                Reschedule
+                {t("manage.reschedule")}
               </button>
               <button
                 onClick={() => setView("confirm-cancel")}
                 className="h-[52px] rounded-[14px] border-2 border-[#EF4444]/30 text-[#F08A8A] font-bold hover:border-[#EF4444]/50 transition-colors"
               >
-                Cancel booking
+                {t("manage.cancel_booking")}
               </button>
             </div>
           )}
@@ -376,21 +399,21 @@ export default function ManageBookingPage() {
           {booking.status === "confirmed" && (
             <p className={`mt-4 rounded-[10px] px-3.5 py-3 text-[12px] leading-relaxed border ${tooLate ? "bg-[#E0926A]/10 border-[#E0926A]/25 text-[#E0926A]" : "bg-[#E0926A]/[0.04] border-[#E0926A]/10 text-white/40"}`}>
               {tooLate
-                ? "Your appointment is less than 3 hours away, so it can't be changed here. Call or text the shop."
-                : "Changes can be made up to 3 hours before your appointment. After that, contact the shop directly."}
+                ? t("manage.too_late", { hours: CUTOFF_HOURS })
+                : t("manage.window_note", { hours: CUTOFF_HOURS })}
             </p>
           )}
 
           {booking.status !== "confirmed" && (
             <p className="mt-6 text-center text-[13px] text-white/45">
-              {booking.status === "cancelled" ? "This booking was cancelled." : booking.status === "completed" ? "Thanks for coming in." : "This appointment was missed."}
+              {booking.status === "cancelled" ? t("manage.was_cancelled") : booking.status === "completed" ? t("manage.thanks") : t("manage.was_missed")}
             </p>
           )}
         </main>
 
         <footer className="py-6 text-center">
           <a href={`/book/${booking.userId}`} className="text-[13px] text-[var(--accent-color)]/60 hover:text-[var(--accent-color)] transition-colors">
-            Book another appointment →
+            {t("manage.book_another")}
           </a>
         </footer>
       </div>

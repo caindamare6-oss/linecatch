@@ -5,6 +5,8 @@ import { sendSMS } from "@/lib/twilio";
 import { isSlotFree, withinBusinessHours } from "@/lib/availability";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
+import { getT } from "@/lib/i18n-server";
+import { DEFAULT_TZ, appUrl } from "@/lib/config";
 import { completeBookingLoyalty, closeVisitIfResolved, projectVisit } from "@/lib/loyalty";
 
 const CLIENT_CUTOFF_HOURS = 3;
@@ -15,6 +17,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const supabase = createAdminClient();
+  const { t } = await getT();
 
   const { data: booking } = await supabase
     .from("bookings")
@@ -23,7 +26,7 @@ export async function GET(
     .single();
 
   if (!booking) {
-    return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    return NextResponse.json({ error: t("manage.err_not_found") }, { status: 404 });
   }
 
   const { data: service } = await supabase
@@ -61,7 +64,7 @@ export async function GET(
     serviceId: booking.service_id,
     service: service ? { name: service.name, price: service.price, duration_minutes: service.duration_minutes } : null,
     businessName: barber?.business_name || null,
-    timezone: barber?.timezone || "America/New_York",
+    timezone: barber?.timezone || DEFAULT_TZ,
   });
 }
 
@@ -72,6 +75,7 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
   const { action, newTime } = body;
+  const { t } = await getT();
 
   const supabase = createAdminClient();
 
@@ -82,7 +86,7 @@ export async function PATCH(
     .single();
 
   if (!booking) {
-    return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    return NextResponse.json({ error: t("manage.err_not_found") }, { status: 404 });
   }
 
   const authClient = await createClient();
@@ -105,15 +109,15 @@ export async function PATCH(
 
   if (!isOwner) {
     if (action !== "cancel" && action !== "reschedule") {
-      return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+      return NextResponse.json({ error: t("manage.err_not_allowed") }, { status: 403 });
     }
     if (booking.status !== "confirmed") {
-      return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
+      return NextResponse.json({ error: t("manage.err_not_active") }, { status: 400 });
     }
     const hoursUntil = (new Date(members[0].booking_time).getTime() - Date.now()) / (60 * 60 * 1000);
     if (hoursUntil <= CLIENT_CUTOFF_HOURS) {
       return NextResponse.json(
-        { error: `Changes must be made at least ${CLIENT_CUTOFF_HOURS} hours before your appointment. Please call the shop.` },
+        { error: t("manage.err_cutoff", { hours: CLIENT_CUTOFF_HOURS }) },
         { status: 403 }
       );
     }
@@ -132,8 +136,8 @@ export async function PATCH(
     .single();
 
   const shopName = barber?.business_name?.trim() || barber?.first_name?.trim() || "your barber";
-  const link = barber?.booking_link || `${process.env.NEXT_PUBLIC_APP_URL}/book/${booking.user_id}`;
-  const tz = barber?.timezone || "America/New_York";
+  const link = barber?.booking_link || `${appUrl()}/book/${booking.user_id}`;
+  const tz = barber?.timezone || DEFAULT_TZ;
 
   // Once every person in the visit is completed or cancelled: one loyalty text + review request.
   async function closeOutVisit() {
@@ -163,7 +167,7 @@ export async function PATCH(
 
   if (action === "complete") {
     if (booking.status !== "confirmed") {
-      return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
+      return NextResponse.json({ error: t("manage.err_not_active") }, { status: 400 });
     }
 
     let result: Awaited<ReturnType<typeof completeBookingLoyalty>>;
@@ -171,10 +175,10 @@ export async function PATCH(
       result = await completeBookingLoyalty(supabase, id, tz);
     } catch (err) {
       console.error("[bookings/complete]", err);
-      return NextResponse.json({ error: "Couldn't complete this booking. Please try again." }, { status: 500 });
+      return NextResponse.json({ error: t("manage.err_complete") }, { status: 500 });
     }
     if (!result) {
-      return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
+      return NextResponse.json({ error: t("manage.err_not_active") }, { status: 400 });
     }
     const { projection, rewardedNow } = result;
 
@@ -220,19 +224,19 @@ export async function PATCH(
   }
 
   if (booking.status !== "confirmed") {
-    return NextResponse.json({ error: "Booking is not active" }, { status: 400 });
+    return NextResponse.json({ error: t("manage.err_not_active") }, { status: 400 });
   }
 
   // Barber marks a client who never showed. No stamp, no texts; reminders that haven't gone out are dropped.
   if (action === "no_show") {
-    if (!isOwner) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+    if (!isOwner) return NextResponse.json({ error: t("manage.err_not_allowed") }, { status: 403 });
     if (new Date(booking.booking_time).getTime() > Date.now()) {
-      return NextResponse.json({ error: "You can only mark a no-show after the appointment time" }, { status: 400 });
+      return NextResponse.json({ error: t("manage.err_no_show_early") }, { status: 400 });
     }
     const { error: nsError } = await supabase.from("bookings").update({ status: "no_show" }).eq("id", id).eq("status", "confirmed");
     if (nsError) {
       console.error("[bookings/no_show]", nsError);
-      return NextResponse.json({ error: "Couldn't update this booking. Please try again." }, { status: 500 });
+      return NextResponse.json({ error: t("manage.err_update") }, { status: 500 });
     }
     await supabase.from("booking_reminders").delete().eq("booking_id", id).in("reminder_type", ["24h", "2h"]);
     await closeOutVisit();
@@ -246,8 +250,9 @@ export async function PATCH(
       .in("id", memberIds);
 
     if (cancelError) {
+      console.error("[bookings/cancel]", cancelError);
       return NextResponse.json(
-        { error: `Failed to cancel booking: ${cancelError.message}` },
+        { error: t("manage.err_cancel") },
         { status: 500 }
       );
     }
@@ -311,13 +316,13 @@ export async function PATCH(
     const totalMinutes = duration * members.length;
 
     if (isNaN(newBookingTime.getTime()) || newBookingTime.getTime() <= Date.now()) {
-      return NextResponse.json({ error: "Pick a time in the future" }, { status: 400 });
+      return NextResponse.json({ error: t("manage.err_past") }, { status: 400 });
     }
     if (!isOwner && !withinBusinessHours(barber?.business_hours ?? null, newBookingTime, totalMinutes, tz)) {
-      return NextResponse.json({ error: "That time is outside business hours" }, { status: 400 });
+      return NextResponse.json({ error: t("manage.err_outside_hours") }, { status: 400 });
     }
     if (!(await isSlotFree(supabase, booking.user_id, newBookingTime, totalMinutes, memberIds))) {
-      return NextResponse.json({ error: "That time slot was just taken. Please pick another." }, { status: 409 });
+      return NextResponse.json({ error: t("manage.err_taken") }, { status: 409 });
     }
 
     let rescheduleError: { message: string } | null = null;
@@ -330,8 +335,9 @@ export async function PATCH(
     }
 
     if (rescheduleError) {
+      console.error("[bookings/reschedule]", rescheduleError);
       return NextResponse.json(
-        { error: `Failed to reschedule booking: ${rescheduleError.message}` },
+        { error: t("manage.err_reschedule") },
         { status: 500 }
       );
     }
@@ -389,5 +395,5 @@ export async function PATCH(
     return NextResponse.json({ success: true, status: "rescheduled" });
   }
 
-  return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  return NextResponse.json({ error: t("manage.err_invalid_action") }, { status: 400 });
 }

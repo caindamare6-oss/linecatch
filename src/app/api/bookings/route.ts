@@ -3,7 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { normalizePhone } from "@/lib/phone";
-import { CONSENT_TEXT } from "@/lib/consent";
+import { recordedConsentText } from "@/lib/consent";
+import { getT } from "@/lib/i18n-server";
+import { DEFAULT_TZ, appUrl } from "@/lib/config";
+import { isLocale, translate } from "@/lib/i18n-shared";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
 import { isSlotFree, withinBusinessHours, MAX_PARTY_SIZE } from "@/lib/availability";
 import { projectVisit, rewardVars } from "@/lib/loyalty";
@@ -13,12 +16,16 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { userId, serviceId, customerPhone, bookingTime, consentText, source, sessionToken } = body;
   const partySize = Number(body.partySize ?? 1);
+  const { t } = await getT();
+  // The language the client booked in; later texts go out in it. A barber booking on someone's behalf doesn't set it.
+  const clientLanguage = source !== "barber" && isLocale(body.language) ? body.language : null;
+  const storedConsent = recordedConsentText(consentText, clientLanguage);
 
   if (!userId || !serviceId || !bookingTime || (!customerPhone && !sessionToken)) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    return NextResponse.json({ error: t("book.err_missing") }, { status: 400 });
   }
   if (!Number.isInteger(partySize) || partySize < 1 || partySize > MAX_PARTY_SIZE) {
-    return NextResponse.json({ error: `Party size must be 1 to ${MAX_PARTY_SIZE}` }, { status: 400 });
+    return NextResponse.json({ error: t("book.err_party_size", { max: MAX_PARTY_SIZE }) }, { status: 400 });
   }
 
   const supabase = createAdminClient();
@@ -29,13 +36,13 @@ export async function POST(request: Request) {
   if (customerPhone) {
     const phoneResult = normalizePhone(customerPhone);
     if (!phoneResult.valid) {
-      return NextResponse.json({ error: phoneResult.error }, { status: 400 });
+      return NextResponse.json({ error: t("book.err_phone") }, { status: 400 });
     }
     normalized = phoneResult.e164;
   } else if (session) {
     normalized = session.phone_number;
   } else {
-    return NextResponse.json({ error: "Session expired. Enter your phone number.", sessionExpired: true }, { status: 401 });
+    return NextResponse.json({ error: t("book.err_session_expired"), sessionExpired: true }, { status: 401 });
   }
   const sameClient = session?.phone_number === normalized;
   const firstName: string | undefined =
@@ -44,7 +51,7 @@ export async function POST(request: Request) {
   // Check vip_clients for consent
   const { data: vipClient } = await supabase
     .from("vip_clients")
-    .select("id, is_opted_in, opted_out_at, opted_in_at, consent_text, first_name")
+    .select("id, is_opted_in, opted_out_at, opted_in_at, consent_text, first_name, client_language")
     .eq("user_id", userId)
     .eq("phone_number", normalized)
     .single();
@@ -71,13 +78,14 @@ export async function POST(request: Request) {
         opt_in_source: "booking_form",
         opt_in_ip: ip,
         opt_in_user_agent: userAgent,
-        consent_text: CONSENT_TEXT,
+        consent_text: storedConsent,
         first_name: firstName || null,
+        ...(clientLanguage ? { client_language: clientLanguage } : {}),
       });
 
       if (insertError) {
         console.error("VIP client creation error:", insertError);
-        return NextResponse.json({ error: "Failed to record client" }, { status: 500 });
+        return NextResponse.json({ error: t("book.err_record_client") }, { status: 500 });
       }
     } else {
       const { error: insertError } = await supabase.from("vip_clients").insert({
@@ -86,11 +94,12 @@ export async function POST(request: Request) {
         is_opted_in: false,
         opt_in_source: "booking_form",
         first_name: firstName || null,
+        ...(clientLanguage ? { client_language: clientLanguage } : {}),
       });
 
       if (insertError) {
         console.error("VIP client creation error:", insertError);
-        return NextResponse.json({ error: "Failed to record client" }, { status: 500 });
+        return NextResponse.json({ error: t("book.err_record_client") }, { status: 500 });
       }
     }
   } else if (!vipClient.is_opted_in) {
@@ -107,7 +116,7 @@ export async function POST(request: Request) {
           opt_in_source: "booking_form",
           opt_in_ip: ip,
           opt_in_user_agent: userAgent,
-          consent_text: CONSENT_TEXT,
+          consent_text: storedConsent,
           first_name: firstName || vipClient.first_name || null,
         })
         .eq("id", vipClient.id);
@@ -127,6 +136,12 @@ export async function POST(request: Request) {
     }
   }
 
+  // Existing client: remember the language they just booked in.
+  if (vipClient && clientLanguage && vipClient.client_language !== clientLanguage) {
+    await supabase.from("vip_clients").update({ client_language: clientLanguage }).eq("id", vipClient.id);
+  }
+  const smsLanguage = clientLanguage || vipClient?.client_language || "en";
+
   // Determine if this client is opted in for SMS (used later for confirmation)
   const clientOptedIn =
     (vipClient?.is_opted_in === true && !vipClient?.opted_out_at) ||
@@ -143,7 +158,7 @@ export async function POST(request: Request) {
     .single();
 
   if (!service) {
-    return NextResponse.json({ error: "Service not found" }, { status: 404 });
+    return NextResponse.json({ error: t("book.err_service_not_found") }, { status: 404 });
   }
 
   const { data: barberHours } = await supabase
@@ -151,17 +166,17 @@ export async function POST(request: Request) {
     .select("timezone, business_hours")
     .eq("user_id", userId)
     .single();
-  const tz = barberHours?.timezone || "America/New_York";
+  const tz = barberHours?.timezone || DEFAULT_TZ;
 
   const bTime = new Date(bookingTime);
   const totalMinutes = service.duration_minutes * partySize;
-  const TAKEN = "This time slot is no longer available";
+  const TAKEN = t("book.err_taken");
 
   if (isNaN(bTime.getTime()) || bTime.getTime() <= Date.now()) {
-    return NextResponse.json({ error: "Pick a time in the future" }, { status: 400 });
+    return NextResponse.json({ error: t("book.err_past") }, { status: 400 });
   }
   if (!withinBusinessHours(barberHours?.business_hours ?? null, bTime, totalMinutes, tz)) {
-    return NextResponse.json({ error: "That time is outside business hours" }, { status: 400 });
+    return NextResponse.json({ error: t("book.err_outside_hours") }, { status: 400 });
   }
   if (!(await isSlotFree(supabase, userId, bTime, totalMinutes))) {
     return NextResponse.json({ error: TAKEN }, { status: 409 });
@@ -190,7 +205,7 @@ export async function POST(request: Request) {
   }
   if (bookingError || !created || created.length === 0) {
     console.error("Booking creation error:", bookingError);
-    return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
+    return NextResponse.json({ error: t("book.err_create") }, { status: 500 });
   }
   const createdIds = created.map((b) => b.id);
 
@@ -223,11 +238,12 @@ export async function POST(request: Request) {
   const rewardDue = !!loyalty?.due;
 
   if (barber?.phone_number && clientOptedIn) {
-    const tz = barber.timezone || "America/New_York";
-    const dateStr = formatCasualDate(bTime, tz);
+    const tz = barber.timezone || DEFAULT_TZ;
+    // The weekday must match the template's language ("viernes", not "Friday", in a Spanish text).
+    const dateStr = smsLanguage === "es" ? bTime.toLocaleDateString("es-US", { weekday: "long", timeZone: tz }) : formatCasualDate(bTime, tz);
     const timeStr = formatCasualTime(bTime, tz);
-    const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
-    const manageLink = `${process.env.NEXT_PUBLIC_APP_URL}/manage/${booking.id}`;
+    const shopName = barber.business_name?.trim() || barber.first_name?.trim() || translate(smsLanguage === "es" ? "es" : "en", "book.your_barber");
+    const manageLink = `${appUrl()}/manage/${booking.id}`;
 
     const confirmSms = await buildSMS({
       userId,
@@ -260,7 +276,7 @@ export async function POST(request: Request) {
 
   // Notify barber of same-day booking if morning summary already sent
   if (barber && !barber.is_locked_out && barber.forwarding_number) {
-    const tz = barber.timezone || "America/New_York";
+    const tz = barber.timezone || DEFAULT_TZ;
     const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
     const bookingLocal = new Date(bTime.toLocaleString("en-US", { timeZone: tz }));
     const isSameDay =

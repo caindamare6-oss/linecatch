@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { I18nProvider, useT } from "@/lib/i18n";
+import { useT, useLocale, useSetLocale, type Locale } from "@/lib/i18n";
 import { ACCENT_COLORS } from "@/lib/themes";
+import { money, STICKER_PRICE_CENTS, REFERRED_PERCENT_OFF, DEFAULT_TZ } from "@/lib/config";
 import PortfolioSection from "@/app/dashboard/settings/portfolio-section";
 import { PageSkeleton } from "@/components/ui/skeleton";
 
@@ -11,8 +12,10 @@ import { PageSkeleton } from "@/components/ui/skeleton";
 const LANGUAGES = [
   { code: "en" as const, label: "English" },
   { code: "es" as const, label: "Español" },
-  { code: "other" as const, label: "Other" },
 ];
+
+const HEARD_FROM = ["barber", "instagram", "tiktok", "google", "youtube", "event", "other"] as const;
+
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
@@ -47,14 +50,17 @@ const TOTAL_STEPS = 8;
 const DONE = TOTAL_STEPS - 1;
 
 export default function OnboardingPage() {
-  const [language, setLanguage] = useState<string>("en");
-  const [otherLanguage, setOtherLanguage] = useState("");
+  // The language picked here is the app's language from now on (cookie + saved on the account).
+  const language = useLocale();
+  const setLanguage = useSetLocale();
   const [loaded, setLoaded] = useState(false);
   const [initialData, setInitialData] = useState<{
     profile: Record<string, unknown>;
     services: { id: string; name: string; price: number; duration_minutes: number; is_active: boolean; sort_order: number }[];
     googleName: string;
     googleEmail: string;
+    pendingCode?: string | null;
+    referral?: { code: string; name: string | null } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -65,14 +71,9 @@ export default function OnboardingPage() {
         if (cancelled) return;
         const data = await res.json();
         if (cancelled) return;
-        const savedLang = data.profile?.barber_language as string | undefined;
-        if (savedLang) {
-          if (savedLang === "en" || savedLang === "es") {
-            setLanguage(savedLang);
-          } else {
-            setLanguage("other");
-            setOtherLanguage(savedLang);
-          }
+        const savedLang = data.profile?.barber_language;
+        if ((savedLang === "en" || savedLang === "es") && savedLang !== document.cookie.match(/lc_lang=(\w+)/)?.[1]) {
+          setLanguage(savedLang);
         }
         setInitialData(data);
       } catch {}
@@ -80,6 +81,7 @@ export default function OnboardingPage() {
     }
     load();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once
   }, []);
 
   if (!loaded) {
@@ -91,38 +93,30 @@ export default function OnboardingPage() {
   }
 
   return (
-    <I18nProvider locale={language === "en" || language === "es" ? language : "en"}>
-      <OnboardingFlow
-        language={language}
-        setLanguage={setLanguage}
-        otherLanguage={otherLanguage}
-        setOtherLanguage={setOtherLanguage}
-        initialData={initialData}
-      />
-    </I18nProvider>
+    <OnboardingFlow language={language} setLanguage={setLanguage} initialData={initialData} />
   );
 }
 
 function OnboardingFlow({
   language,
   setLanguage,
-  otherLanguage,
-  setOtherLanguage,
   initialData,
 }: {
-  language: string;
-  setLanguage: (l: string) => void;
-  otherLanguage: string;
-  setOtherLanguage: (l: string) => void;
+  language: Locale;
+  setLanguage: (l: Locale) => void;
   initialData: {
     profile: Record<string, unknown>;
     services: { id: string; name: string; price: number; duration_minutes: number; is_active: boolean; sort_order: number }[];
     googleName: string;
     googleEmail: string;
+    pendingCode?: string | null;
+    referral?: { code: string; name: string | null } | null;
   } | null;
 }) {
   const router = useRouter();
   const t = useT();
+  const locale = useLocale();
+  const stickerPrice = money(STICKER_PRICE_CENTS, locale);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +128,15 @@ function OnboardingFlow({
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  const [heardFrom, setHeardFrom] = useState("");
+  const appliedRef = initialData?.referral ?? null;
+  const [referralCode, setReferralCode] = useState(appliedRef?.code || initialData?.pendingCode || "");
+  const [refResult, setRefResult] = useState<{ code: string; valid: boolean; name: string | null } | null>(null);
+  const cleanRef = referralCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const refCheck: { state: "idle" | "checking" | "ok" | "bad"; name?: string | null } =
+    cleanRef.length < 4 ? { state: "idle" } : refResult?.code !== cleanRef ? { state: "checking" } : refResult.valid ? { state: "ok", name: refResult.name } : { state: "bad" };
+  const [refError, setRefError] = useState("");
+
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -144,7 +147,14 @@ function OnboardingFlow({
   const [customPrice, setCustomPrice] = useState("25");
   const [customDuration, setCustomDuration] = useState("30");
 
-  const [timezone, setTimezone] = useState("");
+  // This flow only renders in the browser (after /api/onboarding loads), so the device timezone is safe here.
+  const [timezone, setTimezone] = useState(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TZ;
+    } catch {
+      return DEFAULT_TZ;
+    }
+  });
   const [businessHours, setBusinessHours] = useState<BusinessHours>({
     monday: { open: "09:00", close: "18:00" },
     tuesday: { open: "09:00", close: "18:00" },
@@ -160,22 +170,17 @@ function OnboardingFlow({
   const [featureReviews, setFeatureReviews] = useState(false);
   // SMS marketing is off by default; turning it on means shipping a QR sticker to the shop.
   const [featureMarketing, setFeatureMarketing] = useState(false);
+  const [wantsSticker, setWantsSticker] = useState(false);
   const [shipping, setShipping] = useState({ name: "", line1: "", line2: "", city: "", state: "", zip: "" });
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
 
   const [confettiDone, setConfettiDone] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    try {
-      setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-    } catch {
-      setTimezone("America/New_York");
-    }
-  }, []);
-
+  // Saved account data fills the form once it's loaded; switching language re-seeds the default services.
   useEffect(() => {
     if (!initialData) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- one-time seed from server data */
     const p = initialData.profile || {};
     if (p.first_name) setFirstName(p.first_name as string);
     if (p.accent_color) {
@@ -197,6 +202,7 @@ function OnboardingFlow({
       setShipping({ name: a.name || "", line1: a.line1 || "", line2: a.line2 || "", city: a.city || "", state: a.state || "", zip: a.zip || "" });
     }
     if (p.google_review_url) setGoogleReviewUrl(p.google_review_url as string);
+    if (typeof p.referral_source === "string") setHeardFrom(p.referral_source);
     if (initialData.googleName && !p.first_name) setFirstName(initialData.googleName);
     if (initialData.googleEmail && !p.email) setEmail(initialData.googleEmail);
     if (initialData.services && initialData.services.length > 0) {
@@ -207,7 +213,20 @@ function OnboardingFlow({
     } else {
       setServices(getDefaultServices(language));
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [initialData, language]);
+
+  // Live check of the referral code as they type (debounced).
+  useEffect(() => {
+    if (appliedRef || cleanRef.length < 4) return;
+    const timer = setTimeout(() => {
+      fetch(`/api/referrals/check?code=${encodeURIComponent(cleanRef)}`)
+        .then((r) => r.json())
+        .then((d) => setRefResult({ code: cleanRef, valid: !!d.valid, name: d.name ?? null }))
+        .catch(() => {});
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [cleanRef, appliedRef]);
 
   const saveStep = useCallback(async (stepName: string, data: Record<string, unknown>): Promise<{ ok: boolean; error?: string; body?: Record<string, unknown> }> => {
     setSaving(true);
@@ -221,7 +240,7 @@ function OnboardingFlow({
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: "Unknown error" }));
         setSaving(false);
-        return { ok: false, error: body.error || `Save failed (${res.status})` };
+        return { ok: false, error: body.error || `Save failed (${res.status})`, body };
       }
       setSaving(false);
       return { ok: true, body: await res.json().catch(() => ({})) };
@@ -298,9 +317,22 @@ function OnboardingFlow({
   async function goNext() {
     let result: { ok: boolean; error?: string; body?: Record<string, unknown> } | null = null;
 
-    const langToSave = language === "other" ? (otherLanguage.trim() || "other") : language;
+    const langToSave = language;
     if (step === 0) result = await saveStep("who", { language: langToSave });
-    else if (step === 1) result = await saveStep("who", { firstName, language: langToSave, accentColor });
+    else if (step === 1) {
+      setRefError("");
+      result = await saveStep("who", {
+        firstName,
+        language: langToSave,
+        accentColor,
+        ...(heardFrom ? { heardFrom } : {}),
+        ...(!appliedRef && referralCode.trim() ? { referralCode: referralCode.trim() } : {}),
+      });
+      if (!result.ok && result.body?.field === "referralCode") {
+        setRefError(t(`step1.err_${result.error}`));
+        return;
+      }
+    }
     else if (step === 2) result = await saveStep("business", { businessName, phone, email });
     else if (step === 3) {
       result = await saveStep("services", { services });
@@ -318,7 +350,9 @@ function OnboardingFlow({
         featureWednesday: featureMarketing && featureWednesday,
         featureReviews: featureMarketing && featureReviews,
         googleReviewUrl,
-        ...(featureMarketing ? { shippingAddress: { ...shipping, name: shipping.name || businessName || firstName } } : {}),
+        // Optional paid add-on: only sent when they chose it.
+        wantsSticker,
+        ...(wantsSticker ? { shippingAddress: { ...shipping, name: shipping.name || businessName || firstName } } : {}),
       });
 
     if (result && !result.ok) {
@@ -507,7 +541,7 @@ function OnboardingFlow({
                   {LANGUAGES.map((l) => (
                     <button
                       key={l.code}
-                      onClick={() => setLanguage(l.code)}
+                      onClick={() => setLanguage(l.code as Locale)}
                       className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5"
                       style={{
                         backgroundColor: language === l.code ? "var(--ob-accent)" : "var(--ob-surface)",
@@ -519,20 +553,6 @@ function OnboardingFlow({
                     </button>
                   ))}
                 </div>
-                {language === "other" && (
-                  <input
-                    type="text"
-                    value={otherLanguage}
-                    onChange={(e) => setOtherLanguage(e.target.value)}
-                    placeholder="e.g. French, Haitian Creole…"
-                    className="mt-2 w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{
-                      backgroundColor: "var(--ob-surface)",
-                      color: "var(--ob-text)",
-                      border: "1px solid var(--ob-border)",
-                    }}
-                  />
-                )}
               </div>
 
               <div
@@ -607,6 +627,59 @@ function OnboardingFlow({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="mt-6">
+                <p className="text-xs uppercase tracking-wider font-medium mb-3" style={{ color: "var(--ob-text-muted)", fontFamily: "var(--ob-font-heading)" }}>
+                  {t("step1.heard_label")}
+                </p>
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("step1.heard_label")}>
+                  {HEARD_FROM.map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      role="radio"
+                      aria-checked={heardFrom === h}
+                      onClick={() => setHeardFrom(heardFrom === h ? "" : h)}
+                      className="h-9 px-3.5 rounded-xl text-[13px] transition-colors"
+                      style={{
+                        backgroundColor: heardFrom === h ? "var(--ob-accent)" : "var(--ob-surface)",
+                        color: heardFrom === h ? "#000" : "var(--ob-text-secondary)",
+                        border: heardFrom === h ? "none" : "1px solid var(--ob-border)",
+                        fontWeight: heardFrom === h ? 600 : 400,
+                      }}
+                    >
+                      {t(`step1.heard.${h}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5">
+                {appliedRef ? (
+                  <p className="text-[13px] rounded-xl px-3.5 py-3" style={{ backgroundColor: "var(--ob-accent-glow)", color: "var(--ob-accent)" }}>
+                    ✓ {t("step1.ref_applied", { code: appliedRef.code, percent: REFERRED_PERCENT_OFF })}
+                  </p>
+                ) : (
+                  <>
+                    <InputField
+                      label={`${t("step1.ref_label")} (${t("step1.ref_optional")})`}
+                      value={referralCode}
+                      onChange={(v) => { setReferralCode(v.toUpperCase().slice(0, 12)); setRefError(""); }}
+                      placeholder={t("step1.ref_placeholder")}
+                    />
+                    <p className="text-[12px] mt-1.5 min-h-[18px]" aria-live="polite" style={{ color: refError || refCheck.state === "bad" ? "#F08A8A" : refCheck.state === "ok" ? "#A8C49A" : "var(--ob-text-muted)" }}>
+                      {refError ||
+                        (refCheck.state === "checking"
+                          ? t("step1.ref_checking")
+                          : refCheck.state === "ok"
+                            ? `✓ ${refCheck.name ? t("step1.ref_ok_from", { name: refCheck.name, percent: REFERRED_PERCENT_OFF }) : t("step1.ref_ok", { percent: REFERRED_PERCENT_OFF })}`
+                            : refCheck.state === "bad"
+                              ? t("step1.ref_bad")
+                              : "")}
+                    </p>
+                  </>
+                )}
               </div>
             </StepContainer>
           )}
@@ -731,30 +804,6 @@ function OnboardingFlow({
           {/* Step 4: Calendar & hours */}
           {step === 4 && (
             <StepContainer title={t("step4.title")} subtitle={t("step4.subtitle")} stepNum={4}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.8px] mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("step4.calendars")}</p>
-              <div className="rounded-xl mb-5 divide-y" style={{ backgroundColor: "var(--ob-surface)", border: "1px solid var(--ob-border)", borderColor: "var(--ob-border)" }}>
-                {[
-                  { name: t("step4.cal_linecatch"), sub: t("step4.cal_linecatch_sub"), on: true },
-                  { name: "Google Calendar", sub: t("step4.cal_soon_sub"), on: false },
-                  { name: "Apple Calendar", sub: t("step4.cal_soon_sub"), on: false },
-                  { name: "Outlook", sub: t("step4.cal_soon_sub"), on: false },
-                ].map((c) => (
-                  <div key={c.name} className="flex items-center gap-3 px-4 py-3" style={{ borderColor: "var(--ob-border)" }}>
-                    <span className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0" style={{ backgroundColor: c.on ? "var(--ob-accent-glow)" : "var(--ob-surface-hover)", color: c.on ? "var(--ob-accent)" : "var(--ob-text-muted)" }} aria-hidden>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                    </span>
-                    <span className="flex-1 min-w-0">
-                      <span className="block text-sm font-semibold" style={{ color: c.on ? "var(--ob-text)" : "var(--ob-text-secondary)" }}>{c.name}</span>
-                      <span className="block text-xs" style={{ color: "var(--ob-text-muted)" }}>{c.sub}</span>
-                    </span>
-                    {c.on ? (
-                      <span className="text-[11px] font-semibold" style={{ color: "var(--ob-accent)" }}>{t("step4.cal_on")}</span>
-                    ) : (
-                      <span className="text-[10px] font-bold uppercase tracking-[0.5px] px-2 py-0.5 rounded-md" style={{ color: "var(--ob-text-muted)", backgroundColor: "var(--ob-surface-hover)" }}>{t("step4.cal_soon")}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.8px] mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("step4.hours")}</p>
               <div className="rounded-xl p-4 space-y-2" style={{ backgroundColor: "var(--ob-surface)", border: "1px solid var(--ob-border)" }}>
                 {DAYS.map((day) => {
@@ -808,10 +857,7 @@ function OnboardingFlow({
 
               {featureMarketing && (
                 <div className="mt-3 space-y-3" style={{ animation: "ob-fade-up 300ms ease-out" }}>
-                  <div className="rounded-xl px-4 py-3 flex gap-3" style={{ backgroundColor: "var(--ob-accent-glow)", border: "1px solid var(--ob-border-focus)" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ob-accent)" strokeWidth="2" className="shrink-0 mt-0.5" aria-hidden><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4" /></svg>
-                    <p className="text-xs leading-relaxed" style={{ color: "var(--ob-text)" }}>{t("step5.sticker_note")}</p>
-                  </div>
+                  <p className="text-xs leading-relaxed px-1" style={{ color: "var(--ob-text-secondary)" }}>{t("step5.marketing_consent_note")}</p>
                   <ToggleCard label={t("step5.wednesday_label")} description={t("step5.wednesday_desc")} checked={featureWednesday} onChange={setFeatureWednesday} />
                   <ToggleCard label={t("step5.reviews_label")} description={t("step5.reviews_desc")} checked={featureReviews} onChange={setFeatureReviews} />
                   {featureReviews && (
@@ -820,15 +866,24 @@ function OnboardingFlow({
                       <p className="text-[11px] mt-1" style={{ color: "var(--ob-text-muted)" }}>{t("step5.review_url_hint")}</p>
                     </div>
                   )}
+                </div>
+              )}
 
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.8px] pt-2" style={{ color: "var(--ob-text-muted)" }}>{t("step5.ship_to")}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.8px] mt-6 mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("step5.sticker_section")}</p>
+              <div className="rounded-xl px-4 py-3 flex gap-3 mb-3" style={{ backgroundColor: "var(--ob-accent-glow)", border: "1px solid var(--ob-border-focus)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ob-accent)" strokeWidth="2" className="shrink-0 mt-0.5" aria-hidden><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4" /></svg>
+                <p className="text-xs leading-relaxed" style={{ color: "var(--ob-text)" }}>{t("step5.sticker_note")}</p>
+              </div>
+              <ToggleCard label={t("step5.sticker_label", { price: stickerPrice })} description={t("step5.sticker_desc")} checked={wantsSticker} onChange={setWantsSticker} />
+              {wantsSticker && (
+                <div className="mt-3 space-y-3" style={{ animation: "ob-fade-up 300ms ease-out" }}>
                   <InputField label={t("step5.ship_name")} value={shipping.name} onChange={(v) => setShipping((a) => ({ ...a, name: v }))} placeholder={businessName || t("step5.ship_name_placeholder")} />
-                  <InputField label={t("step5.ship_street")} value={shipping.line1} onChange={(v) => setShipping((a) => ({ ...a, line1: v }))} placeholder="123 Main St" />
+                  <InputField label={t("step5.ship_street")} value={shipping.line1} onChange={(v) => setShipping((a) => ({ ...a, line1: v }))} placeholder={t("step5.ship_street_placeholder")} />
                   <InputField label={t("step5.ship_unit")} value={shipping.line2} onChange={(v) => setShipping((a) => ({ ...a, line2: v }))} placeholder={t("step5.ship_unit_placeholder")} />
                   <div className="grid grid-cols-[1fr_72px_96px] gap-2">
-                    <InputField label={t("step5.ship_city")} value={shipping.city} onChange={(v) => setShipping((a) => ({ ...a, city: v }))} placeholder="Boston" />
-                    <InputField label={t("step5.ship_state")} value={shipping.state} onChange={(v) => setShipping((a) => ({ ...a, state: v.toUpperCase().slice(0, 2) }))} placeholder="MA" />
-                    <InputField label="ZIP" value={shipping.zip} onChange={(v) => setShipping((a) => ({ ...a, zip: v.replace(/[^\d-]/g, "").slice(0, 10) }))} placeholder="02118" />
+                    <InputField label={t("step5.ship_city")} value={shipping.city} onChange={(v) => setShipping((a) => ({ ...a, city: v }))} placeholder="" />
+                    <InputField label={t("step5.ship_state")} value={shipping.state} onChange={(v) => setShipping((a) => ({ ...a, state: v.toUpperCase().slice(0, 2) }))} placeholder="" />
+                    <InputField label={t("step5.ship_zip")} value={shipping.zip} onChange={(v) => setShipping((a) => ({ ...a, zip: v.replace(/[^\d-]/g, "").slice(0, 10) }))} placeholder="" />
                   </div>
                 </div>
               )}
@@ -882,6 +937,10 @@ function OnboardingFlow({
                   <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>{t("done.marketing")}</span>
                   <span className="text-[11px]" style={{ color: featureMarketing ? "var(--ob-accent)" : "var(--ob-text-secondary)" }}>{featureMarketing ? t("done.marketing_on") : t("done.marketing_off")}</span>
                 </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>{t("done.sticker")}</span>
+                  <span className="text-[11px]" style={{ color: "var(--ob-text-secondary)" }}>{wantsSticker ? t("done.sticker_on") : t("done.sticker_off")}</span>
+                </div>
               </div>
             </div>
           )}
@@ -893,7 +952,7 @@ function OnboardingFlow({
         <div className="max-w-md mx-auto px-4 py-3">
           {error && (
             <div className="mb-2 px-3 py-2 rounded-lg text-xs" style={{ backgroundColor: "rgba(255,77,77,0.1)", border: "1px solid rgba(255,77,77,0.2)", color: "var(--ob-danger)" }}>
-              {error}
+              {t(error)}
             </div>
           )}
           <div className="flex gap-3">

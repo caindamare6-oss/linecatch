@@ -20,7 +20,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const admin = createAdminClient();
   const [recipients, marketing] = await Promise.all([broadcastRecipients(admin, user.id), getMarketingState(admin, user.id)]);
-  return NextResponse.json({ total: recipients.length, marketing, blockedReason: marketing === "on" ? null : MARKETING_BLOCKED[marketing] });
+  return NextResponse.json({ total: recipients.length, marketing, blockedReason: marketing === "on" ? null : MARKETING_BLOCKED.off });
 }
 
 export async function POST(request: Request) {
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
   // A broadcast is marketing.
   const marketing = await getMarketingState(admin, user.id);
   if (marketing !== "on") {
-    return NextResponse.json({ error: MARKETING_BLOCKED[marketing], marketing }, { status: 403 });
+    return NextResponse.json({ error: MARKETING_BLOCKED.off.en, errorEs: MARKETING_BLOCKED.off.es, marketing }, { status: 403 });
   }
 
   // Marketing texts go only to people who opted in. Callers who never signed up are not recipients.

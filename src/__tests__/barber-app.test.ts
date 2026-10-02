@@ -1,3 +1,4 @@
+import { translate } from "@/lib/i18n-shared";
 import { describe, it, expect } from "vitest";
 import { summarizeClients, shortAgo, clientPathId, phoneFromPathId } from "@/lib/clients";
 import { buildInbox, templateLabel, type SmsRow } from "@/lib/conversations";
@@ -102,8 +103,8 @@ describe("buildInbox", () => {
   });
 
   it("labels automated texts", () => {
-    expect(templateLabel("missed_call")).toBe("Missed-call text");
-    expect(templateLabel("winback_3")).toBe("Win-back");
+    expect(translate("en", templateLabel("missed_call")!)).toBe("Missed-call text");
+    expect(translate("en", templateLabel("winback_3")!)).toBe("Win-back");
     expect(templateLabel("direct")).toBeNull();
   });
 });
@@ -137,13 +138,13 @@ describe("monthRevenue", () => {
     expect(r.lastMonthToDate).toBe(50); // only Sept 1–15 counts against Oct 1–15
     expect(r.points).toEqual([35, 120, 120, null, null]);
     expect(r.currentWeek).toBe(2);
-    expect(r.monthName).toBe("October");
+    expect(r.month).toBe(10);
   });
 
   it("greets by the barber's local time", () => {
-    expect(greetingFor(new Date("2026-10-15T12:00:00Z"), tz)).toBe("Good morning");
-    expect(greetingFor(new Date("2026-10-15T19:00:00Z"), tz)).toBe("Good afternoon");
-    expect(greetingFor(new Date("2026-10-16T01:00:00Z"), tz)).toBe("Good evening");
+    expect(greetingFor(new Date("2026-10-15T12:00:00Z"), tz)).toBe("good_morning");
+    expect(greetingFor(new Date("2026-10-15T19:00:00Z"), tz)).toBe("good_afternoon");
+    expect(greetingFor(new Date("2026-10-16T01:00:00Z"), tz)).toBe("good_evening");
   });
 });
 

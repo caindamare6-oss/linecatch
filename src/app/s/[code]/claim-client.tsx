@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useT, LanguageToggle } from "@/lib/i18n";
 
 export function ClaimSticker({
   code,
@@ -10,6 +11,7 @@ export function ClaimSticker({
   code: string;
   existingCode: string | null;
 }) {
+  const t = useT();
   const [claiming, setClaiming] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const [error, setError] = useState("");
@@ -26,13 +28,13 @@ export function ClaimSticker({
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to activate");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || t("claim.err_failed"));
       }
 
       setClaimed(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : t("common.try_again"));
     } finally {
       setClaiming(false);
     }
@@ -42,6 +44,7 @@ export function ClaimSticker({
   if (existingCode) {
     return (
       <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <LanguageToggle className="fixed top-4 right-4 z-40" />
         <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
           <div className="text-3xl font-bold mb-6 text-white">
             Line<span className="text-[var(--accent-color)]">Catch</span>
@@ -51,18 +54,18 @@ export function ClaimSticker({
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">You already have a sticker</h2>
+          <h2 className="text-xl font-bold text-white mb-2">{t("claim.have_title")}</h2>
           <p className="text-stone-400 text-sm mb-2">
-            Your active code is <span className="font-mono text-white">{existingCode}</span>.
+            {t("claim.have_code")} <span className="font-mono text-white">{existingCode}</span>.
           </p>
           <p className="text-stone-500 text-sm mb-6">
-            Each barber gets one code, so all your stickers point clients to the same place. Need more copies of your sticker? Request them from your dashboard.
+            {t("claim.have_body")}
           </p>
           <Link
             href="/dashboard"
             className="inline-block bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
           >
-            Go to Dashboard
+            {t("claim.go_dashboard")}
           </Link>
         </div>
       </div>
@@ -73,24 +76,25 @@ export function ClaimSticker({
   if (claimed) {
     return (
       <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+        <LanguageToggle className="fixed top-4 right-4 z-40" />
         <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
           <div className="w-16 h-16 rounded-full bg-[var(--accent-color)]/15 flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Sticker Activated!</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">{t("claim.done_title")}</h2>
           <p className="text-stone-400 mb-1">
-            Code <span className="font-mono text-white">{code}</span> is yours.
+            {t("claim.done_code_pre")} <span className="font-mono text-white">{code}</span> {t("claim.done_code_post")}
           </p>
           <p className="text-stone-400 text-sm mb-6">
-            SMS is now live. Missed-call auto-replies, booking confirmations, reminders, and review requests are all turned on.
+            {t("claim.done_body")}
           </p>
           <Link
             href="/dashboard"
             className="inline-block bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold px-6 py-3 rounded-lg hover:brightness-90 transition"
           >
-            Go to Dashboard
+            {t("claim.go_dashboard")}
           </Link>
         </div>
       </div>
@@ -100,6 +104,7 @@ export function ClaimSticker({
   // Activate screen
   return (
     <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <LanguageToggle className="fixed top-4 right-4 z-40" />
       <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
         <div className="text-3xl font-bold mb-6 text-white">
           Line<span className="text-[var(--accent-color)]">Catch</span>
@@ -110,12 +115,12 @@ export function ClaimSticker({
             <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 14.625v6.75h6.75v-6.75h-6.75z" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Activate your sticker</h2>
+        <h2 className="text-xl font-bold text-white mb-2">{t("claim.activate_title")}</h2>
         <p className="text-stone-400 mb-3">
-          Code <span className="font-mono text-white text-lg">{code}</span>
+          {t("claim.code")} <span className="font-mono text-white text-lg">{code}</span>
         </p>
         <p className="text-stone-500 text-sm mb-6">
-          This turns on all SMS features: missed-call auto-replies, booking confirmations, reminders, and review requests. Clients who scan your sticker will go to your VIP sign-up page.
+          {t("claim.activate_body")}
         </p>
 
         {error && (
@@ -129,7 +134,7 @@ export function ClaimSticker({
           disabled={claiming}
           className="w-full bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold py-3 rounded-lg hover:brightness-90 transition disabled:opacity-50"
         >
-          {claiming ? "Activating..." : "Activate"}
+          {claiming ? t("claim.activating") : t("claim.activate")}
         </button>
       </div>
     </div>

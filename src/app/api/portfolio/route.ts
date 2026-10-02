@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getT } from "@/lib/i18n-server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSlug } from "@/lib/portfolio";
@@ -26,37 +27,38 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   const userId = await currentUserId();
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!userId) return NextResponse.json({ error: (await getT()).t("portfolio.unauthorized") }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
   const db = createAdminClient();
+  const { t } = await getT();
 
   if (body.slug !== undefined) {
     const slug = String(body.slug).trim().toLowerCase();
     const problem = checkSlug(slug);
     if (problem === "format") {
-      return NextResponse.json({ error: "Use 3–40 letters, numbers or dashes (no dash at the start or end)." }, { status: 400 });
+      return NextResponse.json({ error: t("portfolio.err_slug_format") }, { status: 400 });
     }
     if (problem === "reserved") {
-      return NextResponse.json({ error: "That link is reserved. Try another." }, { status: 400 });
+      return NextResponse.json({ error: t("portfolio.err_slug_reserved") }, { status: 400 });
     }
     const { error } = await db.from("users").update({ slug }).eq("user_id", userId);
-    if (error?.code === "23505") return NextResponse.json({ error: "That link is taken. Try another." }, { status: 409 });
-    if (error) return NextResponse.json({ error: "Could not save the link." }, { status: 500 });
+    if (error?.code === "23505") return NextResponse.json({ error: t("portfolio.err_slug_taken") }, { status: 409 });
+    if (error) return NextResponse.json({ error: t("portfolio.err_save_link") }, { status: 500 });
   }
 
   if (body.theme !== undefined) {
     if (!THEME_IDS.includes(body.theme as ThemeId)) {
-      return NextResponse.json({ error: "Unknown theme." }, { status: 400 });
+      return NextResponse.json({ error: t("portfolio.err_theme") }, { status: 400 });
     }
     const { error } = await db.from("users").update({ theme: body.theme }).eq("user_id", userId);
-    if (error) return NextResponse.json({ error: "Could not save the theme." }, { status: 500 });
+    if (error) return NextResponse.json({ error: t("portfolio.err_save_theme") }, { status: 500 });
   }
 
   if (body.accentColor !== undefined) {
-    if (!isAccent(body.accentColor)) return NextResponse.json({ error: "Unknown color." }, { status: 400 });
+    if (!isAccent(body.accentColor)) return NextResponse.json({ error: t("portfolio.err_color") }, { status: 400 });
     const { error } = await db.from("users").update({ accent_color: body.accentColor }).eq("user_id", userId);
-    if (error) return NextResponse.json({ error: "Could not save the color." }, { status: 500 });
+    if (error) return NextResponse.json({ error: t("portfolio.err_save_color") }, { status: 500 });
   }
 
   if (Array.isArray(body.order)) {
@@ -64,7 +66,7 @@ export async function PATCH(request: Request) {
     const { data: owned } = await db.from("portfolio_photos").select("id").eq("user_id", userId);
     const ownedIds = new Set((owned || []).map((p) => p.id));
     if (ids.length !== ownedIds.size || ids.some((id: string) => !ownedIds.has(id))) {
-      return NextResponse.json({ error: "Photo list is out of date. Refresh and try again." }, { status: 409 });
+      return NextResponse.json({ error: t("portfolio.err_order") }, { status: 409 });
     }
     for (const [i, id] of ids.entries()) {
       await db.from("portfolio_photos").update({ sort_order: i }).eq("id", id).eq("user_id", userId);

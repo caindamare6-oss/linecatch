@@ -1,11 +1,12 @@
 import { cache } from "react";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Fraunces } from "next/font/google";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTheme, isAccent, themeVars } from "@/lib/themes";
-import { PORTFOLIO_COPY, pickLang, type Lang } from "@/lib/portfolio-copy";
+import { getT } from "@/lib/i18n-server";
+import { LanguageToggle } from "@/lib/i18n";
+import { money, DEFAULT_TZ } from "@/lib/config";
 import { weekdayInTz } from "@/lib/availability";
 import { checkSlug } from "@/lib/slug";
 import PortfolioGallery from "./portfolio-gallery";
@@ -34,28 +35,28 @@ const loadBarber = cache(async (slug: string) => {
   return { barber, shopName, photos: photos || [], lowestPrice: cheapest?.price ?? null };
 });
 
-function formatHour(hhmm: string) {
+/** "09:30" → "9:30 AM" / "9:30 a. m." in the visitor's language (wall-clock time, no timezone math). */
+function formatHour(hhmm: string, tag: string) {
   const [h, m] = hhmm.split(":").map(Number);
-  const suffix = h >= 12 ? "pm" : "am";
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return m ? `${hour}:${String(m).padStart(2, "0")}${suffix}` : `${hour}${suffix}`;
+  return new Date(Date.UTC(2000, 0, 1, h, m || 0)).toLocaleTimeString(tag, {
+    hour: "numeric",
+    minute: m ? "2-digit" : undefined,
+    timeZone: "UTC",
+  });
 }
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const { slug } = await params;
   const data = await loadBarber(slug.toLowerCase());
   if (!data) return { title: "LineCatch" };
-  const lang = pickLang((await searchParams).lang, (await headers()).get("accept-language"));
-  const copy = PORTFOLIO_COPY[lang];
+  const { t } = await getT();
   return {
-    title: copy.metaTitle(data.shopName),
-    description: copy.metaDesc(data.shopName),
+    title: t("shop.meta_title", { shop: data.shopName }),
+    description: t("shop.meta_desc", { shop: data.shopName }),
     openGraph: data.photos[0] ? { images: [data.photos[0].url] } : undefined,
   };
 }
@@ -85,28 +86,25 @@ export default async function PortfolioPage({
   if (!data) notFound();
 
   const { barber, shopName, photos, lowestPrice } = data;
-  const lang: Lang = pickLang(sp.lang, (await headers()).get("accept-language"));
-  const copy = PORTFOLIO_COPY[lang];
+  const { t, locale, tag } = await getT();
   const base = getTheme(barber.theme);
   // The barber's accent wins on dark themes (every accent pick is light, so it reads on dark and takes dark text).
   const theme = base.dark && isAccent(barber.accent_color)
     ? { ...base, accent: barber.accent_color, ctaBg: barber.accent_color, ctaText: "#121110", accentGlow: `color-mix(in srgb, ${barber.accent_color} 30%, transparent)` }
     : base;
-  const tz = barber.timezone || "America/New_York";
+  const tz = barber.timezone || DEFAULT_TZ;
 
   const today = barber.business_hours?.[weekdayInTz(new Date(), tz)] as { open: string; close: string } | null | undefined;
-  const hoursChip = today ? `${copy.openToday} · ${formatHour(today.open)}–${formatHour(today.close)}` : copy.closedToday;
+  const hoursChip = today ? `${t("shop.open_today")} · ${formatHour(today.open, tag)}–${formatHour(today.close, tag)}` : t("shop.closed_today");
 
   const src = typeof sp.src === "string" && INBOUND_SOURCES.has(sp.src) ? sp.src : "portfolio";
   const bookHref = `/book/${barber.user_id}?src=${src}`;
-  const otherLang: Lang = lang === "en" ? "es" : "en";
-  const langHref = `/${slug.toLowerCase()}?lang=${otherLang}${src !== "portfolio" ? `&src=${src}` : ""}`;
   const initial = shopName.trim().charAt(0).toUpperCase() || "B";
   const glass = "bg-[var(--t-surface)] border border-[var(--t-border)]";
 
   return (
     <main
-      lang={lang}
+      lang={locale}
       className={`${serif.variable} relative min-h-screen overflow-x-clip bg-[var(--t-bg)] text-[var(--t-text)] font-[family-name:var(--font-dm-sans)]`}
       style={themeVars(theme) as React.CSSProperties}
     >
@@ -143,23 +141,27 @@ export default async function PortfolioPage({
               <div className="text-base font-semibold truncate">{shopName}</div>
               {barber.first_name && barber.business_name && (
                 <div className="text-xs text-[var(--t-muted)] truncate">
-                  {copy.with} {barber.first_name}
+                  {t("shop.with", { name: barber.first_name })}
                 </div>
               )}
             </div>
           </div>
-          <a href={langHref} hrefLang={otherLang} className={`shrink-0 px-3 py-2 rounded-full text-xs font-semibold ${glass} hover:border-[var(--t-accent)] transition-colors`}>
-            {copy.switchTo}
-          </a>
+          {/* Shared EN/ES pill, recolored to the barber's theme (works on the light Cream theme too). */}
+          <div
+            className="shrink-0 rounded-full bg-[var(--t-surface)] [&>div]:border-[var(--t-border)] [&_button[aria-pressed=false]]:text-[var(--t-muted)] [&_button[aria-pressed=false]:hover]:text-[var(--t-text)]"
+            style={{ "--accent-color": "var(--t-cta-bg)", "--accent-fg": "var(--t-cta-text)" } as React.CSSProperties}
+          >
+            <LanguageToggle />
+          </div>
         </div>
 
         {/* Hero */}
         <h1 className="mt-8 text-[52px] leading-[0.98] tracking-[-1px] font-[family-name:var(--font-serif)]">
-          {copy.head1}
+          {t("shop.head1")}
           <br />
-          <span className="italic text-[var(--t-accent)]">{copy.head2}</span>
+          <span className="italic text-[var(--t-accent)]">{t("shop.head2")}</span>
         </h1>
-        <p className="mt-4 text-[15px] leading-relaxed text-[var(--t-muted)] max-w-[340px]">{copy.intro}</p>
+        <p className="mt-4 text-[15px] leading-relaxed text-[var(--t-muted)] max-w-[340px]">{t("shop.intro")}</p>
         <div className="mt-5 flex flex-wrap gap-2">
           <span className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium ${glass}`}>
             <span
@@ -170,7 +172,7 @@ export default async function PortfolioPage({
           </span>
           {lowestPrice !== null && (
             <span className={`inline-flex items-center px-3 py-2 rounded-full text-xs font-medium ${glass}`}>
-              {copy.from} ${lowestPrice}
+              {t("shop.from", { price: money(Math.round(Number(lowestPrice) * 100), locale) })}
             </span>
           )}
         </div>
@@ -210,17 +212,17 @@ export default async function PortfolioPage({
         {/* The work */}
         <section className="mt-10">
           <div className="flex items-end justify-between mb-4">
-            <h2 className="text-[36px] leading-none font-[family-name:var(--font-serif)]">{copy.theWork}</h2>
-            {photos.length > 0 && <span className="text-[13px] text-[var(--t-muted)]">{copy.tapToOpen}</span>}
+            <h2 className="text-[36px] leading-none font-[family-name:var(--font-serif)]">{t("shop.the_work")}</h2>
+            {photos.length > 0 && <span className="text-[13px] text-[var(--t-muted)]">{t("shop.tap_to_open")}</span>}
           </div>
-          <PortfolioGallery photos={photos} lang={lang} shopName={shopName} bookHref={bookHref} />
+          <PortfolioGallery photos={photos} shopName={shopName} bookHref={bookHref} />
         </section>
 
         {/* How booking works */}
         <section className="mt-14">
-          <h2 className="text-[36px] leading-none font-[family-name:var(--font-serif)] mb-4">{copy.howTitle}</h2>
+          <h2 className="text-[36px] leading-none font-[family-name:var(--font-serif)] mb-4">{t("shop.how_title")}</h2>
           <ol className="flex flex-col gap-2.5">
-            {copy.steps.map((step, i) => (
+            {[1, 2, 3].map((n) => ({ title: t(`shop.step${n}_title`), body: t(`shop.step${n}_body`) })).map((step, i) => (
               <li key={i} className={`flex gap-3.5 items-start p-4 rounded-2xl ${glass}`}>
                 <span
                   className="w-[38px] h-[38px] shrink-0 rounded-full flex items-center justify-center text-[20px] font-[family-name:var(--font-serif)] border"
@@ -245,7 +247,7 @@ export default async function PortfolioPage({
           className="mt-16 text-center text-[44px] leading-none italic font-[family-name:var(--font-serif)] text-[var(--t-accent)]"
           style={{ textShadow: "0 0 28px var(--t-glow)" }}
         >
-          {copy.closing}
+          {t("shop.closing")}
         </p>
       </div>
 
@@ -259,12 +261,12 @@ export default async function PortfolioPage({
             href={bookHref}
             className="flex items-center justify-center gap-2.5 h-[58px] rounded-2xl text-base font-bold bg-[var(--t-cta-bg)] text-[var(--t-cta-text)] shadow-[0_0_28px_var(--t-glow)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_40px_var(--t-glow)] active:translate-y-0"
           >
-            {copy.cta}
+            {t("shop.cta")}
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </a>
-          <div className="mt-2 text-center text-xs text-[var(--t-muted)]">{copy.ctaNote}</div>
+          <div className="mt-2 text-center text-xs text-[var(--t-muted)]">{t("shop.cta_note")}</div>
         </div>
       </div>
     </main>

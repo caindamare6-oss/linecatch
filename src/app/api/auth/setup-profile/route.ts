@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTemplate } from "@/lib/messages";
+import { cookies } from "next/headers";
+import { ensureReferralCode } from "@/lib/referrals";
+import { LANG_COOKIE } from "@/lib/i18n-shared";
 
 export async function POST() {
   const supabase = await createClient();
@@ -26,33 +29,20 @@ export async function POST() {
     return NextResponse.json({ status: "exists" });
   }
 
-  // Check for existing profile by phone number (link pre-existing account)
+  // users.phone_number is each barber's LineCatch (Twilio) number, never their login phone,
+  // so a new login is never matched to an existing account by phone.
   const phone = user.phone;
-  if (phone) {
-    const { data: existingByPhone } = await admin
-      .from("users")
-      .select("user_id")
-      .eq("phone_number", phone)
-      .single();
+  const lang = (await cookies()).get(LANG_COOKIE)?.value === "es" ? "es" : "en";
 
-    if (existingByPhone) {
-      await admin
-        .from("users")
-        .update({ user_id: user.id })
-        .eq("phone_number", phone);
-
-      return NextResponse.json({ status: "linked" });
-    }
-  }
-
-  const defaultMsg = await resolveTemplate(user.id, "missed_call", "en")
+  const defaultMsg = await resolveTemplate(user.id, "missed_call", lang)
     || "Hey! Sorry I missed your call. Book your next appointment here: {link}";
   const { error: insertError } = await admin.from("users").insert({
     user_id: user.id,
-    phone_number: phone || null,
+    phone_number: null,
     forwarding_number: null,
     is_active: true,
     custom_message: defaultMsg,
+    barber_language: lang,
   });
 
   if (insertError) {
@@ -63,5 +53,6 @@ export async function POST() {
     );
   }
 
-  return NextResponse.json({ status: "created" });
+  await ensureReferralCode(admin, user.id);
+  return NextResponse.json({ status: "created", loginPhone: phone || null });
 }

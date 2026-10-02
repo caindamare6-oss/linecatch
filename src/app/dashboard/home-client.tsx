@@ -5,12 +5,14 @@ import { lazy, Suspense, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, SectionLabel, SERIF } from "./ui";
 import { formatPhone } from "@/lib/clients";
+import { useT, useFormat } from "@/lib/i18n";
+import { money as fmtMoney, REWARD_LABEL_CENTS } from "@/lib/config";
 
 const QRScanner = lazy(() => import("./qr-scanner").then((m) => ({ default: m.QRScanner })));
 
 type FeedEvent = { id: string; event_type: string; client_name: string | null; description: string; metadata?: Record<string, unknown> | null; created_at: string };
 type Suppressed = { id: string; from_number: string; received_at: string; suppressed_reason: string | null };
-type Revenue = { total: number; cuts: number; lastMonthToDate: number; points: (number | null)[]; currentWeek: number; monthName: string };
+type Revenue = { total: number; cuts: number; lastMonthToDate: number; points: (number | null)[]; currentWeek: number; month: number; year: number };
 
 const I = {
   check: <><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><path d="M22 4L12 14.01l-3-3" /></>,
@@ -29,27 +31,41 @@ const Icon = ({ d, size = 16, className = "" }: { d: React.ReactNode; size?: num
 const EVENTS: Record<string, { icon: React.ReactNode; tone: string; tag?: string }> = {
   booking_created: { icon: I.cal, tone: "var(--accent-color)" },
   booking_completed: { icon: I.check, tone: "var(--accent-color)" },
-  booking_cancelled: { icon: I.x, tone: "#F08A8A", tag: "Cancelled" },
+  booking_cancelled: { icon: I.x, tone: "#F08A8A", tag: "home.tag_cancelled" },
   missed_call_caught: { icon: I.phone, tone: "var(--accent-color)" },
-  cron_reengagement: { icon: I.bolt, tone: "#E0926A", tag: "Re-engage" },
-  loyalty_claimed: { icon: I.gift, tone: "#E0926A", tag: "Reward" },
-  review_sent: { icon: I.star, tone: "#E0926A", tag: "Review" },
-  qr_scan: { icon: I.qr, tone: "#A8C49A", tag: "VIP" },
+  cron_reengagement: { icon: I.bolt, tone: "#E0926A", tag: "home.tag_reengage" },
+  loyalty_claimed: { icon: I.gift, tone: "#E0926A", tag: "home.tag_reward" },
+  review_sent: { icon: I.star, tone: "#E0926A", tag: "home.tag_review" },
+  qr_scan: { icon: I.qr, tone: "#A8C49A", tag: "home.tag_vip" },
+  referral_qualified: { icon: I.gift, tone: "#A8C49A", tag: "home.tag_referral" },
+  sticker_request: { icon: I.qr, tone: "var(--accent-color)" },
 };
 
-function timeAgo(iso: string, tz: string) {
+type T = (k: string, v?: Record<string, string | number>) => string;
+
+function timeAgo(iso: string, t: T, fmt: (d: string, o: Intl.DateTimeFormatOptions) => string, tz: string) {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 1) return t("common.just_now");
+  if (mins < 60) return t("common.min_ago", { n: mins });
   const h = Math.floor(mins / 60);
-  if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
+  if (h < 24) return h === 1 ? t("common.hour_ago") : t("common.hours_ago", { n: h });
   const d = Math.floor(h / 24);
-  if (d === 1) return "Yesterday";
-  if (d < 7) return `${d} days ago`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: tz });
+  if (d === 1) return t("common.yesterday");
+  if (d < 7) return t("common.days_ago", { n: d });
+  return fmt(iso, { month: "short", day: "numeric", timeZone: tz });
 }
 
-const money = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
+/** Feed rows are rebuilt from their type so they read in the barber's language. */
+function activityText(e: FeedEvent, t: T, reward: string) {
+  const m = (e.metadata || {}) as Record<string, unknown>;
+  const name = e.client_name || t(e.event_type === "booking_created" ? "activity.new_client" : "activity.client");
+  const service = typeof m.service_name === "string" ? m.service_name : "";
+  const known = ["booking_created", "booking_completed", "booking_cancelled", "missed_call_caught", "loyalty_claimed", "review_sent", "cron_reengagement", "qr_scan", "sticker_request", "referral_qualified"];
+  if (!known.includes(e.event_type) || ((e.event_type === "booking_created" || e.event_type === "booking_completed") && !service)) return e.description;
+  return t(`activity.${e.event_type}`, { name, service, reward });
+}
+
+
 
 export function HomeClient(props: {
   greeting: string;
@@ -61,7 +77,8 @@ export function HomeClient(props: {
   vips: number;
   callsCaught: number;
   autotextOn: boolean;
-  marketing: "off" | "awaiting_sticker" | "on";
+  marketing: "off" | "on";
+  stickerOrdered: boolean;
   wednesdayOn: boolean;
   wednesdayTargeted: number;
   reviewsOn: boolean;
@@ -70,6 +87,9 @@ export function HomeClient(props: {
   timezone: string;
 }) {
   const router = useRouter();
+  const t = useT();
+  const f = useFormat();
+  const money = (n: number) => fmtMoney(Math.round(n) * 100, f.tag.startsWith("es") ? "es" : "en");
   const [showScanner, setShowScanner] = useState(false);
   const [stickerDone, setStickerDone] = useState(false);
   const [bannerHidden, setBannerHidden] = useState(false);
@@ -122,11 +142,11 @@ export function HomeClient(props: {
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${props.paused ? "bg-[#E0926A]" : "bg-[var(--accent-color)]"}`} />
-            {props.paused ? "Paused" : "Active"}
+            {props.paused ? t("home.status_paused") : t("home.status_active")}
           </span>
           <Link
             href="/dashboard/settings"
-            aria-label="Settings"
+            aria-label={t("home.settings")}
             className="w-9 h-9 rounded-[10px] bg-white/[0.06] text-white/60 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors"
           >
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
@@ -144,14 +164,14 @@ export function HomeClient(props: {
 
       {props.paused && (
         <Card className="p-4 border-[#E0926A]/25">
-          <p className="text-sm font-semibold text-[#E0926A]">Texting is paused</p>
-          <p className="text-xs text-white/45 mt-1 leading-relaxed">Missed calls are still logged, but no texts go out right now. Contact support to turn it back on.</p>
+          <p className="text-sm font-semibold text-[#E0926A]">{t("home.paused_title")}</p>
+          <p className="text-xs text-white/45 mt-1 leading-relaxed">{t("home.paused_body")}</p>
         </Card>
       )}
 
-      {props.marketing === "awaiting_sticker" && !stickerDone && !bannerHidden && (
+      {props.stickerOrdered && !props.hasActiveSticker && !stickerDone && !bannerHidden && (
         <Card className="relative p-4">
-          <button onClick={() => setBannerHidden(true)} aria-label="Dismiss" className="absolute top-2.5 right-2.5 w-8 h-8 flex items-center justify-center text-white/30 hover:text-white/60">
+          <button onClick={() => setBannerHidden(true)} aria-label={t("common.close")} className="absolute top-2.5 right-2.5 w-8 h-8 flex items-center justify-center text-white/30 hover:text-white/60">
             <Icon d={I.x} size={15} />
           </button>
           <div className="flex gap-3.5 pr-6">
@@ -159,16 +179,16 @@ export function HomeClient(props: {
               <Icon d={I.qr} size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold">Your QR sticker is on its way</p>
-              <p className="text-xs text-white/45 mt-1 leading-relaxed">When it arrives, scan it to start SMS marketing: Wednesday check-ins, win-backs, broadcasts and review requests. Missed-call texts and reminders already work.</p>
+              <p className="text-sm font-semibold">{t("home.sticker_title")}</p>
+              <p className="text-xs text-white/45 mt-1 leading-relaxed">{t("home.sticker_body")}</p>
               <button
                 onClick={() => setShowScanner(true)}
                 className="mt-3 h-9 px-3.5 rounded-[10px] bg-[var(--accent-color)] text-[var(--accent-fg)] text-xs font-semibold"
               >
-                Scan your sticker
+                {t("home.sticker_scan")}
               </button>
               <p className="text-[11px] text-white/35 mt-2.5 leading-relaxed">
-                Meanwhile, clients can book at <span className="text-white/55 break-all">{props.bookingLink.replace(/^https?:\/\//, "")}</span>
+                {t("home.sticker_link")} <span className="text-white/55 break-all">{props.bookingLink.replace(/^https?:\/\//, "")}</span>
               </p>
             </div>
           </div>
@@ -179,57 +199,49 @@ export function HomeClient(props: {
       <Card className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.8px] text-white/40">Revenue</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.8px] text-white/40">{t("home.revenue")}</p>
             <p className={`${SERIF} text-[32px] leading-none font-semibold mt-2`}>{money(revenue.total)}</p>
             <p className="text-xs text-white/35 mt-1.5">
-              {revenue.cuts} cut{revenue.cuts === 1 ? "" : "s"} completed
+              {revenue.cuts === 1 ? t("home.cuts_completed_one") : t("home.cuts_completed", { n: revenue.cuts })}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[13px] text-white/40">{revenue.monthName}</p>
+            <p className="text-[13px] text-white/40 capitalize">{f.date(new Date(Date.UTC(revenue.year, revenue.month - 1, 15)), { month: "long", timeZone: "UTC" })}</p>
             {(revenue.total > 0 || revenue.lastMonthToDate > 0) && (
               <p className={`text-[13px] font-semibold mt-1 ${delta >= 0 ? "text-[var(--accent-color)]" : "text-white/50"}`}>
-                {delta >= 0 ? "▲" : "▼"} {money(Math.abs(delta))} <span className="font-normal text-white/30">vs last mo</span>
+                {delta >= 0 ? "▲" : "▼"} {money(Math.abs(delta))} <span className="font-normal text-white/30">{t("home.vs_last")}</span>
               </p>
             )}
           </div>
         </div>
         {revenue.total > 0 ? (
-          <RevenueChart points={revenue.points} current={revenue.currentWeek} />
+          <RevenueChart points={revenue.points} current={revenue.currentWeek} label={t("home.revenue_chart")} weekLabel={(n) => t("home.week", { n })} />
         ) : (
           <p className="mt-4 rounded-xl bg-white/[0.03] px-4 py-3 text-[12px] text-white/40">
-            Mark cuts as done on your Schedule and your month fills in here.
+            {t("home.revenue_empty")}
           </p>
         )}
       </Card>
 
       {/* Tiles */}
       <div className="grid grid-cols-2 gap-2.5">
-        <Tile href="/dashboard/clients?filter=vip" label="VIPs" value={props.vips} sub="opted in" accent />
+        <Tile href="/dashboard/clients?filter=vip" label={t("home.vips")} value={props.vips} sub={t("home.opted_in")} accent />
         <Tile
           href="/dashboard/messages"
-          label="Missed calls caught"
+          label={t("home.calls_caught")}
           icon={I.phone}
           value={props.callsCaught}
-          sub={props.autotextOn ? "texted back this week" : "auto-text is off"}
+          sub={props.autotextOn ? t("home.calls_sub") : t("home.autotext_off")}
         />
         <Tile
           href="/dashboard/settings#marketing"
-          label="Wed engine"
+          label={t("home.wed")}
           icon={I.bolt}
-          value={props.marketing === "on" && props.wednesdayOn ? props.wednesdayTargeted : "Off"}
-          sub={
-            props.marketing === "off"
-              ? "SMS marketing is off"
-              : props.marketing === "awaiting_sticker"
-                ? "starts when your sticker is scanned"
-                : props.wednesdayOn
-                  ? "due for a nudge this week"
-                  : "turn on in settings"
-          }
+          value={props.marketing === "on" && props.wednesdayOn ? props.wednesdayTargeted : t("home.off")}
+          sub={props.marketing === "off" ? t("home.wed_marketing_off") : props.wednesdayOn ? t("home.wed_due") : t("home.wed_off")}
           warm
         />
-        <Tile href="/dashboard/schedule" label="Bookings" value={revenue.cuts} sub="completed this month" />
+        <Tile href="/dashboard/schedule" label={t("home.bookings")} value={revenue.cuts} sub={t("home.bookings_sub")} />
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
@@ -238,14 +250,14 @@ export function HomeClient(props: {
           className="h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-sm font-semibold flex items-center justify-center gap-2 hover:-translate-y-px transition-transform"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
-          Portfolio
+          {t("home.portfolio")}
         </Link>
         <Link
           href="/dashboard/messages?compose=broadcast"
           className="h-12 rounded-xl border border-white/[0.12] text-white/80 text-sm font-medium flex items-center justify-center gap-2 hover:border-[var(--accent-color)]/40 hover:text-white transition-colors"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
-          Broadcast
+          {t("home.broadcast")}
         </Link>
       </div>
 
@@ -253,7 +265,7 @@ export function HomeClient(props: {
         <Link href="/dashboard/settings#reviews" className="block">
           <Card className="px-4 py-3.5 flex items-center gap-3 hover:border-[var(--accent-color)]/25 transition-colors">
             <Icon d={I.star} className="text-[#E0926A]" />
-            <span className="text-[13px] text-white/60 flex-1">Add your Google review link to ask happy clients for reviews.</span>
+            <span className="text-[13px] text-white/60 flex-1">{t("home.reviews_prompt")}</span>
             <span className="text-[var(--accent-color)] text-sm">›</span>
           </Card>
         </Link>
@@ -261,26 +273,26 @@ export function HomeClient(props: {
 
       {props.suppressed.length > 0 && (
         <section>
-          <SectionLabel>Calls not texted back</SectionLabel>
+          <SectionLabel>{t("home.not_texted")}</SectionLabel>
           <Card className="divide-y divide-white/[0.05]">
             {props.suppressed.slice(0, 5).map((c) => (
               <div key={c.id} className="flex items-center gap-3 px-4 py-3">
                 <Icon d={I.phone} size={14} className="text-[#E0926A]/70" />
                 <span className="text-sm text-white/70 flex-1">{formatPhone(c.from_number)}</span>
-                <span className="text-[11px] text-white/35">{reasonLabel(c.suppressed_reason)}</span>
+                <span className="text-[11px] text-white/35">{t(`home.reason_${["no_consent", "opted_out", "trial_locked", "autotext_disabled"].includes(c.suppressed_reason || "") ? c.suppressed_reason : "other"}`)}</span>
               </div>
             ))}
             <p className="px-4 py-3 text-[11px] text-white/35 leading-relaxed">
-              LineCatch only texts people who opted in. Ask these callers to scan your QR sticker next time they&apos;re in.
+              {t("home.not_texted_note")}
             </p>
           </Card>
         </section>
       )}
 
       <section>
-        <SectionLabel>Recent activity</SectionLabel>
+        <SectionLabel>{t("home.activity")}</SectionLabel>
         {feed.length === 0 ? (
-          <Card className="px-5 py-8 text-center text-[13px] text-white/40">Nothing yet. Bookings and caught calls show up here.</Card>
+          <Card className="px-5 py-8 text-center text-[13px] text-white/40">{t("home.activity_empty")}</Card>
         ) : (
           <ul className="space-y-0.5">
             {feed.map((e) => {
@@ -295,14 +307,14 @@ export function HomeClient(props: {
                     <Icon d={cfg.icon} size={15} />
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-white/85 truncate">{e.description}</p>
-                    <p className="text-[11px] text-white/30">{timeAgo(e.created_at, props.timezone)}</p>
+                    <p className="text-[13px] font-medium text-white/85 truncate">{activityText(e, t, money(REWARD_LABEL_CENTS / 100))}</p>
+                    <p className="text-[11px] text-white/30">{timeAgo(e.created_at, t, f.date, props.timezone)}</p>
                   </div>
                   {price !== null ? (
-                    <span className={`${SERIF} text-[13px] font-semibold text-[var(--accent-color)]`}>${price}</span>
+                    <span className={`${SERIF} text-[13px] font-semibold text-[var(--accent-color)]`}>{money(price)}</span>
                   ) : cfg.tag ? (
                     <span className="text-[10px] font-bold uppercase tracking-[0.4px] px-1.5 py-[2px] rounded-[5px]" style={{ color: cfg.tone, background: `color-mix(in srgb, ${cfg.tone} 12%, transparent)` }}>
-                      {cfg.tag}
+                      {t(cfg.tag)}
                     </span>
                   ) : null}
                 </li>
@@ -312,7 +324,7 @@ export function HomeClient(props: {
         )}
         {cursor && (
           <button onClick={loadMore} disabled={loadingMore} className="w-full mt-2 h-10 text-xs text-white/40 hover:text-white/70 disabled:opacity-40">
-            {loadingMore ? "Loading…" : "Load more"}
+            {loadingMore ? t("common.loading") : t("common.load_more")}
           </button>
         )}
       </section>
@@ -320,13 +332,6 @@ export function HomeClient(props: {
   );
 }
 
-function reasonLabel(r: string | null) {
-  if (r === "no_consent") return "not on VIP list";
-  if (r === "opted_out") return "opted out";
-  if (r === "trial_locked") return "texting not on yet";
-  if (r === "autotext_disabled") return "auto-text off";
-  return "not sent";
-}
 
 function Tile({ href, label, value, sub, icon, accent, warm }: { href: string; label: string; value: number | string; sub: string; icon?: React.ReactNode; accent?: boolean; warm?: boolean }) {
   return (
@@ -344,7 +349,7 @@ function Tile({ href, label, value, sub, icon, accent, warm }: { href: string; l
 }
 
 /** Running revenue by week of the month: smooth line with a soft fill, future weeks left blank. */
-function RevenueChart({ points, current }: { points: (number | null)[]; current: number }) {
+function RevenueChart({ points, current, label, weekLabel }: { points: (number | null)[]; current: number; label: string; weekLabel: (n: number) => string }) {
   const W = 310, H = 92, pad = 6;
   const known = points.filter((p): p is number => p !== null);
   const max = Math.max(...known, 1);
@@ -360,7 +365,7 @@ function RevenueChart({ points, current }: { points: (number | null)[]; current:
   const last = pts[pts.length - 1];
   return (
     <div className="mt-4">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[92px]" role="img" aria-label="Revenue by week this month">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-[92px]" role="img" aria-label={label}>
         <defs>
           <linearGradient id="rev-fill" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="var(--accent-color)" stopOpacity="0.22" />
@@ -377,7 +382,7 @@ function RevenueChart({ points, current }: { points: (number | null)[]; current:
       <div className="grid mt-1.5 text-[10px] text-white/30 text-right" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
         {points.map((_, i) => (
           <span key={i} className={i === current ? "text-[var(--accent-color)] font-semibold" : ""}>
-            Week {i + 1}
+            {weekLabel(i + 1)}
           </span>
         ))}
       </div>

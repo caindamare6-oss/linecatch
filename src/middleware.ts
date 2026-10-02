@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { RESERVED_SLUGS } from "@/lib/slug";
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -40,11 +40,12 @@ export async function middleware(request: NextRequest) {
   const isBooking = path.startsWith("/book/");
   const isManage = path.startsWith("/manage/");
   const isSticker = path.startsWith("/s/");
+  const isJoin = path.startsWith("/join/");
   // Barber portfolio: a single path segment that isn't one of the app's own routes.
   const segments = path.split("/").filter(Boolean);
   const isPortfolio = segments.length === 1 && !RESERVED_SLUGS.has(segments[0]);
 
-  if (isApiRoute || isCallbackRoute || isVip || isPublicPage || isBooking || isManage || isSticker || isPortfolio) {
+  if (isApiRoute || isCallbackRoute || isVip || isPublicPage || isBooking || isManage || isSticker || isJoin || isPortfolio) {
     return supabaseResponse;
   }
 

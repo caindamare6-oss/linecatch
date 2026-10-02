@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import QRCode from "qrcode";
 import JSZip from "jszip";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { useT, useFormat } from "@/lib/i18n";
+import { appUrl } from "@/lib/config";
 
 type StickerCode = {
   code: string;
@@ -16,11 +18,16 @@ type StickerCode = {
   shipped_at: string | null;
 };
 
-const SITE_URL = "https://linecatch.app";
+/** Group key for codes without a batch label (shown translated). */
+const NO_BATCH = "\u0000none";
 const PNG_W = 1800;
 const PNG_H = 2400;
 
-async function renderStickerPNG(code: string): Promise<Blob> {
+type StickerText = { tagline: string; scan: string; hint1: string; hint2: string };
+
+/** Print artwork for one sticker. Its words follow the admin's current language. */
+async function renderStickerPNG(code: string, text: StickerText): Promise<Blob> {
+  const site = appUrl();
   const canvas = document.createElement("canvas");
   canvas.width = PNG_W;
   canvas.height = PNG_H;
@@ -48,10 +55,10 @@ async function renderStickerPNG(code: string): Promise<Blob> {
   // Tagline
   ctx.fillStyle = "#948C80";
   ctx.font = "44px sans-serif";
-  ctx.fillText("Never miss a client again", PNG_W / 2, 360);
+  ctx.fillText(text.tagline, PNG_W / 2, 360);
 
   // QR code — render to a temporary canvas then draw centered
-  const qrUrl = `${SITE_URL}/s/${code}`;
+  const qrUrl = `${site}/s/${code}`;
   const qrDataUrl = await QRCode.toDataURL(qrUrl, {
     width: 900,
     margin: 2,
@@ -77,10 +84,10 @@ async function renderStickerPNG(code: string): Promise<Blob> {
 
   ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-  // "Scan to book" text
+  // Call to action
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 72px sans-serif";
-  ctx.fillText("Scan to book", PNG_W / 2, 1540);
+  ctx.fillText(text.scan, PNG_W / 2, 1540);
 
   // Code display
   ctx.fillStyle = "#B8914F";
@@ -90,13 +97,13 @@ async function renderStickerPNG(code: string): Promise<Blob> {
   // Instructions at bottom
   ctx.fillStyle = "#666666";
   ctx.font = "36px sans-serif";
-  ctx.fillText("Open your camera app and point it at the QR code", PNG_W / 2, 1800);
-  ctx.fillText("to sign up as a VIP client", PNG_W / 2, 1850);
+  ctx.fillText(text.hint1, PNG_W / 2, 1800);
+  ctx.fillText(text.hint2, PNG_W / 2, 1850);
 
   // LineCatch small mark at very bottom
   ctx.fillStyle = "#333333";
   ctx.font = "28px sans-serif";
-  ctx.fillText("linecatch.app", PNG_W / 2, 2260);
+  ctx.fillText(site.replace(/^https?:\/\/(www\.)?/, ""), PNG_W / 2, 2260);
 
   return new Promise<Blob>((resolve) => {
     canvas.toBlob((blob) => resolve(blob!), "image/png");
@@ -113,6 +120,8 @@ type ShipRequest = {
 };
 
 export default function AdminStickersPage() {
+  const t = useT();
+  const f = useFormat();
   const [codes, setCodes] = useState<StickerCode[]>([]);
   const [barbers, setBarbers] = useState<Record<string, string>>({});
   const [toShip, setToShip] = useState<ShipRequest[]>([]);
@@ -133,40 +142,39 @@ export default function AdminStickersPage() {
   // Filter
   const [statusFilter, setStatusFilter] = useState("");
 
-  useEffect(() => {
-    fetch("/api/admin/check")
-      .then((r) => r.json())
-      .then((d) => {
-        setAuthorized(!!d.isAdmin);
-        if (d.isAdmin) loadCodes();
-      })
-      .catch(() => setAuthorized(false));
-  }, []);
-
-  useEffect(() => {
-    if (authorized) loadCodes();
-  }, [statusFilter]);
-
   const loadCodes = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.set("status", statusFilter);
       const res = await fetch(`/api/admin/stickers?${params}`);
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || "Forbidden");
+      if (res.status === 403) {
+        setAuthorized(false);
+        return;
       }
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error && t(data.error));
       setCodes(data.codes);
       setBarbers(data.barbers);
       setToShip(data.toShip || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load");
+      setError((err instanceof Error && err.message) || t("admin.load_failed"));
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, t]);
+
+  useEffect(() => {
+    fetch("/api/admin/check")
+      .then((r) => r.json())
+      .then((d) => setAuthorized(!!d.isAdmin))
+      .catch(() => setAuthorized(false));
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-change; state updates after the request resolves
+    if (authorized) loadCodes();
+  }, [authorized, loadCodes]);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -182,7 +190,7 @@ export default function AdminStickersPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error && t(data.error));
 
       const blob = new Blob([data.csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
@@ -192,11 +200,11 @@ export default function AdminStickersPage() {
       a.click();
       URL.revokeObjectURL(url);
 
-      setGenResult(`Generated ${data.codes.length} codes. CSV downloaded.`);
+      setGenResult(t("admin.generated", { n: data.codes.length }));
       setGenLabel("");
       loadCodes();
     } catch (err: unknown) {
-      setGenResult(err instanceof Error ? err.message : "Failed");
+      setGenResult((err instanceof Error && err.message) || t("admin.failed"));
     } finally {
       setGenerating(false);
     }
@@ -211,15 +219,16 @@ export default function AdminStickersPage() {
 
     try {
       const zip = new JSZip();
+      const text = { tagline: t("admin.sticker_tagline"), scan: t("admin.sticker_scan"), hint1: t("admin.sticker_hint_1"), hint2: t("admin.sticker_hint_2") };
 
       for (let i = 0; i < batchCodes.length; i++) {
         const c = batchCodes[i];
         setDownloadProgress(`${i + 1} / ${batchCodes.length}`);
-        const pngBlob = await renderStickerPNG(c.code);
+        const pngBlob = await renderStickerPNG(c.code, text);
         zip.file(`${c.code}.png`, pngBlob);
       }
 
-      setDownloadProgress("Zipping...");
+      setDownloadProgress(t("admin.zipping"));
       const zipBlob = await zip.generateAsync({ type: "blob" });
 
       const url = URL.createObjectURL(zipBlob);
@@ -229,7 +238,7 @@ export default function AdminStickersPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "ZIP generation failed");
+      alert((err instanceof Error && err.message) || t("admin.zip_failed"));
     } finally {
       setDownloadingBatch(null);
       setDownloadProgress("");
@@ -247,31 +256,31 @@ export default function AdminStickersPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error && t(data.error));
       loadCodes();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed");
+      alert((err instanceof Error && err.message) || t("admin.failed"));
     }
   }
 
   // Group codes by batch label
   const batches = codes.reduce<Record<string, StickerCode[]>>((acc, c) => {
-    const label = c.batch_label || "No batch";
+    const label = c.batch_label || NO_BATCH;
     if (!acc[label]) acc[label] = [];
     acc[label].push(c);
     return acc;
   }, {});
 
   const batchLabels = Object.keys(batches).sort((a, b) => {
-    if (a === "No batch") return 1;
-    if (b === "No batch") return -1;
+    if (a === NO_BATCH) return 1;
+    if (b === NO_BATCH) return -1;
     return a.localeCompare(b);
   });
 
-  if (authorized === false || error === "Forbidden") {
+  if (authorized === false) {
     return (
       <div className="text-center py-16 text-white/40">
-        <p>Access denied.</p>
+        <p>{t("admin.denied")}</p>
       </div>
     );
   }
@@ -286,12 +295,13 @@ export default function AdminStickersPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      <h2 className="text-lg font-bold text-white">Sticker Admin</h2>
+      <h2 className="text-lg font-bold text-white">{t("admin.title")}</h2>
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
-        <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium mb-3">To ship ({toShip.length})</h3>
+        <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium mb-3">{t("admin.to_ship", { n: toShip.length })}</h3>
         {toShip.length === 0 ? (
-          <p className="text-sm text-white/40">Nobody is waiting on a sticker.</p>
+          <p className="text-sm text-white/40">{t("admin.none_waiting")}</p>
         ) : (
           <ul className="space-y-3">
             {toShip.map((r) => (
@@ -303,7 +313,7 @@ export default function AdminStickersPage() {
                     {r.shipping_address.line2 ? `, ${r.shipping_address.line2}` : ""}, {r.shipping_address.city}, {r.shipping_address.state} {r.shipping_address.zip}
                   </p>
                 )}
-                <p className="text-white/30 text-[11px]">Requested {new Date(r.sticker_requested_at).toLocaleDateString()}{r.email ? ` · ${r.email}` : ""}</p>
+                <p className="text-white/30 text-[11px]">{t("admin.requested", { date: f.date(r.sticker_requested_at, { month: "short", day: "numeric", year: "numeric" }) })}{r.email ? ` · ${r.email}` : ""}</p>
               </li>
             ))}
           </ul>
@@ -313,7 +323,7 @@ export default function AdminStickersPage() {
       {/* Generate Batch */}
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5 space-y-3">
         <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium">
-          Generate batch
+          {t("admin.generate_batch")}
         </h3>
         <div className="flex gap-2">
           <input
@@ -322,21 +332,22 @@ export default function AdminStickersPage() {
             onChange={(e) => setGenCount(e.target.value)}
             min={1}
             max={500}
+            aria-label={t("admin.count_aria")}
             className="w-20 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 focus:outline-none focus:border-[var(--accent-color)]"
           />
           <input
             type="text"
             value={genLabel}
             onChange={(e) => setGenLabel(e.target.value)}
-            placeholder="Batch label (e.g. sept-2026)"
-            className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)]"
+            placeholder={t("admin.label_placeholder")}
+            className="flex-1 min-w-0 bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[var(--accent-color)]"
           />
           <button
             onClick={handleGenerate}
             disabled={generating || !genLabel.trim()}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[var(--accent-fg)] hover:brightness-90 disabled:opacity-30 transition-all"
+            className="shrink-0 px-4 py-2 rounded-xl text-sm font-medium bg-[var(--accent-color)] text-[var(--accent-fg)] hover:brightness-90 disabled:opacity-30 transition-all"
           >
-            {generating ? "..." : "Generate"}
+            {generating ? "…" : t("admin.generate")}
           </button>
         </div>
         {genResult && (
@@ -348,17 +359,18 @@ export default function AdminStickersPage() {
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs text-white/40 uppercase tracking-wider font-medium">
-            All codes ({codes.length})
+            {t("admin.all_codes", { n: codes.length })}
           </h3>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label={t("admin.status_filter")}
             className="bg-white/[0.03] border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-white/60 focus:outline-none"
           >
-            <option value="">All statuses</option>
-            <option value="unclaimed">Unclaimed</option>
-            <option value="active">Active</option>
-            <option value="retired">Retired</option>
+            <option value="">{t("admin.all_statuses")}</option>
+            <option value="unclaimed">{t("admin.status_unclaimed")}</option>
+            <option value="active">{t("admin.status_active")}</option>
+            <option value="retired">{t("admin.status_retired")}</option>
           </select>
         </div>
 
@@ -372,10 +384,10 @@ export default function AdminStickersPage() {
               <div key={label}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-white/50">{label}</span>
-                    <span className="text-[10px] text-white/20">({batches[label].length} codes)</span>
+                    <span className="text-xs font-medium text-white/50">{label === NO_BATCH ? t("admin.no_batch") : label}</span>
+                    <span className="text-[10px] text-white/20">{t("admin.n_codes", { n: batches[label].length })}</span>
                   </div>
-                  {label !== "No batch" && (
+                  {label !== NO_BATCH && (
                     <button
                       onClick={() => handleDownloadBatchZip(label)}
                       disabled={downloadingBatch !== null}
@@ -384,7 +396,7 @@ export default function AdminStickersPage() {
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                       </svg>
-                      {downloadingBatch === label ? downloadProgress : "Download ZIP"}
+                      {downloadingBatch === label ? downloadProgress : t("admin.download_zip")}
                     </button>
                   )}
                 </div>
@@ -402,7 +414,7 @@ export default function AdminStickersPage() {
                           ? "text-yellow-400 bg-yellow-400/10"
                           : "text-white/30 bg-white/5"
                       }`}>
-                        {c.status}
+                        {t(`admin.status_${c.status}`)}
                       </span>
                       <span className="text-xs text-white/30 truncate flex-1">
                         {c.owner_user_id
@@ -415,7 +427,7 @@ export default function AdminStickersPage() {
                             onClick={() => handleAction(c.code, "reassign")}
                             className="text-[10px] text-white/30 hover:text-white/60 px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.06]"
                           >
-                            Clear
+                            {t("admin.clear")}
                           </button>
                         )}
                         {c.status !== "retired" && (
@@ -423,7 +435,7 @@ export default function AdminStickersPage() {
                             onClick={() => handleAction(c.code, "retire")}
                             className="text-[10px] text-red-400/50 hover:text-red-400 px-1.5 py-0.5 rounded bg-white/[0.03] hover:bg-red-400/10"
                           >
-                            Retire
+                            {t("admin.retire")}
                           </button>
                         )}
                       </div>
@@ -433,7 +445,7 @@ export default function AdminStickersPage() {
               </div>
             ))}
             {codes.length === 0 && (
-              <p className="text-center text-xs text-white/20 py-4">No codes found</p>
+              <p className="text-center text-xs text-white/20 py-4">{t("admin.no_codes")}</p>
             )}
           </div>
         )}

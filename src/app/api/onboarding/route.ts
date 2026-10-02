@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { applyReferral, ensureReferralCode, qualifyReferral, HEARD_FROM, REF_COOKIE, normalizeCode } from "@/lib/referrals";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanAddress, requestSticker } from "@/lib/sticker-request";
@@ -18,6 +20,11 @@ export async function POST(request: Request) {
 
   if (step === "who") {
     const update: Record<string, unknown> = {};
+    if (HEARD_FROM.includes(data.heardFrom)) update.referral_source = data.heardFrom;
+    if (typeof data.referralCode === "string" && data.referralCode.trim()) {
+      const r = await applyReferral(admin, user.id, data.referralCode);
+      if (!r.ok) return NextResponse.json({ error: r.error, field: "referralCode" }, { status: 400 });
+    }
     if (["en", "es", "pt"].includes(data.language)) update.barber_language = data.language;
     if (data.firstName !== undefined) update.first_name = cleanText(data.firstName, 40);
     // Only the offered accents are saved; a stale pick is ignored rather than failing the step.
@@ -128,15 +135,13 @@ export async function POST(request: Request) {
     if (typeof data.featureAutotext === "boolean") update.feature_autotext = data.featureAutotext;
     if (typeof data.featureWednesday === "boolean") update.feature_wednesday = data.featureWednesday;
     if (typeof data.featureReviews === "boolean") update.feature_reviews = data.featureReviews;
-    if (typeof data.featureMarketing === "boolean") {
-      update.feature_marketing = data.featureMarketing;
-      if (data.featureMarketing) {
-        // Marketing needs the QR sticker at the chair, so we need somewhere to ship it.
-        const addr = cleanAddress(data.shippingAddress);
-        if (!addr.ok) return NextResponse.json({ error: addr.error }, { status: 400 });
-        update.shipping_address = addr.value;
-        await requestSticker(admin, user.id, addr.value);
-      }
+    if (typeof data.featureMarketing === "boolean") update.feature_marketing = data.featureMarketing;
+    // Optional paid add-on: a QR sticker for the chair, only when they chose it.
+    if (data.wantsSticker === true) {
+      const addr = cleanAddress(data.shippingAddress);
+      if (!addr.ok) return NextResponse.json({ error: addr.error }, { status: 400 });
+      update.shipping_address = addr.value;
+      await requestSticker(admin, user.id, addr.value);
     }
     if (data.googleReviewUrl !== undefined) {
       const url = cleanUrl(data.googleReviewUrl);
@@ -159,7 +164,6 @@ export async function POST(request: Request) {
   if (step === "complete") {
     const { error } = await admin
       .from("users")
-      // Service texts work right away; marketing waits for the QR sticker (see lib/marketing).
       .update({ onboarding_completed: true })
       .eq("user_id", user.id);
 
@@ -168,6 +172,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
 
+    // Their own code for referring others, and the referral (if any) now counts.
+    await ensureReferralCode(admin, user.id);
+    await qualifyReferral(admin, user.id);
     return NextResponse.json({ ok: true });
   }
 
@@ -186,7 +193,7 @@ export async function GET() {
   const { data: profile } = await admin
     .from("users")
     .select(
-      "first_name, email, business_name, forwarding_number, accent_color, business_hours, barber_language, timezone, avatar_url, feature_autotext, feature_wednesday, feature_reviews, feature_marketing, shipping_address, google_review_url"
+      "first_name, email, business_name, forwarding_number, accent_color, business_hours, barber_language, timezone, avatar_url, feature_autotext, feature_wednesday, feature_reviews, feature_marketing, shipping_address, google_review_url, referral_source, referred_by"
     )
     .eq("user_id", user.id)
     .single();
@@ -200,11 +207,24 @@ export async function GET() {
   const googleName = user.user_metadata?.full_name || user.user_metadata?.name || "";
   const googleEmail = user.email || "";
 
+  // A code from a share link (/join/CODE) waits in a cookie until signup.
+  const pendingCode = normalizeCode((await cookies()).get(REF_COOKIE)?.value);
+  let referral: { code: string; name: string | null } | null = null;
+  if (profile?.referred_by) {
+    const [{ data: ref }, { data: who }] = await Promise.all([
+      admin.from("referrals").select("code").eq("referred_user_id", user.id).maybeSingle(),
+      admin.from("users").select("business_name, first_name").eq("user_id", profile.referred_by).maybeSingle(),
+    ]);
+    if (ref) referral = { code: ref.code, name: who?.business_name || who?.first_name || null };
+  }
+
   return NextResponse.json({
     profile: profile || {},
     services: services || [],
     googleName,
     googleEmail,
+    pendingCode,
+    referral,
   });
 }
 

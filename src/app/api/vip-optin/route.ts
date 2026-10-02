@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
-import { CONSENT_TEXT, toOptInSource } from "@/lib/consent";
+import { recordedConsentText, toOptInSource } from "@/lib/consent";
+import { DEFAULT_TZ } from "@/lib/config";
+import { getLocale } from "@/lib/i18n-server";
+import { isLocale, translate } from "@/lib/i18n-shared";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -26,17 +29,20 @@ export async function GET(request: Request) {
     openDays,
     isLockedOut: barber?.is_locked_out || false,
     accentColor: barber?.accent_color || null,
-    timezone: barber?.timezone || "America/New_York",
+    timezone: barber?.timezone || DEFAULT_TZ,
   });
 }
 
 export async function POST(request: Request) {
   const body = await request.json();
   const { phone, barberId, firstName, consented, optInSource } = body;
+  // The language the visitor saw the form in: their texts and the stored consent wording follow it.
+  const language = isLocale(body.language) ? body.language : await getLocale();
+  const t = (key: string) => translate(language, `vip.${key}`);
 
   if (!phone || !barberId) {
     return NextResponse.json(
-      { error: "Phone and barberId are required" },
+      { error: t("err_required") },
       { status: 400 }
     );
   }
@@ -52,19 +58,19 @@ export async function POST(request: Request) {
     .single();
 
   if (!barber) {
-    return NextResponse.json({ error: "Barber not found" }, { status: 404 });
+    return NextResponse.json({ error: t("err_not_found") }, { status: 404 });
   }
 
   if (barber.is_locked_out) {
     return NextResponse.json(
-      { error: "This business is currently offline." },
+      { error: t("err_offline") },
       { status: 503 }
     );
   }
 
   const phoneResult = normalizePhone(phone);
   if (!phoneResult.valid) {
-    return NextResponse.json({ error: phoneResult.error }, { status: 400 });
+    return NextResponse.json({ error: t("err_phone") }, { status: 400 });
   }
   const normalized = phoneResult.e164;
 
@@ -82,7 +88,7 @@ export async function POST(request: Request) {
   if (existing) {
     if (existing.opted_out_at) {
       return NextResponse.json(
-        { error: "This number has opted out. Reply START to the barber's number to re-subscribe." },
+        { error: t("err_opted_out") },
         { status: 403 }
       );
     }
@@ -97,7 +103,8 @@ export async function POST(request: Request) {
         opt_in_source: source,
         opt_in_ip: ip,
         opt_in_user_agent: userAgent,
-        consent_text: didConsent ? CONSENT_TEXT : null,
+        consent_text: didConsent ? recordedConsentText(body.consentText, language) : null,
+        client_language: language,
         first_name: firstName || null,
       })
       .eq("id", existing.id);
@@ -105,7 +112,7 @@ export async function POST(request: Request) {
     if (updateError) {
       console.error("VIP opt-in update error:", updateError);
       return NextResponse.json(
-        { error: "Failed to update opt-in" },
+        { error: t("err_save") },
         { status: 500 }
       );
     }
@@ -130,14 +137,15 @@ export async function POST(request: Request) {
     opt_in_source: source,
     opt_in_ip: ip,
     opt_in_user_agent: userAgent,
-    consent_text: didConsent ? CONSENT_TEXT : null,
+    consent_text: didConsent ? recordedConsentText(body.consentText, language) : null,
+    client_language: language,
     first_name: firstName || null,
   });
 
   if (error) {
     console.error("VIP opt-in insert error:", error);
     return NextResponse.json(
-      { error: "Failed to save opt-in" },
+      { error: t("err_save") },
       { status: 500 }
     );
   }

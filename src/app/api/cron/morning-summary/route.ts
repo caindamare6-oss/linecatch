@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { formatCasualTime } from "@/lib/format";
 import { projectVisit } from "@/lib/loyalty";
+import { DEFAULT_TZ } from "@/lib/config";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
   }
 
   for (const barber of barbers) {
-    const tz = barber.timezone || "America/New_York";
+    const tz = barber.timezone || DEFAULT_TZ;
     const localTime = new Date(now.toLocaleString("en-US", { timeZone: tz }));
     if (localTime.getHours() !== 8) continue;
 

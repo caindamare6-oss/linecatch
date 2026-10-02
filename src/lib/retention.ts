@@ -5,14 +5,17 @@
  *   rung 1  check-in   at the barber's rebook interval (default 18 days since last cut)
  *   rung 2  win-back   at 30 days (rotating copy)
  *   rung 3  win-back   at 45 days (next variant)
- *   rung 4  last word  at 60 days, with the barber's offer the first time a client ever reaches it
+ *   rung 4  win-back   at 60 days, with the barber's offer the first time a client ever reaches it
+ *   then    keep-in-touch every 4 weeks after that, rotating copy, for as long as they stay opted in
  *
- * The ladder pauses while a client has a future booking or has texted the shop since the last rung,
- * and starts over after their next completed cut. Opted-out clients never get any of it.
+ * It repeats until the client opts out (STOP) or the system opts them out (carrier unsubscribe,
+ * landline or invalid number). It pauses while a client has a future booking or has texted the
+ * shop since the last text, and starts over after their next completed cut.
  */
 
 export const WINBACK_VARIANTS = 5;
 export const MIN_DAYS_BETWEEN_RUNGS = 6;
+export const KEEP_IN_TOUCH_DAYS = 28;
 const DAY = 86_400_000;
 
 export type LadderClient = {
@@ -26,7 +29,7 @@ export type LadderClient = {
   lastInboundAt: string | null; // latest text from them to the shop
 };
 
-export type Rung = { stage: 1 | 2 | 3 | 4; templateKey: string; usesOffer: boolean; nextVariantIndex: number };
+export type Rung = { stage: 1 | 2 | 3 | 4 | 5; templateKey: string; usesOffer: boolean; nextVariantIndex: number };
 
 export function daysSince(dateYmd: string, now: Date): number {
   return Math.floor((now.getTime() - new Date(`${dateYmd}T12:00:00Z`).getTime()) / DAY);
@@ -40,12 +43,18 @@ export function nextRung(c: LadderClient, opts: { now: Date; rebookDays: number;
   // A rung sent before their latest cut belongs to the previous lapse.
   const sentThisLapse = c.lastSentAt && new Date(c.lastSentAt).getTime() > cutAt;
   const stage = sentThisLapse ? c.stage : 0;
-  if (stage >= 4) return null;
 
   if (sentThisLapse) {
     // One rung a week at most, and a reply to the last rung means a person is handling it.
     if (opts.now.getTime() - new Date(c.lastSentAt!).getTime() < MIN_DAYS_BETWEEN_RUNGS * DAY) return null;
     if (c.lastInboundAt && new Date(c.lastInboundAt).getTime() > new Date(c.lastSentAt!).getTime()) return null;
+  }
+
+  // Past the ladder: a check-in every 4 weeks until they opt out.
+  if (stage >= 4) {
+    if (opts.now.getTime() - new Date(c.lastSentAt!).getTime() < KEEP_IN_TOUCH_DAYS * DAY) return null;
+    const v = ((c.variantIndex % WINBACK_VARIANTS) + WINBACK_VARIANTS) % WINBACK_VARIANTS;
+    return { stage: 5, templateKey: `winback_${v + 1}`, usesOffer: false, nextVariantIndex: c.variantIndex + 1 };
   }
 
   // Highest rung they're due for, but never skip more than one step at a time.

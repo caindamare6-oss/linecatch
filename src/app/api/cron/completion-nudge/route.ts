@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
+import { appUrl } from "@/lib/config";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -67,8 +68,8 @@ export async function GET(request: Request) {
       .single();
 
     const clientName = vip?.first_name || "your client";
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.linecatch.app";
-    const link = `${appUrl}/dashboard/schedule?highlight=${booking.id}`;
+    const base = appUrl();
+    const link = `${base}/dashboard/schedule?highlight=${booking.id}`;
 
     const msg = `Done with ${clientName}? Tap to complete: ${link}`;
 

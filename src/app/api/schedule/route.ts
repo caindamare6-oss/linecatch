@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { barberLocalToUTC } from "@/lib/format";
 import { localParts } from "@/lib/revenue";
+import { DEFAULT_TZ } from "@/lib/config";
 
 const DAY = 86_400_000;
 
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const { data: barber } = await supabase.from("users").select("timezone, business_hours").eq("user_id", user.id).single();
-  const tz = barber?.timezone || "America/New_York";
+  const tz = barber?.timezone || DEFAULT_TZ;
   const url = new URL(request.url);
   const now = new Date();
   const t = localParts(now, tz);

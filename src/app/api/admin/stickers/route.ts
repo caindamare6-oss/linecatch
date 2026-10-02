@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/admin";
 import { createStickerBatch } from "@/lib/sticker-codes";
+import { appUrl } from "@/lib/config";
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
 
   // Also fetch barber names for display
   const ownerIds = [...new Set((data || []).map((d) => d.owner_user_id).filter(Boolean))];
-  let barbers: Record<string, string> = {};
+  const barbers: Record<string, string> = {};
   if (ownerIds.length > 0) {
     const { data: users } = await admin
       .from("users")
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.linecatch.app";
+    const baseUrl = appUrl();
     const csv = [
       "code,url",
       ...result.codes.map((c) => `${c},${baseUrl}/s/${c}`),

@@ -18,15 +18,18 @@ export function isTwilioEnabled(): boolean {
   return process.env.TWILIO_ENABLED !== "false";
 }
 
-const OPT_OUT = "\nReply STOP to opt out.";
+const OPT_OUT: Record<string, string> = {
+  en: "\nReply STOP to opt out.",
+  es: "\nResponde STOP para no recibir más mensajes.",
+};
 
 // ponytail: per-recipient cap stops SMS pumping and runaway loops to one number.
 // Rotating-number abuse is handled by the Vercel firewall rate limit on public routes.
 const MAX_CLIENT_SMS_PER_HOUR = 10;
 
-function withOptOut(body: string, audience: "client" | "barber"): string {
+function withOptOut(body: string, audience: "client" | "barber", language: string): string {
   if (audience === "barber") return body;
-  return /\bSTOP\b/i.test(body) ? body : body + OPT_OUT;
+  return /\bSTOP\b/i.test(body) ? body : body + (OPT_OUT[language] || OPT_OUT.en);
 }
 
 export async function sendSMS(opts: {
@@ -39,7 +42,7 @@ export async function sendSMS(opts: {
   audience?: "client" | "barber";
 }): Promise<boolean> {
   const { to, from, userId, templateKey, language, audience = "client" } = opts;
-  const body = withOptOut(opts.body, audience);
+  const body = withOptOut(opts.body, audience, language);
   const admin = createAdminClient();
   const isDevMode = process.env.SMS_DEV_MODE === "true";
 
@@ -106,10 +109,12 @@ export async function sendSMS(opts: {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`SMS send failed to ${to}:`, errorMsg);
-    // 21610: the carrier has this number unsubscribed (they texted STOP at the carrier level).
-    // Record it so every later text, including the next missed-call text, is skipped up front.
-    if ((err as { code?: number })?.code === 21610 && audience === "client") {
-      await admin.from("opt_outs").upsert({ user_id: userId, caller_phone: to, opted_out_at: new Date().toISOString() }, { onConflict: "user_id,caller_phone" });
+    // The system opts a number out on its own when texting it can never work:
+    // 21610 carrier-level STOP, 21614 landline / can't receive SMS, 21211 invalid number.
+    const code = (err as { code?: number })?.code;
+    const reason = code === 21610 ? "carrier_stop" : code === 21614 ? "not_mobile" : code === 21211 ? "invalid_number" : null;
+    if (reason && audience === "client") {
+      await admin.from("opt_outs").upsert({ user_id: userId, caller_phone: to, opted_out_at: new Date().toISOString(), reason }, { onConflict: "user_id,caller_phone" });
       await admin.from("vip_clients").update({ opted_out_at: new Date().toISOString() }).eq("user_id", userId).eq("phone_number", to).is("opted_out_at", null);
     }
     if (logId) {

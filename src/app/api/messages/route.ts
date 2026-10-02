@@ -25,10 +25,10 @@ async function canText(admin: ReturnType<typeof createAdminClient>, userId: stri
     admin.from("opt_outs").select("caller_phone").eq("user_id", userId).eq("caller_phone", phone).maybeSingle(),
     admin.from("sms_log").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("direction", "inbound").eq("from_number", phone),
   ]);
-  if (optOut || vip?.opted_out_at) return { ok: false, reason: "They opted out of texts." };
+  if (optOut || vip?.opted_out_at) return { ok: false, reason: "opted_out" as const };
   // Opted in, or they texted first: replying is a conversation, not marketing.
   if (vip?.is_opted_in || (inbound ?? 0) > 0) return { ok: true, reason: null };
-  return { ok: false, reason: "They haven't opted in to texts yet. Send them your VIP link in person." };
+  return { ok: false, reason: "no_consent" as const };
 }
 
 export async function GET(request: Request) {
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
   if (barber.is_locked_out) return NextResponse.json({ error: "Texting is paused on your account. Contact support." }, { status: 402 });
 
   const allowed = await canText(admin, user.id, p.e164);
-  if (!allowed.ok) return NextResponse.json({ error: allowed.reason }, { status: 403 });
+  if (!allowed.ok) return NextResponse.json({ error: allowed.reason, code: allowed.reason }, { status: 403 });
 
   const sent = await sendSMS({ to: p.e164, from: barber.phone_number, body, userId: user.id, templateKey: "direct", language: "en" });
   if (!sent) return NextResponse.json({ error: "Text didn't send. Try again in a minute." }, { status: 502 });

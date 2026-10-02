@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTemplate } from "@/lib/messages";
+import { cookies } from "next/headers";
+import { ensureReferralCode } from "@/lib/referrals";
+import { LANG_COOKIE } from "@/lib/i18n-shared";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -36,14 +39,17 @@ export async function GET(request: Request) {
             .update({ user_id: data.user.id })
             .eq("email", data.user.email);
         } else {
-          const defaultMsg = await resolveTemplate(data.user.id, "missed_call", "en")
+          const lang = (await cookies()).get(LANG_COOKIE)?.value === "es" ? "es" : "en";
+          const defaultMsg = await resolveTemplate(data.user.id, "missed_call", lang)
             || "Hey! Sorry I missed your call. Book your next appointment here: {link}";
           await admin.from("users").insert({
             user_id: data.user.id,
             email: data.user.email,
             is_active: true,
             custom_message: defaultMsg,
+            barber_language: lang,
           });
+          await ensureReferralCode(admin, data.user.id);
         }
       }
 

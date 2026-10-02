@@ -31,8 +31,8 @@ describe("win-back ladder", () => {
     const cut = daysAgo(62);
     let c = client({ lastCutDate: cut });
     const sent: string[] = [];
-    // Simulate ten Wednesdays starting the week they became due.
-    for (let w = 0; w < 10; w++) {
+    // Simulate sixteen Wednesdays starting the week they became due.
+    for (let w = 0; w < 16; w++) {
       const now = new Date(WED_NOON_NY.getTime() - (9 - w) * 7 * 86_400_000 + 45 * 86_400_000);
       const r = nextRung(c, { ...opts, now });
       if (r) {
@@ -40,7 +40,8 @@ describe("win-back ladder", () => {
         c = { ...c, stage: r.stage, lastSentAt: now.toISOString(), variantIndex: r.nextVariantIndex, claimedOffer: c.claimedOffer || r.usesOffer };
       }
     }
-    expect(sent).toEqual(["cadence_nudge", "winback_1", "winback_2", "winback_final_offer"]);
+    // Ladder, then a check-in every 4 weeks (never stops on its own).
+    expect(sent).toEqual(["cadence_nudge", "winback_1", "winback_2", "winback_final_offer", "winback_3", "winback_4", "winback_5"]);
   });
 
   it("the offer goes out only once per client, ever", () => {
@@ -48,8 +49,11 @@ describe("win-back ladder", () => {
     expect(nextRung(client({ lastCutDate: daysAgo(70), stage: 3, lastSentAt: daysAgo(14) }), { ...opts, offer: "" })).toMatchObject({ templateKey: "winback_final" });
   });
 
-  it("stops after the last rung", () => {
+  it("after the ladder it keeps checking in every 4 weeks until they opt out", () => {
     expect(nextRung(client({ lastCutDate: daysAgo(90), stage: 4, lastSentAt: daysAgo(20) }), opts)).toBeNull();
+    expect(nextRung(client({ lastCutDate: daysAgo(90), stage: 4, lastSentAt: daysAgo(28), variantIndex: 2 }), opts)).toMatchObject({ stage: 5, templateKey: "winback_3" });
+    expect(nextRung(client({ lastCutDate: daysAgo(200), stage: 5, lastSentAt: daysAgo(30), variantIndex: 9 }), opts)).toMatchObject({ stage: 5, templateKey: "winback_5" });
+    expect(nextRung(client({ lastCutDate: daysAgo(200), stage: 5, lastSentAt: daysAgo(30), optedOut: true }), opts)).toBeNull();
   });
 
   it("a reply to the shop pauses the ladder", () => {
@@ -80,10 +84,9 @@ describe("win-back ladder", () => {
 });
 
 describe("SMS marketing state", () => {
-  it("needs the toggle and an active sticker", () => {
-    expect(marketingState(false, true)).toBe("off");
-    expect(marketingState(true, false)).toBe("awaiting_sticker");
-    expect(marketingState(true, true)).toBe("on");
+  it("is the barber's switch; the QR sticker isn't required", () => {
+    expect(marketingState(false)).toBe("off");
+    expect(marketingState(true)).toBe("on");
   });
 
   it("shipping address validation", () => {

@@ -5,6 +5,7 @@ import { keyword } from "@/lib/opt-out";
 import { barberLocalToUTC } from "@/lib/format";
 import { localParts } from "@/lib/revenue";
 import { issueToken } from "@/lib/client-session";
+import { SUPPORT_EMAIL, DEFAULT_TZ } from "@/lib/config";
 
 const AUTO_REPLY_COOLDOWN_HOURS = 12;
 
@@ -37,7 +38,11 @@ const LANGUAGE_CHANGE_REPLIES: Record<string, string> = {
   pt: "Idioma alterado para português. Mensagens futuras serão em português.",
 };
 
-const HELP_REPLY = "LineCatch: appointment reminders & updates. Reply STOP to opt out. Contact: caindamare6@gmail.com";
+function helpReply(shop: string, lang: string) {
+  return lang === "es"
+    ? `${shop}: recordatorios y avisos de tus citas por LineCatch. Responde STOP para no recibir más mensajes. Ayuda: ${SUPPORT_EMAIL}`
+    : `${shop}: appointment reminders & updates via LineCatch. Reply STOP to opt out. Help: ${SUPPORT_EMAIL}`;
+}
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -60,7 +65,7 @@ export async function POST(request: Request) {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("user_id, is_locked_out, forwarding_number, timezone")
+    .select("user_id, is_locked_out, forwarding_number, timezone, business_name, first_name")
     .eq("phone_number", to)
     .single();
 
@@ -110,8 +115,9 @@ export async function POST(request: Request) {
   }
 
   // HELP
-  if (body === "help") {
-    return twimlResponse(HELP_REPLY);
+  if (body === "help" || body === "ayuda") {
+    const { data: c } = await supabase.from("vip_clients").select("client_language").eq("user_id", barber.user_id).eq("phone_number", from).maybeSingle();
+    return twimlResponse(helpReply(barber.business_name || barber.first_name || "LineCatch", body === "ayuda" ? "es" : c?.client_language || "en"));
   }
 
   // START / re-subscribe
@@ -142,7 +148,7 @@ export async function POST(request: Request) {
   // LATE — the barber (texting from their own cell) warns today's clients they're behind.
   // A client texting "late" about themselves must never trigger this.
   if (body === "late" && fromBarber && !barber.is_locked_out) {
-    const tz = barber.timezone || "America/New_York";
+    const tz = barber.timezone || DEFAULT_TZ;
     const { year, month, day } = localParts(new Date(), tz);
     const today = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const dayStart = barberLocalToUTC(today, "00:00", tz);
@@ -286,6 +292,7 @@ async function handleOptOut(
       user_id: userId,
       caller_phone: callerPhone,
       opted_out_at: new Date().toISOString(),
+      reason: "client_stop",
     },
     { onConflict: "user_id,caller_phone" }
   );

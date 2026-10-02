@@ -61,10 +61,10 @@ export function monthRevenue(bookings: RevenueBooking[], prices: Record<string, 
   const currentWeek = Math.min(Math.floor((today - 1) / 7), weeks - 1);
   let run = 0;
   const points = perWeek.map((v, i) => (i <= currentWeek ? (run += v) : null));
-  return { total, cuts, lastMonthToDate, points, currentWeek, monthName: new Date(Date.UTC(b.year, b.month - 1, 15)).toLocaleDateString("en-US", { month: "long", timeZone: "UTC" }) };
+  return { total, cuts, lastMonthToDate, points, currentWeek, month: b.month, year: b.year };
 }
 
 export function greetingFor(now: Date, tz: string) {
   const h = localParts(now, tz).hour;
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  return h < 12 ? "good_morning" : h < 17 ? "good_afternoon" : "good_evening";
 }

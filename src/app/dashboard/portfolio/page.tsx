@@ -1,10 +1,12 @@
 import PortfolioSection from "../settings/portfolio-section";
 import { PageHeader } from "../ui";
+import { getT } from "@/lib/i18n-server";
 
-export default function PortfolioPage() {
+export default async function PortfolioPage() {
+  const { t } = await getT();
   return (
     <>
-      <PageHeader title="Your portfolio" back="/dashboard" sub="What clients see from your link and QR." />
+      <PageHeader title={t("portfolio.title")} back="/dashboard" sub={t("portfolio.sub")} />
       <PortfolioSection />
     </>
   );

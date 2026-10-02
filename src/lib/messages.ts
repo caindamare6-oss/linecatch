@@ -66,6 +66,22 @@ const BARBER_FACING_TEMPLATES = new Set([
   "barber_booking_notify",
 ]);
 
+const WEEKDAYS_ES: Record<string, string> = { Monday: "lunes", Tuesday: "martes", Wednesday: "miércoles", Thursday: "jueves", Friday: "viernes", Saturday: "sábado", Sunday: "domingo" };
+
+/**
+ * Callers format dates in English ("Friday"); a Spanish text needs "viernes". Weekday names and the
+ * "your barber" fallback are swapped here so every template gets them in the client's language.
+ */
+function spanishVars(vars: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(vars)) {
+    if (/date$/.test(k)) out[k] = v.replace(/\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b/g, (d) => WEEKDAYS_ES[d]);
+    else if (k === "shop_name" && v === "your barber") out[k] = "tu barbero";
+    else out[k] = v;
+  }
+  return out;
+}
+
 export async function buildSMS(opts: {
   userId: string;
   templateKey: string;
@@ -106,7 +122,7 @@ export async function buildSMS(opts: {
   if (!template) return null;
 
   const allVars: Record<string, string> = {
-    ...opts.vars,
+    ...(language === "es" ? spanishVars(opts.vars) : opts.vars),
     first_name: firstName,
     barber_name: barberName,
     offer: barberProfile?.winback_offer || "",

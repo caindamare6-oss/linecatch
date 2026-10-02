@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getT } from "@/lib/i18n-server";
 
 export async function POST(request: Request) {
+  const { t } = await getT();
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: t("claim.err_unauthorized") }, { status: 401 });
   }
 
   const { code } = await request.json();
   if (!code || typeof code !== "string") {
-    return NextResponse.json({ error: "Code is required" }, { status: 400 });
+    return NextResponse.json({ error: t("claim.err_required") }, { status: 400 });
   }
 
   const normalized = code.trim().toUpperCase();
@@ -31,7 +33,7 @@ export async function POST(request: Request) {
 
   if (existing) {
     return NextResponse.json(
-      { error: "You already have an active sticker. Each barber can only claim one.", existingCode: existing.code },
+      { error: t("claim.err_have_one"), existingCode: existing.code },
       { status: 409 }
     );
   }
@@ -57,19 +59,19 @@ export async function POST(request: Request) {
       .single();
 
     if (!check) {
-      return NextResponse.json({ error: "Code not found" }, { status: 404 });
+      return NextResponse.json({ error: t("claim.err_not_found") }, { status: 404 });
     }
     if (check.status === "active") {
       if (check.owner_user_id === user.id) {
-        return NextResponse.json({ error: "You already own this code" }, { status: 409 });
+        return NextResponse.json({ error: t("claim.err_own") }, { status: 409 });
       }
-      return NextResponse.json({ error: "This code has already been claimed" }, { status: 409 });
+      return NextResponse.json({ error: t("claim.err_taken") }, { status: 409 });
     }
     if (check.status === "retired") {
-      return NextResponse.json({ error: "This code has been retired" }, { status: 410 });
+      return NextResponse.json({ error: t("claim.err_retired") }, { status: 410 });
     }
     return NextResponse.json(
-      { error: error?.message || "Failed to claim code" },
+      { error: t("claim.err_failed") },
       { status: 500 }
     );
   }

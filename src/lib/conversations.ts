@@ -75,36 +75,21 @@ export function buildInbox(rows: SmsRow[], names: Record<string, string>, filter
 
 const time = (x: Conversation | BroadcastGroup) => (x.kind === "client" ? x.last.created_at : x.created_at);
 
-/** Human label for an automated text, shown above its bubble. */
+/** i18n key for an automated text's label (shown above its bubble), or null for a plain message. */
 export function templateLabel(key: string | null): string | null {
-  const labels: Record<string, string> = {
-    missed_call: "Missed-call text",
-    after_hours: "After-hours text",
-    booking_confirm: "Booking confirmation",
-    reminder_24h: "24h reminder",
-    reminder_2h: "2h reminder",
-    rescheduled: "Rescheduled",
-    cancelled: "Cancelled",
-    review_request: "Review request",
-    loyalty_progress: "Loyalty update",
-    loyalty_earned: "Loyalty reward",
-    wednesday_dropin: "Wednesday engine",
-    cadence_nudge: "Rebook nudge",
-    morning_late_broadcast: "Running late",
-    auto_reply_inbound: "Auto-reply",
-  };
-  if (!key || key === "direct") return null;
-  if (key.startsWith("winback")) return "Win-back";
-  return labels[key] ?? null;
+  if (!key || key === "direct" || key === "broadcast") return null;
+  if (key.startsWith("winback")) return "msglabel.winback";
+  const known = ["missed_call", "after_hours", "booking_confirm", "reminder_24h", "reminder_2h", "rescheduled", "cancelled", "review_request", "loyalty_progress", "loyalty_earned", "wednesday_dropin", "cadence_nudge", "morning_late_broadcast", "auto_reply_inbound"];
+  return known.includes(key) ? `msglabel.${key}` : null;
 }
 
-/** "2:15 PM" today, "Yesterday", "Mon" this week, then "Sep 3". */
-export function listTime(iso: string) {
+/** "2:15 PM" today, "Yesterday", "Mon" this week, then "Sep 3" (in the given language). */
+export function listTime(iso: string, yesterday = "Yesterday", tag = "en-US") {
   const d = new Date(iso);
   const now = new Date();
   const days = Math.floor((new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86_400_000);
-  if (days === 0) return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  if (days === 1) return "Yesterday";
-  if (days < 7) return d.toLocaleDateString("en-US", { weekday: "short" });
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (days === 0) return d.toLocaleTimeString(tag, { hour: "numeric", minute: "2-digit" });
+  if (days === 1) return yesterday;
+  if (days < 7) return d.toLocaleDateString(tag, { weekday: "short" });
+  return d.toLocaleDateString(tag, { month: "short", day: "numeric" });
 }
