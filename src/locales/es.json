@@ -516,6 +516,7 @@
     "refer_discount": "Tienes {percent}% de descuento en tu primer mes por tu referido.",
     "account": "Cuenta",
     "admin_stickers": "Admin: stickers",
+    "admin_twilio": "Admin: Twilio",
     "privacy": "Política de privacidad",
     "terms": "Términos",
     "support": "Contactar soporte",

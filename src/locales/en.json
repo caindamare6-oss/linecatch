@@ -516,6 +516,7 @@
     "refer_discount": "You have {percent}% off your first month from your referral.",
     "account": "Account",
     "admin_stickers": "Admin: stickers",
+    "admin_twilio": "Admin: Twilio",
     "privacy": "Privacy policy",
     "terms": "Terms",
     "support": "Contact support",

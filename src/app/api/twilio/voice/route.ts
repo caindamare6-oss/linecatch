@@ -34,10 +34,12 @@ export async function POST(request: Request) {
   }
 
   const statusCallbackUrl = `${appUrl()}/api/twilio/voice-status`;
+  // Ring the barber for 15 seconds. Most cell voicemail picks up around 20–25 seconds, and a call
+  // voicemail answers counts as "answered", so a longer ring would skip the missed-call text.
 
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="20" action="${statusCallbackUrl}">
+  <Dial timeout="15" action="${statusCallbackUrl}">
     <Number>${barber.forwarding_number}</Number>
   </Dial>
 </Response>`;

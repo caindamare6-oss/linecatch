@@ -233,6 +233,7 @@ export default function SettingsPage() {
         <SectionLabel>{t("settings.account")}</SectionLabel>
         <div className="space-y-2">
           {s.isAdmin && <NavRow href="/dashboard/admin/stickers" label={t("settings.admin_stickers")} />}
+          {s.isAdmin && <NavRow href="/dashboard/admin/twilio" label={t("settings.admin_twilio")} />}
           <NavRow href="/privacy" label={t("settings.privacy")} />
           <NavRow href="/terms" label={t("settings.terms")} />
           <a href={`mailto:${SUPPORT_EMAIL}`} className="block">

@@ -160,7 +160,12 @@ export async function POST(request: Request) {
       return done();
     }
 
-    await sendSMS({ to: from, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: "missed_call", language: sms.language });
+    const sent = await sendSMS({ to: from, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: "missed_call", language: sms.language });
+    if (!sent) {
+      // Landline, invalid number, Twilio down: don't count it as caught or claim a text went out.
+      await logMissedCall(supabase, barber.user_id, from, callSid, false, "send_failed");
+      return done();
+    }
     await markFirstMessageSent(barber.user_id, from);
     await logMissedCall(supabase, barber.user_id, from, callSid, true, null);
 
