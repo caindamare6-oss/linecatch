@@ -71,13 +71,7 @@ export async function POST(request: Request) {
       .eq("phone_number", from)
       .single();
 
-    if (!vipClient || !vipClient.is_opted_in) {
-      await logMissedCall(supabase, barber.user_id, from, callSid, false, "no_consent");
-      await logCallLegacy(supabase, barber.user_id, from, to, "logged");
-      return done();
-    }
-
-    if (vipClient.opted_out_at) {
+    if (vipClient?.opted_out_at) {
       await logMissedCall(supabase, barber.user_id, from, callSid, false, "opted_out");
       await logCallLegacy(supabase, barber.user_id, from, to, "logged");
       return done();
@@ -95,6 +89,22 @@ export async function POST(request: Request) {
       await logMissedCall(supabase, barber.user_id, from, callSid, false, "opted_out");
       await logCallLegacy(supabase, barber.user_id, from, to, "logged");
       return done();
+    }
+
+    // A caller who never agreed to texts gets the booking link once, as a reply to their own call.
+    // After that, only clients who opt in (booking checkbox, VIP page, sticker) hear from us again.
+    if (!vipClient?.is_opted_in) {
+      const { count: textedBefore } = await supabase
+        .from("sms_log")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", barber.user_id)
+        .eq("to_number", from)
+        .eq("template_key", "missed_call");
+      if ((textedBefore ?? 0) > 0) {
+        await logMissedCall(supabase, barber.user_id, from, callSid, false, "no_consent");
+        await logCallLegacy(supabase, barber.user_id, from, to, "logged");
+        return done();
+      }
     }
 
     // Cooldown check

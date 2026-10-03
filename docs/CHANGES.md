@@ -12,7 +12,7 @@ Work on branch `claude/trusting-goodall-ivxv3b`, Oct 2–3, 2026. Nine commits, 
 | Area | How it works now |
 |---|---|
 | **Returning clients** | Recognized on the booking page by a saved token or the link in their missed-call text. Booking takes one tap. |
-| **Missed calls** | The caller gets one text with a booking link, unless they opted out. No follow-up. |
+| **Missed calls** | The caller gets one text with a booking link, unless they opted out. A caller who never opted in gets it only the first time. No follow-up. |
 | **SMS marketing** | One switch for the barber, off by default. Texts only reach clients who opted in. No sticker needed. |
 | **Wednesday reminders** | Only on Wednesdays (noon–6pm, barber's time). The first goes out on the first Wednesday at least 2 weeks after the cut, then every 3 weeks until the client books or texts STOP. |
 | **Opt-out** | STOP in any form ("Stop.", "STOP!", "parar") stops everything. Numbers the carrier reports as unreachable are opted out automatically. |
@@ -158,6 +158,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
   - The "Done with Jamie?" nudge goes out once per appointment instead of up to 4 times, and in Spanish for Spanish-speaking barbers.
   - The morning summary counts today's appointments in the barber's timezone (it was using UTC midnight), and is in the barber's language.
   - Broadcasts end with "Reply STOP" in each client's language.
+  - **First-time callers now get the missed-call text, once.** Before, only clients who had already opted in got it, so a new caller got nothing. Someone who never opts in is never texted by a missed call again. STOP still blocks it.
 
 ---
 

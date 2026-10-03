@@ -1,6 +1,6 @@
 # LineCatch
 
-**Missed-call texting and booking for barbers.** When a barber can't pick up because they're mid-cut, the caller gets a text with a booking link in seconds. The client books in a few taps, and LineCatch keeps them coming back with reminders, loyalty rewards and Wednesday check-ins. Every text goes only to clients who agreed to receive them.
+**Missed-call texting and booking for barbers.** When a barber can't pick up because they're mid-cut, the caller gets a text with a booking link in seconds. The client books in a few taps, and LineCatch keeps them coming back with reminders, loyalty rewards and Wednesday check-ins. A caller who hasn't opted in gets one booking-link text after a missed call; every other text goes only to clients who agreed to receive them.
 
 LineCatch is multi-tenant: every barber has their own account, clients, schedule, phone number, language and settings.
 
@@ -26,7 +26,7 @@ Barbers lose bookings every day because they can't answer the phone with clipper
 1. Each barber gets a **LineCatch number** (a Twilio number). Clients call it.
 2. The call rings through to the barber's own cell for 20 seconds.
 3. If nobody answers, the caller gets a text: *"Sorry I missed your call. Book here: link"*. The barber can write their own text.
-   **Only callers who already agreed to texts** (booked with the consent box ticked, or joined the VIP list) get it. A first-time caller gets nothing yet.
+   A caller who hasn't agreed to texts gets this text **once**, ever. Clients who opted in (consent box at booking, VIP list or sticker) get it on every missed call, at most once every 3 hours.
 4. That's the only text a missed call sends. There's no follow-up.
 5. Anyone who texted STOP never gets a missed-call text again.
 
