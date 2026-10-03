@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { getMarketingState } from "@/lib/marketing";
 import { cronNow } from "@/lib/retention";
-
-const REVIEW_DELAY_HOURS = 2;
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualTime } from "@/lib/format";
 import { projectVisit, rewardVars } from "@/lib/loyalty";
 import { DEFAULT_TZ, appUrl } from "@/lib/config";
+
+const REVIEW_DELAY_HOURS = 2;
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -122,16 +122,26 @@ export async function GET(request: Request) {
 
     if (!sms) continue;
 
+    // Claim the reminder before sending (booking_id + reminder_type is unique), so two
+    // overlapping runs can't both text the client. If the text doesn't go out, release the claim.
+    const { error: claimError } = await supabase.from("booking_reminders").insert({
+      booking_id: booking.id,
+      reminder_type: reminderType,
+    });
+    if (claimError) continue;
+    const release = () => supabase.from("booking_reminders").delete().eq("booking_id", booking.id).eq("reminder_type", reminderType);
+
     try {
-      await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: sms.body, userId: booking.user_id, templateKey, language: sms.language });
+      const ok = await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: sms.body, userId: booking.user_id, templateKey, language: sms.language });
+      if (!ok) {
+        await release();
+        continue;
+      }
       await markFirstMessageSent(booking.user_id, booking.customer_phone);
-      await supabase.from("booking_reminders").insert({
-        booking_id: booking.id,
-        reminder_type: reminderType,
-      });
       sent++;
     } catch (err) {
       console.error(`Reminder failed for booking ${booking.id}:`, err);
+      await release();
     }
   }
 

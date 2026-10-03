@@ -23,9 +23,9 @@ Redirect URLs: add `https://www.linecatch.app/auth/callback**` (with `**`). Sign
 referral code and sticker code as query parameters; without the wildcard they're rejected.
 
 ## 4. Vercel cron
-`vercel.json` runs crons every 15 minutes and hourly. Hourly and sub-daily crons need a paid
-Vercel plan; on Hobby they run once a day and the Wednesday reminders (noon–6pm window) and
-2–3 hour review requests won't fire on time.
+`vercel.json` runs crons every 15 minutes and hourly. That needs a paid Vercel plan (Pro).
+On the free Hobby plan Vercel **rejects the deploy** when a cron runs more than once a day,
+so upgrade before deploying this branch.
 
 ## 5. Twilio
 - Each barber's LineCatch number: Messaging webhook `POST https://www.linecatch.app/api/twilio/sms`,

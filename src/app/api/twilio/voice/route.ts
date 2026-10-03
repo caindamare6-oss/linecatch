@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Dial timeout="20" action="${statusCallbackUrl}">
-    <Number statusCallback="${statusCallbackUrl}" statusCallbackEvent="completed">${barber.forwarding_number}</Number>
+    <Number>${barber.forwarding_number}</Number>
   </Dial>
 </Response>`;
 

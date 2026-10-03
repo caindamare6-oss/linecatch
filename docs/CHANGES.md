@@ -150,6 +150,14 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 
 - **Missed-call follow-up removed** (Oct 3). A missed call now sends exactly one text with the booking link. The 2-hour follow-up and its scheduled job are gone.
 - **Link previews don't count as taps** (`c95e708`). Phones fetch links on their own to draw a preview; only a person opening the link is counted in click stats.
+- **Logic review fixes** (Oct 3):
+  - After a missed call, the caller no longer hears "an application error has occurred". The missed-call handler now answers Twilio in the format it expects.
+  - Loyalty, cancel and reschedule texts only go to clients who agreed to texts, like every other client text.
+  - Rescheduling clears the old reminders, so the new time gets its own 24-hour and 2-hour reminders.
+  - Two overlapping reminder runs can't both text the same client.
+  - The "Done with Jamie?" nudge goes out once per appointment instead of up to 4 times, and in Spanish for Spanish-speaking barbers.
+  - The morning summary counts today's appointments in the barber's timezone (it was using UTC midnight), and is in the barber's language.
+  - Broadcasts end with "Reply STOP" in each client's language.
 
 ---
 
@@ -172,7 +180,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 2. Set `NEXT_PUBLIC_APP_URL=https://www.linecatch.app`. It's printed into every QR sticker.
 3. Supabase → Auth → Redirect URLs: add `https://www.linecatch.app/auth/callback**`.
 4. Add your user id to `ADMIN_USER_IDS` so the hand-out screen works.
-5. The reminders run every hour and every 15 minutes, which needs a paid Vercel plan. On the free plan they run once a day.
+5. The reminders run every hour and every 15 minutes, which needs a paid Vercel plan. The free plan rejects the deploy.
 6. Twilio: set each number's webhooks and start A2P 10DLC carrier registration.
 
 Full details are in [`docs/LAUNCH.md`](LAUNCH.md).
@@ -182,7 +190,7 @@ Full details are in [`docs/LAUNCH.md`](LAUNCH.md).
 - **Phone numbers for new barbers.** New barbers get no LineCatch number until one is assigned by hand, so their missed-call texts can't go out before that. This is the biggest gap for door to door.
 - **Billing.** Referral credits, the 50% discount, the $7 sticker and the plans are recorded, but nothing charges anyone yet.
 - **Carrier registration (A2P 10DLC).** Needed before marketing texts. It can take weeks.
-- **The real test text to 857-488-2239.** Blocked: there are no Twilio credentials here and the network blocks Twilio.
+- **A real test text to your own phone.** Blocked: there are no Twilio credentials here and the network blocks Twilio. Do it in the smoke test in `LAUNCH.md`.
 
 ## How it was tested
 

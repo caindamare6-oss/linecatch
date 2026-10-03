@@ -6,11 +6,12 @@ import { getMarketingState, MARKETING_BLOCKED } from "@/lib/marketing";
 
 async function broadcastRecipients(admin: ReturnType<typeof createAdminClient>, userId: string) {
   const [{ data: vips }, { data: optOuts }] = await Promise.all([
-    admin.from("vip_clients").select("phone_number").eq("user_id", userId).eq("is_opted_in", true).is("opted_out_at", null),
+    admin.from("vip_clients").select("phone_number, client_language").eq("user_id", userId).eq("is_opted_in", true).is("opted_out_at", null),
     admin.from("opt_outs").select("caller_phone").eq("user_id", userId),
   ]);
   const optedOut = new Set((optOuts || []).map((o) => o.caller_phone));
-  return [...new Set((vips || []).map((v) => v.phone_number))].filter((p) => !optedOut.has(p));
+  const seen = new Set<string>();
+  return (vips || []).filter((v) => !optedOut.has(v.phone_number) && !seen.has(v.phone_number) && !!seen.add(v.phone_number));
 }
 
 /** How many people a broadcast would reach right now. */
@@ -62,9 +63,10 @@ export async function POST(request: Request) {
   // Marketing texts go only to people who opted in. Callers who never signed up are not recipients.
   const recipients = await broadcastRecipients(admin, user.id);
   let sent = 0;
-  for (const phone of recipients) {
+  for (const r of recipients) {
     try {
-      if (await sendSMS({ to: phone, from: barber.phone_number, body: message, userId: user.id, templateKey: "broadcast", language: "en" })) sent++;
+      // The "Reply STOP" line goes out in the client's language.
+      if (await sendSMS({ to: r.phone_number, from: barber.phone_number, body: message, userId: user.id, templateKey: "broadcast", language: r.client_language || "en" })) sent++;
     } catch {
       // skip failed sends
     }

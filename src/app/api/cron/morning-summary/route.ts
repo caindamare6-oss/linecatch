@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
-import { formatCasualTime } from "@/lib/format";
+import { barberLocalToUTC, formatCasualTime } from "@/lib/format";
 import { projectVisit } from "@/lib/loyalty";
 import { DEFAULT_TZ } from "@/lib/config";
 
@@ -33,10 +33,10 @@ export async function GET(request: Request) {
     const localTime = new Date(now.toLocaleString("en-US", { timeZone: tz }));
     if (localTime.getHours() !== 8) continue;
 
-    const dayStart = new Date(localTime);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(localTime);
-    dayEnd.setHours(23, 59, 59, 999);
+    // Midnight to midnight on the barber's wall clock (the server runs in UTC).
+    const today = now.toLocaleDateString("en-CA", { timeZone: tz });
+    const dayStart = barberLocalToUTC(today, "00:00", tz);
+    const dayEnd = new Date(barberLocalToUTC(new Date(dayStart.getTime() + 36 * 3_600_000).toLocaleDateString("en-CA", { timeZone: tz }), "00:00", tz).getTime() - 1);
 
     const { data: todayBookings } = await supabase
       .from("bookings")
@@ -63,11 +63,16 @@ export async function GET(request: Request) {
       if (p?.due && !p.alreadyRewarded) rewardsDue++;
     }
 
-    const rewardLine = rewardsDue
-      ? `${rewardsDue} get${rewardsDue === 1 ? "s" : ""} $5 off (check the badge).`
-      : "";
+    const es = barber.barber_language === "es";
+    const rewardLine = !rewardsDue
+      ? ""
+      : es
+        ? `${rewardsDue} ${rewardsDue === 1 ? "tiene" : "tienen"} $5 de descuento (mira la insignia).`
+        : `${rewardsDue} get${rewardsDue === 1 ? "s" : ""} $5 off (check the badge).`;
 
-    const msg = `${cutsToday} cut${cutsToday > 1 ? "s" : ""} today, first at ${firstTime}. ${rewardLine}`.trim();
+    const msg = (es
+      ? `${cutsToday} ${cutsToday > 1 ? "cortes" : "corte"} hoy, el primero a las ${firstTime}. ${rewardLine}`
+      : `${cutsToday} cut${cutsToday > 1 ? "s" : ""} today, first at ${firstTime}. ${rewardLine}`).trim();
 
     try {
       if (!barber.forwarding_number) continue;

@@ -67,14 +67,23 @@ export async function GET(request: Request) {
       .eq("phone_number", booking.customer_phone)
       .single();
 
-    const clientName = vip?.first_name || "your client";
+    const es = barber.barber_language === "es";
+    const clientName = vip?.first_name || (es ? "tu cliente" : "your client");
     const base = appUrl();
     const link = `${base}/dashboard/schedule?highlight=${booking.id}`;
 
-    const msg = `Done with ${clientName}? Tap to complete: ${link}`;
+    const msg = es ? `¿Terminaste con ${clientName}? Toca para completar: ${link}` : `Done with ${clientName}? Tap to complete: ${link}`;
 
     try {
       if (!barber.forwarding_number) continue;
+      // The cron runs every 15 minutes and the window is an hour wide: one nudge per appointment.
+      const { count: already } = await supabase
+        .from("sms_log")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", booking.user_id)
+        .eq("template_key", "completion_nudge")
+        .like("body", `%highlight=${booking.id}%`);
+      if ((already ?? 0) > 0) continue;
       await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: msg, userId: booking.user_id, templateKey: "completion_nudge", language: barber.barber_language || "en", audience: "barber" });
       sent++;
     } catch (err) {

@@ -8,6 +8,7 @@ import { formatCasualDate, formatCasualTime } from "@/lib/format";
 import { getT } from "@/lib/i18n-server";
 import { DEFAULT_TZ, appUrl } from "@/lib/config";
 import { completeBookingLoyalty, closeVisitIfResolved, projectVisit } from "@/lib/loyalty";
+import { hasTextConsent } from "@/lib/opt-out";
 
 const CLIENT_CUTOFF_HOURS = 3;
 
@@ -138,6 +139,8 @@ export async function PATCH(
   const shopName = barber?.business_name?.trim() || barber?.first_name?.trim() || "your barber";
   const link = barber?.booking_link || `${appUrl()}/book/${booking.user_id}`;
   const tz = barber?.timezone || DEFAULT_TZ;
+  // Texts to the client (loyalty, cancel, reschedule) only go to someone who agreed to get texts.
+  const clientConsented = await hasTextConsent(supabase as unknown as Parameters<typeof hasTextConsent>[0], booking.user_id, booking.customer_phone);
 
   // Once every person in the visit is completed or cancelled: one loyalty text + review request.
   async function closeOutVisit() {
@@ -156,7 +159,7 @@ export async function PATCH(
         cuts_left: String(closeout.nextCut - closeout.cutCount),
       },
     });
-    if (!loyaltySms) return;
+    if (!loyaltySms || !clientConsented) return;
     try {
       await sendSMS({ to: booking!.customer_phone, from: barber.phone_number, body: loyaltySms.body, userId: booking!.user_id, templateKey, language: loyaltySms.language });
       await markFirstMessageSent(booking!.user_id, booking!.customer_phone);
@@ -265,7 +268,7 @@ export async function PATCH(
         vars: { shop_name: shopName, link, date: formatCasualDate(new Date(members[0].booking_time), tz) },
       });
 
-      if (cancelSms) {
+      if (cancelSms && clientConsented) {
         try {
           await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: cancelSms.body, userId: booking.user_id, templateKey: "cancelled", language: cancelSms.language });
           await markFirstMessageSent(booking.user_id, booking.customer_phone);
@@ -334,6 +337,11 @@ export async function PATCH(
       if (error) { rescheduleError = error; break; }
     }
 
+    // Reminders already sent were for the old time; the new time gets its own 24h and 2h reminders.
+    if (!rescheduleError) {
+      await supabase.from("booking_reminders").delete().in("booking_id", memberIds).in("reminder_type", ["24h", "2h"]);
+    }
+
     if (rescheduleError) {
       console.error("[bookings/reschedule]", rescheduleError);
       return NextResponse.json(
@@ -353,7 +361,7 @@ export async function PATCH(
         vars: { shop_name: shopName, date: dateStr, time: timeStr, link },
       });
 
-      if (rescheduleSms) {
+      if (rescheduleSms && clientConsented) {
         try {
           await sendSMS({ to: booking.customer_phone, from: barber.phone_number, body: rescheduleSms.body, userId: booking.user_id, templateKey: "rescheduled", language: rescheduleSms.language });
           await markFirstMessageSent(booking.user_id, booking.customer_phone);

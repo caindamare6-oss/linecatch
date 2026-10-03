@@ -7,6 +7,14 @@ import { appUrl } from "@/lib/config";
 
 const COOLDOWN_HOURS = 3;
 
+// Twilio runs whatever this returns on the caller's line (it's the <Dial action>), so it must be TwiML.
+// Plain "OK" made the caller hear "an application error has occurred" after every missed call.
+function done() {
+  return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?>\n<Response><Hangup/></Response>`, {
+    headers: { "Content-Type": "text/xml" },
+  });
+}
+
 export async function POST(request: Request) {
   const formData = await request.formData();
   const params = Object.fromEntries(formData.entries()) as Record<string, string>;
@@ -24,7 +32,7 @@ export async function POST(request: Request) {
   const callSid = params.CallSid || null;
 
   if (!["no-answer", "busy", "failed", "canceled"].includes(dialCallStatus)) {
-    return new NextResponse("OK", { status: 200 });
+    return done();
   }
 
   const supabase = createAdminClient();
@@ -39,20 +47,20 @@ export async function POST(request: Request) {
       .single();
 
     if (barberError || !barber || !barber.is_active) {
-      return new NextResponse("OK", { status: 200 });
+      return done();
     }
 
     if (barber.feature_autotext === false) {
       await logMissedCall(supabase, barber.user_id, from, callSid, false, "autotext_disabled");
       await logCallLegacy(supabase, barber.user_id, from, to, "logged");
-      return new NextResponse("OK", { status: 200 });
+      return done();
     }
 
     // Trial lockout — log but don't text
     if (barber.is_locked_out) {
       await logMissedCall(supabase, barber.user_id, from, callSid, false, "trial_locked");
       await logCallLegacy(supabase, barber.user_id, from, to, "logged");
-      return new NextResponse("OK", { status: 200 });
+      return done();
     }
 
     // Check consent in vip_clients
@@ -66,13 +74,13 @@ export async function POST(request: Request) {
     if (!vipClient || !vipClient.is_opted_in) {
       await logMissedCall(supabase, barber.user_id, from, callSid, false, "no_consent");
       await logCallLegacy(supabase, barber.user_id, from, to, "logged");
-      return new NextResponse("OK", { status: 200 });
+      return done();
     }
 
     if (vipClient.opted_out_at) {
       await logMissedCall(supabase, barber.user_id, from, callSid, false, "opted_out");
       await logCallLegacy(supabase, barber.user_id, from, to, "logged");
-      return new NextResponse("OK", { status: 200 });
+      return done();
     }
 
     // Check opt_outs table too
@@ -86,7 +94,7 @@ export async function POST(request: Request) {
     if (optOut) {
       await logMissedCall(supabase, barber.user_id, from, callSid, false, "opted_out");
       await logCallLegacy(supabase, barber.user_id, from, to, "logged");
-      return new NextResponse("OK", { status: 200 });
+      return done();
     }
 
     // Cooldown check
@@ -107,7 +115,7 @@ export async function POST(request: Request) {
     if (recentSend) {
       await logMissedCall(supabase, barber.user_id, from, callSid, true, null);
       await logCallLegacy(supabase, barber.user_id, from, to, "logged");
-      return new NextResponse("OK", { status: 200 });
+      return done();
     }
 
     const { data: callLog } = await logCallLegacy(
@@ -139,7 +147,7 @@ export async function POST(request: Request) {
     });
 
     if (!sms) {
-      return new NextResponse("OK", { status: 200 });
+      return done();
     }
 
     await sendSMS({ to: from, from: barber.phone_number, body: sms.body, userId: barber.user_id, templateKey: "missed_call", language: sms.language });
@@ -177,7 +185,7 @@ export async function POST(request: Request) {
     await logCallLegacy(supabase, params.user_id || "", from, to, "failed");
   }
 
-  return new NextResponse("OK", { status: 200 });
+  return done();
 }
 
 async function logMissedCall(
