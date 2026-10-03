@@ -4,7 +4,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 
 /**
  * Two kinds of texts:
- * - Service: missed-call text and follow-up, booking confirmations, reminders, reschedule/cancel notices,
+ * - Service: missed-call text, booking confirmations, reminders, reschedule/cancel notices,
  *   loyalty updates, replies. Every barber gets these.
  * - Marketing: Wednesday check-ins and win-backs, broadcasts, Google review requests.
  *   These go out only when the barber turns SMS marketing on.

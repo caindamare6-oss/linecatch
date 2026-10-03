@@ -26,7 +26,7 @@ Barbers lose bookings every day because they can't answer the phone with clipper
 1. Each barber gets a **LineCatch number** (a Twilio number). Clients call it.
 2. The call rings through to the barber's own cell for 20 seconds.
 3. If nobody answers, the caller gets a text: *"Sorry I missed your call. Book here: link"*. The barber can write their own text.
-4. If the caller doesn't reply, tap or book within about 2 hours, one follow-up text goes out.
+4. That's the only text a missed call sends. There's no follow-up.
 5. Anyone who texted STOP never gets a missed-call text again.
 
 ### 2. The client books
@@ -134,7 +134,6 @@ src/
       bookings/         Create, cancel, reschedule, complete
       cron/             Wednesday reminders, morning summary, weekly report, completion nudge
       booking-reminders/  24h and 2h reminders, review requests
-      followup/         Missed-call follow-up text
       …                 Settings, clients, messages, onboarding, referrals, stickers, portfolio
   lib/
     retention.ts        Wednesday reminder schedule

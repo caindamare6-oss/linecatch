@@ -12,7 +12,7 @@ Work on branch `claude/trusting-goodall-ivxv3b`, Oct 2–3, 2026. Nine commits, 
 | Area | How it works now |
 |---|---|
 | **Returning clients** | Recognized on the booking page by a saved token or the link in their missed-call text. Booking takes one tap. |
-| **Missed calls** | The caller gets a booking link by text, unless they opted out. A follow-up goes out only if they didn't reply, tap or book. |
+| **Missed calls** | The caller gets one text with a booking link, unless they opted out. No follow-up. |
 | **SMS marketing** | One switch for the barber, off by default. Texts only reach clients who opted in. No sticker needed. |
 | **Wednesday reminders** | Only on Wednesdays (noon–6pm, barber's time). The first goes out on the first Wednesday at least 2 weeks after the cut, then every 3 weeks until the client books or texts STOP. |
 | **Opt-out** | STOP in any form ("Stop.", "STOP!", "parar") stops everything. Numbers the carrier reports as unreachable are opted out automatically. |
@@ -67,7 +67,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
   - STOP with punctuation now counts.
   - When the carrier reports a number has unsubscribed, it's recorded so that number never gets another missed-call text.
 - **Review requests never went out** while there were no appointments in the next 25 hours. Fixed: they now go out 2 hours after the visit.
-- **Missed-call follow-up** is skipped if the caller replied, tapped the link or booked, and it always includes a link.
+- **Missed-call follow-up** is skipped if the caller replied, tapped the link or booked, and it always includes a link. (The follow-up was removed later; see "Later changes".)
 - **Accessibility:** onboarding switches and inputs are labelled for screen readers, with larger tap targets.
 - **Migration:** `20261002d_sms_marketing`.
 
@@ -145,6 +145,11 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 - **Existing accounts can use a sticker.** A barber who already has an account taps "Already have an account?" on the sticker page and the sticker connects when they sign in.
 - **Launch docs:** `docs/LAUNCH.md` and `.env.example`.
 - **One source for the app URL:** every link and Twilio webhook reads the URL from one setting, so none can build "undefined/…" links.
+
+## Later changes
+
+- **Missed-call follow-up removed** (Oct 3). A missed call now sends exactly one text with the booking link. The 2-hour follow-up and its scheduled job are gone.
+- **Link previews don't count as taps** (`c95e708`). Phones fetch links on their own to draw a preview; only a person opening the link is counted in click stats.
 
 ---
 

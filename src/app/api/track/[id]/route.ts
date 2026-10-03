@@ -11,8 +11,7 @@ export async function GET(
   const supabase = createAdminClient();
 
   // Only a person tapping counts. Phones and apps fetch links on their own to draw a preview
-  // (iMessage, WhatsApp, Android messages, carrier link scanners); counting those would cancel
-  // the follow-up text for someone who never opened the link.
+  // (iMessage, WhatsApp, Android messages, carrier link scanners), which would inflate the counts.
   if (!isLinkPreview(request)) {
     await supabase.from("link_clicks").insert({
       call_id: callId,
