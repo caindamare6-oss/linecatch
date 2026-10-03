@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appUrl } from "@/lib/config";
+import { isLinkPreview } from "@/lib/link-preview";
 
 export async function GET(
   request: Request,
@@ -9,11 +10,15 @@ export async function GET(
   const { id: callId } = await params;
   const supabase = createAdminClient();
 
-  // Log the click
-  await supabase.from("link_clicks").insert({
-    call_id: callId,
-    clicked_at: new Date().toISOString(),
-  });
+  // Only a person tapping counts. Phones and apps fetch links on their own to draw a preview
+  // (iMessage, WhatsApp, Android messages, carrier link scanners); counting those would cancel
+  // the follow-up text for someone who never opened the link.
+  if (!isLinkPreview(request)) {
+    await supabase.from("link_clicks").insert({
+      call_id: callId,
+      clicked_at: new Date().toISOString(),
+    });
+  }
 
   // Get the barber's booking link for this call
   const { data: call } = await supabase
@@ -47,3 +52,4 @@ export async function GET(
 
   return NextResponse.redirect(appUrl());
 }
+
