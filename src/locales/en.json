@@ -258,7 +258,8 @@
     "referral_qualified": "A barber you referred finished signing up. You earned a free month.",
     "client": "Client",
     "new_client": "New client",
-    "sticker_activated": "QR sticker {code} connected. Walk-ins who scan it land on your VIP page."
+    "sticker_activated": "QR sticker {code} connected. Walk-ins who scan it land on your VIP page.",
+    "number_assigned": "Your LineCatch number is ready: {phone}. Set up call forwarding in Settings."
   },
   "messages": {
     "title": "Messages",
@@ -1003,5 +1004,24 @@
     "privacy_title": "Privacy Policy",
     "terms_title": "Terms of Service",
     "updated": "Last updated: {date}"
+  },
+  "forward": {
+    "section": "Missed calls",
+    "your_number": "Your LineCatch number",
+    "mode_label": "How calls reach LineCatch",
+    "mode_forwarded": "Forward from my phone",
+    "mode_direct": "Clients call this number",
+    "how": "Keep your shop number. Dial the code for your carrier once from your phone: calls you don't answer go to LineCatch, and the caller gets a text with your booking link.",
+    "off": "To turn off:",
+    "other": "Other carrier? Search “conditional call forwarding” with your carrier’s name, or call them and ask to forward unanswered calls to this number.",
+    "direct_how": "Give clients this number. It rings your cell for 15 seconds; if you don’t pick up, the caller gets a text with your booking link.",
+    "pending_title": "Your LineCatch number is almost ready",
+    "pending_body": "You get your own LineCatch number as soon as these are done:",
+    "pending_soon": "Everything’s set. Your number will appear here in a moment.",
+    "step_setup": "Finish setup",
+    "step_cell": "Add your cell number",
+    "step_services": "Add a service",
+    "step_hours": "Set your hours",
+    "step_portfolio": "Add a photo to your portfolio"
   }
 }

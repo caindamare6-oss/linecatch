@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanAddress, requestSticker } from "@/lib/sticker-request";
 import { claimSticker, pendingSticker, STICKER_COOKIE } from "@/lib/sticker-claim";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
+import { assignNumberSoon } from "@/lib/phone-numbers";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -187,6 +188,7 @@ export async function POST(request: Request) {
       if (claimed.ok) sticker = claimed.code;
       jar.delete(STICKER_COOKIE);
     }
+    assignNumberSoon(user.id);
     return NextResponse.json({ ok: true, sticker });
   }
 

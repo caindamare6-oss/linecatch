@@ -3,6 +3,7 @@ import { getT } from "@/lib/i18n-server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MAX_PORTFOLIO_PHOTOS } from "@/lib/portfolio";
+import { assignNumberSoon } from "@/lib/phone-numbers";
 
 const MAX_SIZE = 5 * 1024 * 1024;
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -74,5 +75,6 @@ export async function POST(request: Request) {
     await db.storage.from("portfolio").remove(thumbPath ? [path, thumbPath] : [path]);
     return NextResponse.json({ error: t("portfolio.err_save_photo") }, { status: 500 });
   }
+  assignNumberSoon(user.id);
   return NextResponse.json({ photo });
 }

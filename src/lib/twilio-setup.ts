@@ -46,6 +46,7 @@ export async function twilioStatus(db: Admin): Promise<TwilioStatus> {
   if (!credentials) problems.push("TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN aren't set in Vercel.");
   if (devMode) problems.push("SMS_DEV_MODE is true, so texts are only logged, never sent. Remove it in Vercel.");
   if (!enabled) problems.push("TWILIO_ENABLED is false, so texts are only logged, never sent.");
+  if (!process.env.TWILIO_MESSAGING_SERVICE_SID) problems.push("TWILIO_MESSAGING_SERVICE_SID isn't set, so new barber numbers won't join your A2P-registered Messaging Service and their texts may be blocked.");
   if (!process.env.NEXT_PUBLIC_APP_URL) problems.push("NEXT_PUBLIC_APP_URL isn't set; webhooks fall back to https://www.linecatch.app.");
 
   const { data: barbers } = await db.from("users").select("phone_number, business_name, first_name, onboarding_completed");

@@ -8,6 +8,7 @@
 - `20261002e_referrals.sql`
 - `20261002f_winback_copy.sql`
 - `20261002g_sticker_handout.sql`
+- `20261004_call_mode_number_pool.sql`: forwarded-calls mode and the phone-number pool.
 - `20261002h_lock_users_writes.sql`: security fix, stops barbers editing their own plan,
   trial or lockout from the browser. Run this one even if nothing else ships.
 
@@ -28,6 +29,11 @@ On the free Hobby plan Vercel **rejects the deploy** when a cron runs more than 
 so upgrade before deploying this branch.
 
 ## 5. Twilio
+- Set `TWILIO_MESSAGING_SERVICE_SID` in Vercel (your A2P Messaging Service, `MG…`). New barber numbers join it.
+- In that Messaging Service → Integration, choose **"Defer to sender's webhook"** so texts to each number still reach
+  `/api/twilio/sms`.
+- Barbers get a number automatically once setup, cell, services, hours and a portfolio photo are done. Freed numbers
+  are reused after 30 days, never released (founder page → Twilio → Number pool).
 - Each barber's LineCatch number: Messaging webhook `POST https://www.linecatch.app/api/twilio/sms`,
   Voice webhook `POST https://www.linecatch.app/api/twilio/voice`.
 - A2P 10DLC registration for the brand/campaign before marketing texts (US carriers block

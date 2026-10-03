@@ -11,6 +11,7 @@ import { DAY_KEYS, type Hours } from "@/lib/validate";
 import { useT, useLocale, LanguageToggle, type Locale } from "@/lib/i18n";
 import { money, STICKER_PRICE_CENTS, SUPPORT_EMAIL } from "@/lib/config";
 import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { forwardingCodes } from "@/lib/call-mode";
 
 type T = ReturnType<typeof useT>;
 
@@ -22,6 +23,8 @@ type Settings = {
   email: string | null;
   business_name: string | null;
   phone_number: string | null;
+  call_mode: "forwarded" | "direct";
+  numberMissing: string[];
   forwarding_number: string | null;
   google_review_url: string | null;
   booking_link: string | null;
@@ -110,7 +113,7 @@ export default function SettingsPage() {
         </Card>
       </section>
 
-      <section>
+      <section id="business">
         <SectionLabel>{t("settings.business")}</SectionLabel>
         <div className="space-y-2">
           <EditRow label={t("settings.business_name")} value={s.business_name || ""} placeholder={t("settings.business_placeholder")} onSave={async (v) => (await patch({ business_name: v })) ?? (set({ business_name: v }), null)} />
@@ -153,13 +156,12 @@ export default function SettingsPage() {
             onSave={async (v) => (await patch({ booking_link: v })) ?? (set({ booking_link: v || null }), null)}
           />
           <CopyRow label={t("settings.vip_link")} url={vipUrl} />
-          {s.phone_number && (
-            <Card className="px-4 py-3.5">
-              <p className="text-[14px] text-white/85">{t("settings.lc_number")}</p>
-              <p className="text-[13px] text-white/40 mt-0.5">{t("settings.lc_number_hint", { number: formatPhone(s.phone_number) })}</p>
-            </Card>
-          )}
         </div>
+      </section>
+
+      <section id="missed-calls">
+        <SectionLabel>{t("forward.section")}</SectionLabel>
+        <ForwardingCard s={s} onMode={async (m) => (await patch({ call_mode: m })) ?? (set({ call_mode: m }), null)} />
       </section>
 
       <section id="features">
@@ -254,6 +256,113 @@ export default function SettingsPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+const STEP_LINKS: Record<string, string> = {
+  setup: "/onboarding",
+  cell: "/dashboard/settings#business",
+  services: "/dashboard/services",
+  hours: "/dashboard/settings#hours",
+  portfolio: "/dashboard/portfolio",
+};
+
+/** The barber's LineCatch number and how to send unanswered calls to it. */
+function ForwardingCard({ s, onMode }: { s: Settings; onMode: (m: "forwarded" | "direct") => Promise<string | null> }) {
+  const t = useT();
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState("");
+
+  if (!s.phone_number) {
+    const missing = s.numberMissing || [];
+    return (
+      <Card className="p-4 space-y-2.5">
+        <p className="text-[14px] text-white/85">{t("forward.pending_title")}</p>
+        <p className="text-[12px] text-white/45 leading-relaxed">{missing.length ? t("forward.pending_body") : t("forward.pending_soon")}</p>
+        {missing.length > 0 && (
+          <ul className="space-y-1.5">
+            {missing.map((m) => (
+              <li key={m}>
+                <Link href={STEP_LINKS[m] || "/dashboard"} className="flex items-center justify-between text-[13px] text-[var(--accent-color)]">
+                  <span>{t(`forward.step_${m}`)}</span>
+                  <span aria-hidden>›</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    );
+  }
+
+  const codes = forwardingCodes(s.phone_number);
+  const forwarded = s.call_mode !== "direct";
+  // Tap-to-dial needs "#" written as %23.
+  const dial = (code: string) => `tel:${code.replace(/#/g, "%23")}`;
+  async function copy(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(code);
+      setTimeout(() => setCopied(""), 1500);
+    } catch {}
+  }
+  const rows: [string, { on: string; off: string }][] = [
+    ["Verizon", codes.verizon],
+    ["AT&T / T-Mobile", codes.attTmobile],
+  ];
+
+  return (
+    <Card className="p-4 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[12px] text-white/45">{t("forward.your_number")}</p>
+          <p className={`${SERIF} text-[20px] font-semibold tracking-[0.3px]`}>{formatPhone(s.phone_number)}</p>
+        </div>
+        <button onClick={() => copy(s.phone_number!)} className="h-9 px-3 rounded-lg border border-[var(--accent-color)]/35 text-[var(--accent-color)] text-[12px] font-semibold shrink-0">
+          {copied === s.phone_number ? t("common.copied") : t("common.copy")}
+        </button>
+      </div>
+
+      <div role="radiogroup" aria-label={t("forward.mode_label")} className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-white/[0.04]">
+        {(["forwarded", "direct"] as const).map((m) => (
+          <button
+            key={m}
+            role="radio"
+            aria-checked={s.call_mode === m || (m === "forwarded" && !s.call_mode)}
+            onClick={async () => {
+              setErr("");
+              const e = await onMode(m);
+              if (e) setErr(t(e));
+            }}
+            className={`h-9 rounded-lg text-[12px] font-semibold transition-colors ${(m === "forwarded") === forwarded ? "bg-[var(--accent-color)] text-[var(--accent-fg)]" : "text-white/55"}`}
+          >
+            {t(`forward.mode_${m}`)}
+          </button>
+        ))}
+      </div>
+
+      {forwarded ? (
+        <>
+          <p className="text-[13px] text-white/60 leading-relaxed">{t("forward.how")}</p>
+          <div className="space-y-2">
+            {rows.map(([carrier, c]) => (
+              <div key={carrier} className="rounded-xl bg-white/[0.03] px-3.5 py-3">
+                <p className="text-[12px] text-white/45 mb-1.5">{carrier}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <a href={dial(c.on)} className="font-mono text-[15px] text-[var(--accent-color)] tracking-[0.5px]">{c.on}</a>
+                  <button onClick={() => copy(c.on)} className="text-[11px] text-white/45 underline-offset-2 hover:underline">{copied === c.on ? t("common.copied") : t("common.copy")}</button>
+                  <span className="text-[11px] text-white/35 ml-auto">{t("forward.off")} <a href={dial(c.off)} className="font-mono text-white/60">{c.off}</a></span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-white/35 leading-relaxed">{t("forward.other")}</p>
+        </>
+      ) : (
+        <p className="text-[13px] text-white/60 leading-relaxed">{t("forward.direct_how")}</p>
+      )}
+      {err && <p className="text-[12px] text-[#F08A8A]" role="alert">{err}</p>}
+    </Card>
   );
 }
 

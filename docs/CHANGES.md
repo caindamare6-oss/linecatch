@@ -160,6 +160,9 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
   - Broadcasts end with "Reply STOP" in each client's language.
   - **First-time callers now get the missed-call text, once.** Before, only clients who had already opted in got it, so a new caller got nothing. Someone who never opts in is never texted by a missed call again. STOP still blocks it.
 
+- **Forwarded calls** (branch `claude/forwarded-calls`). Barbers keep their own shop/cell number and forward unanswered calls to their LineCatch number. The caller hears one short line in the barber's language ("Sorry we missed you, we'll text you a link to book"), the call ends, and the text goes out right away. Same rules as before: STOP respected, first-time callers texted once, 3-hour cooldown. "Clients call this number" (the old way) is still available in Settings.
+- **Automatic LineCatch numbers.** A barber gets a number as soon as setup, cell, services, hours and a portfolio photo are done: a freed number from the pool first (same area code preferred, after its 30-day wait), otherwise a new local number bought and added to the A2P Messaging Service. Numbers are never released back to Twilio. Callers to a freed number hear that the shop's number changed.
+
 ---
 
 ## Database migrations to run (in order)
@@ -173,6 +176,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 | `20261002e_referrals` | Referral codes, referrals, billing credits, opt-out reasons |
 | `20261002f_winback_copy` | Fixes the "Last one from me" and "1 cuts" texts |
 | `20261002g_sticker_handout` | Which shop each sticker was handed to |
+| `20261004_call_mode_number_pool` | Forwarded-calls mode and the phone-number pool |
 | `20261002h_lock_users_writes` | **Security fix.** Run this one even if nothing else ships. |
 
 ## Before you deploy

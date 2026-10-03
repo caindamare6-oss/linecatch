@@ -5,6 +5,7 @@ import { marketingState } from "@/lib/marketing";
 import { wednesdayText, nextWednesdayNoon } from "@/lib/retention";
 import { getT } from "@/lib/i18n-server";
 import { appUrl, DEFAULT_TZ } from "@/lib/config";
+import { assignNumberSoon } from "@/lib/phone-numbers";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -15,9 +16,11 @@ export default async function DashboardPage() {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("first_name, business_name, timezone, google_review_url, feature_wednesday, feature_autotext, feature_marketing, is_locked_out, winback_offer, sticker_requested_at")
+    .select("first_name, business_name, timezone, google_review_url, feature_wednesday, feature_autotext, feature_marketing, is_locked_out, winback_offer, sticker_requested_at, phone_number")
     .eq("user_id", user.id)
     .single();
+  // No LineCatch number yet: assign one as soon as their setup is complete (checked after the page renders).
+  if (!barber?.phone_number) assignNumberSoon(user.id);
 
   const tz = barber?.timezone || DEFAULT_TZ;
   const { t, tag } = await getT();

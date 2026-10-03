@@ -258,7 +258,8 @@
     "referral_qualified": "Un barbero que referiste terminó su registro. Ganaste un mes gratis.",
     "client": "Cliente",
     "new_client": "Cliente nuevo",
-    "sticker_activated": "Sticker QR {code} conectado. Quien lo escanee llega a tu página VIP."
+    "sticker_activated": "Sticker QR {code} conectado. Quien lo escanee llega a tu página VIP.",
+    "number_assigned": "Tu número de LineCatch está listo: {phone}. Configura el desvío de llamadas en Ajustes."
   },
   "messages": {
     "title": "Mensajes",
@@ -936,7 +937,8 @@
     "Invalid file type. Allowed: JPEG, PNG, WebP, GIF": "Tipo de archivo no válido. Usa JPEG, PNG, WebP o GIF.",
     "File too large. Maximum 5MB": "El archivo es muy grande. Máximo 5 MB.",
     "Code and shop name are required": "Se necesitan el código y el nombre de la barbería.",
-    "This sticker is already set up or doesn't exist": "Este sticker ya está configurado o no existe."
+    "This sticker is already set up or doesn't exist": "Este sticker ya está configurado o no existe.",
+    "Invalid call mode": "Modo de llamada no válido."
   },
   "vip": {
     "your_barber": "tu barbero",
@@ -1058,5 +1060,24 @@
     "privacy_title": "Política de privacidad",
     "terms_title": "Términos de servicio",
     "updated": "Última actualización: {date}"
+  },
+  "forward": {
+    "section": "Llamadas perdidas",
+    "your_number": "Tu número de LineCatch",
+    "mode_label": "Cómo llegan las llamadas a LineCatch",
+    "mode_forwarded": "Desviar desde mi teléfono",
+    "mode_direct": "Clientes llaman a este número",
+    "how": "Conserva el número de tu barbería. Marca una vez el código de tu compañía desde tu teléfono: las llamadas que no contestes van a LineCatch y quien llamó recibe un mensaje con tu enlace para reservar.",
+    "off": "Para desactivar:",
+    "other": "¿Otra compañía? Busca “desvío de llamadas condicional” con el nombre de tu compañía, o llámales y pide desviar las llamadas no contestadas a este número.",
+    "direct_how": "Da este número a tus clientes. Suena en tu celular 15 segundos; si no contestas, quien llamó recibe un mensaje con tu enlace para reservar.",
+    "pending_title": "Tu número de LineCatch está casi listo",
+    "pending_body": "Recibes tu propio número de LineCatch en cuanto completes esto:",
+    "pending_soon": "Todo está listo. Tu número aparecerá aquí en un momento.",
+    "step_setup": "Termina la configuración",
+    "step_cell": "Agrega tu número de celular",
+    "step_services": "Agrega un servicio",
+    "step_hours": "Define tu horario",
+    "step_portfolio": "Agrega una foto a tu portafolio"
   }
 }

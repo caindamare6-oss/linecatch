@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { TwilioStatus } from "@/lib/twilio-setup";
+import type { PoolRow } from "@/lib/phone-numbers";
 
 /** Founder only: check the Twilio connection and wire every barber's number to this app. */
 export default function TwilioAdminPage() {
@@ -91,6 +92,8 @@ export default function TwilioAdminPage() {
           {note && <p className="mt-3 text-[13px]">{note}</p>}
         </>
       )}
+
+      <NumberPool />
     </main>
   );
 }
@@ -101,5 +104,64 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="opacity-70">{label}</span>
       <span className="text-right break-all">{value}</span>
     </div>
+  );
+}
+
+/** Every number we own. Numbers are never sold back to Twilio: a freed one goes to the next barber after 30 days. */
+function NumberPool() {
+  const [pool, setPool] = useState<PoolRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch("/api/admin/numbers");
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) setPool(data.pool);
+    else setError(data.error || "Couldn't load numbers");
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount; state updates after the request resolves
+    load();
+  }, [load]);
+
+  async function release(userId: string) {
+    setError(null);
+    const res = await fetch("/api/admin/numbers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release", userId }) });
+    const data = await res.json().catch(() => ({}));
+    setConfirm(null);
+    if (!res.ok) return setError(data.error || "Couldn't release");
+    setPool(data.pool);
+  }
+
+  const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  return (
+    <section className="mt-6 rounded-xl border border-white/10 p-4">
+      <h2 className="mb-1 font-semibold">Number pool</h2>
+      <p className="mb-3 text-[13px] opacity-70">Barbers get a number when their setup, services, hours and portfolio are done. Freed numbers are reused after 30 days, never sold back.</p>
+      {error && <p className="mb-2 text-[13px] text-red-400">{error}</p>}
+      {!pool && !error && <p className="opacity-70">Loading…</p>}
+      {pool && pool.length === 0 && <p className="opacity-70">No numbers yet.</p>}
+      {pool?.map((n) => (
+        <div key={n.phone} className="flex items-center justify-between gap-3 border-t border-white/5 py-2 first:border-0">
+          <span>
+            {n.phone}
+            <br />
+            <span className="text-[13px] opacity-70">
+              {n.owner ? n.owner : n.waiting && n.reusableAt ? `Free · reusable ${day(n.reusableAt)}` : "Free · ready for the next barber"}
+            </span>
+          </span>
+          {n.ownerId &&
+            (confirm === n.ownerId ? (
+              <span className="flex gap-2">
+                <button onClick={() => release(n.ownerId!)} className="rounded-lg bg-red-500/80 px-3 py-1.5 text-[13px] font-semibold">Release</button>
+                <button onClick={() => setConfirm(null)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[13px]">Keep</button>
+              </span>
+            ) : (
+              <button onClick={() => setConfirm(n.ownerId)} className="rounded-lg border border-white/15 px-3 py-1.5 text-[13px]">Take back</button>
+            ))}
+        </div>
+      ))}
+    </section>
   );
 }

@@ -6,9 +6,11 @@ import { isAdmin } from "@/lib/admin";
 import { cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
 import { hasActiveSticker, marketingState } from "@/lib/marketing";
 import { cleanAddress, requestSticker } from "@/lib/sticker-request";
+import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
+import { isCallMode } from "@/lib/call-mode";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at";
+  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode";
 
 export async function GET() {
   const supabase = await createClient();
@@ -17,7 +19,9 @@ export async function GET() {
   const { data, error } = await supabase.from("users").select(FIELDS).eq("user_id", user.id).single();
   if (error || !data) return NextResponse.json({ error: "Couldn't load settings" }, { status: 500 });
   const sticker = await hasActiveSticker(createAdminClient(), user.id);
-  return NextResponse.json({ ...data, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
+  // Until they have a LineCatch number: what's left before one is assigned.
+  const numberMissing = data.phone_number ? [] : await missingSteps(createAdminClient(), user.id);
+  return NextResponse.json({ ...data, numberMissing, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
 }
 
 /** Partial update: only the keys sent are validated and saved. */
@@ -67,6 +71,10 @@ export async function PATCH(request: Request) {
       update[key] = body[key];
     }
   }
+  if ("call_mode" in body) {
+    if (!isCallMode(body.call_mode)) return bad("Invalid call mode");
+    update.call_mode = body.call_mode;
+  }
   if ("barber_language" in body) {
     if (!["en", "es"].includes(body.barber_language)) return bad("Unsupported language");
     update.barber_language = body.barber_language;
@@ -103,5 +111,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Couldn't save. Try again." }, { status: 500 });
   }
   if (shipTo && body.request_sticker === true) await requestSticker(admin, user.id, shipTo);
+  assignNumberSoon(user.id);
   return NextResponse.json({ ok: true, saved: update });
 }
