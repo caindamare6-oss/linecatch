@@ -7,11 +7,12 @@ import { cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/valid
 import { hasActiveSticker, marketingState } from "@/lib/marketing";
 import { cleanAddress, requestSticker } from "@/lib/sticker-request";
 import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
-import { isCallMode } from "@/lib/call-mode";
+import { isCallMode, isCarrier } from "@/lib/call-mode";
+import { detectCarrier } from "@/lib/carrier";
 import { isMissedCallStyle } from "@/lib/missed-call-text";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode, missed_call_style";
+  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode, missed_call_style, carrier";
 
 export async function GET() {
   const supabase = await createClient();
@@ -21,8 +22,19 @@ export async function GET() {
   if (error || !data) return NextResponse.json({ error: "Couldn't load settings" }, { status: 500 });
   const sticker = await hasActiveSticker(createAdminClient(), user.id);
   // Until they have a LineCatch number: what's left before one is assigned.
-  const numberMissing = data.phone_number ? [] : await missingSteps(createAdminClient(), user.id);
-  return NextResponse.json({ ...data, numberMissing, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
+  const admin = createAdminClient();
+  const numberMissing = data.phone_number ? [] : await missingSteps(admin, user.id);
+  // Find the barber's carrier once, so Settings can show the one forwarding code that works for them.
+  if (data.forwarding_number && !data.carrier) {
+    const carrier = await detectCarrier(data.forwarding_number);
+    if (carrier) {
+      await admin.from("users").update({ carrier }).eq("user_id", user.id).is("carrier", null);
+      data.carrier = carrier;
+    }
+  }
+  // Proof forwarding works: the last missed call that reached their LineCatch number.
+  const { data: last } = await admin.from("missed_calls").select("received_at").eq("user_id", user.id).order("received_at", { ascending: false }).limit(1).maybeSingle();
+  return NextResponse.json({ ...data, numberMissing, lastMissedCallAt: last?.received_at ?? null, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
 }
 
 /** Partial update: only the keys sent are validated and saved. */
@@ -43,6 +55,13 @@ export async function PATCH(request: Request) {
     const p = cleanOptionalPhone(body.forwarding_number);
     if (!p.ok) return bad(p.error);
     update.forwarding_number = p.value;
+    // A new cell may be on another carrier: look it up again.
+    const { data: cur } = await createAdminClient().from("users").select("forwarding_number").eq("user_id", user.id).maybeSingle();
+    if (cur?.forwarding_number !== p.value) update.carrier = null;
+  }
+  if ("carrier" in body) {
+    if (body.carrier !== null && !isCarrier(body.carrier)) return bad("Invalid carrier");
+    update.carrier = body.carrier;
   }
   if ("google_review_url" in body) {
     const u = cleanUrl(body.google_review_url);

@@ -1,12 +1,28 @@
 import { describe, it, expect } from "vitest";
-import { forwardingCodes, forwardedCallLine, numberChangedLine, isCallMode } from "@/lib/call-mode";
+import { forwardingCode, carrierFromName, isCarrier, forwardedCallLine, numberChangedLine, isCallMode } from "@/lib/call-mode";
 import { areaCode } from "@/lib/phone-numbers";
 
 describe("forwarded calls", () => {
-  it("carrier codes use the 10-digit LineCatch number", () => {
-    const c = forwardingCodes("+18575052551");
-    expect(c.verizon).toEqual({ on: "*718575052551", off: "*73" });
-    expect(c.attTmobile).toEqual({ on: "**61*18575052551#", off: "##61#" });
+  it("one code per carrier: 10-second ring, Decline and no signal all forward on T-Mobile/AT&T", () => {
+    const tmo = { on: "**004*18575052551**10#", plain: "**004*18575052551#", off: "##004#" };
+    expect(forwardingCode("tmobile", "+18575052551")).toEqual(tmo);
+    expect(forwardingCode("att", "(857) 505-2551")).toEqual(tmo);
+    expect(forwardingCode("verizon", "+18575052551")).toEqual({ on: "*718575052551", off: "*73" });
+    expect(forwardingCode("other", "+18575052551")).toBeNull();
+    expect(forwardingCode(null, "+18575052551")).toBeNull();
+  });
+
+  it("carrier from Twilio's carrier name, prepaid brands on their network", () => {
+    expect(carrierFromName("T-Mobile USA, Inc.")).toBe("tmobile");
+    expect(carrierFromName("Metro by T-Mobile")).toBe("tmobile");
+    expect(carrierFromName("AT&T Wireless")).toBe("att");
+    expect(carrierFromName("Cricket Wireless - ATT - SVR")).toBe("att");
+    expect(carrierFromName("Cellco Partnership dba Verizon Wireless")).toBe("verizon");
+    expect(carrierFromName("Visible")).toBe("verizon");
+    expect(carrierFromName("Google (Grand Central) BWI - Bandwidth.com - SVR")).toBe("other");
+    expect(carrierFromName(null)).toBe("other");
+    expect(isCarrier("tmobile")).toBe(true);
+    expect(isCarrier("sprint")).toBe(false);
   });
 
   it("the caller hears one short line in the barber's language", () => {

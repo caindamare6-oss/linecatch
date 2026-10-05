@@ -32,12 +32,30 @@ export function numberChangedLine(lang: CallLang): string {
     : "This number is no longer in service for this shop. Please contact the shop directly.";
 }
 
-/** Carrier codes for forwarding unanswered calls to the LineCatch number (US). */
-export function forwardingCodes(lcNumber: string) {
+export const CARRIERS = ["tmobile", "att", "verizon", "other"] as const;
+export type Carrier = (typeof CARRIERS)[number];
+export const isCarrier = (v: unknown): v is Carrier => CARRIERS.includes(v as Carrier);
+export const CARRIER_LABELS: Record<Exclude<Carrier, "other">, string> = { tmobile: "T-Mobile", att: "AT&T", verizon: "Verizon" };
+
+/**
+ * The one code a barber dials to send missed calls to their LineCatch number (US).
+ *   T-Mobile / AT&T: **004 forwards unanswered (after 10 seconds), declined, and unreachable calls
+ *                    in one go. `plain` is the same without the 10-second setting, if a phone rejects it.
+ *   Verizon:         *71 covers unanswered and declined calls; Verizon has no ring-time code.
+ * Other carriers have no code we can rely on, so they get steps instead (null here).
+ */
+export function forwardingCode(carrier: Carrier | null | undefined, lcNumber: string): { on: string; off: string; plain?: string } | null {
   const digits = lcNumber.replace(/\D/g, "").replace(/^1(?=\d{10}$)/, "");
-  return {
-    verizon: { on: `*71${digits}`, off: "*73" },
-    // T-Mobile and AT&T want the 1 in front of the number.
-    attTmobile: { on: `**61*1${digits}#`, off: "##61#" },
-  };
+  if (carrier === "tmobile" || carrier === "att") return { on: `**004*1${digits}**10#`, plain: `**004*1${digits}#`, off: "##004#" };
+  if (carrier === "verizon") return { on: `*71${digits}`, off: "*73" };
+  return null;
+}
+
+/** Twilio's carrier name for a cell number → whose codes it takes (prepaid brands ride a big network). */
+export function carrierFromName(name: string | null | undefined): Carrier {
+  const n = (name || "").toLowerCase();
+  if (/verizon|cellco|visible|straight talk|total wireless/.test(n)) return "verizon";
+  if (/t-mobile|tmobile|metro|sprint|mint/.test(n)) return "tmobile";
+  if (/at&t|\batt\b|cricket|cingular/.test(n)) return "att";
+  return "other";
 }

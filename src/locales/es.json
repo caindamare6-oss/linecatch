@@ -937,7 +937,8 @@
     "Code and shop name are required": "Se necesitan el código y el nombre de la barbería.",
     "This sticker is already set up or doesn't exist": "Este sticker ya está configurado o no existe.",
     "Invalid call mode": "Modo de llamada no válido.",
-    "Invalid text style": "Estilo de mensaje no válido."
+    "Invalid text style": "Estilo de mensaje no válido.",
+    "Invalid carrier": "Compañía no válida."
   },
   "vip": {
     "your_barber": "tu barbero",
@@ -1066,9 +1067,8 @@
     "mode_label": "Cómo llegan las llamadas a LineCatch",
     "mode_forwarded": "Desviar desde mi teléfono",
     "mode_direct": "Clientes llaman a este número",
-    "how": "Conserva el número de tu barbería. Marca una vez el código de tu compañía desde tu teléfono: las llamadas que no contestes van a LineCatch y quien llamó recibe un mensaje con tu enlace para reservar.",
+    "how": "Quédate con tu número. Actívalo una vez desde tu teléfono: las llamadas que no contestes van a LineCatch y quien llama recibe un mensaje con tu enlace para reservar.",
     "off": "Para desactivar:",
-    "other": "¿Otra compañía? Busca “desvío de llamadas condicional” con el nombre de tu compañía, o llámales y pide desviar las llamadas no contestadas a este número.",
     "direct_how": "Da este número a tus clientes. Suena en tu celular 15 segundos; si no contestas, quien llamó recibe un mensaje con tu enlace para reservar.",
     "pending_title": "Tu número de LineCatch está casi listo",
     "pending_body": "Recibes tu propio número de LineCatch en cuanto completes esto:",
@@ -1080,8 +1080,24 @@
     "step_portfolio": "Agrega una foto a tu portafolio",
     "carrier": "Tu compañía",
     "carrier_other": "Otra",
-    "pick_carrier": "Elige tu compañía para ver tu código.",
-    "dial_this": "Marca esto una vez desde tu teléfono:",
-    "tap_to_dial": "Toca para marcar"
+    "which_carrier": "¿Con qué compañía está tu celular?",
+    "your_carrier": "Tu compañía:",
+    "change": "Cambiar",
+    "turn_on": "Activar mensajes por llamada perdida",
+    "turn_on_hint": "Abre tu teléfono con el código ya escrito. Presiona llamar, espera la confirmación y listo.",
+    "what_10s": "Suena 10 segundos y luego quien llama recibe un mensaje",
+    "what_decline": "Toca Rechazar y recibe el mensaje al instante",
+    "what_off": "Teléfono apagado o sin señal: igual lo recibe",
+    "what_unanswered": "Llamadas que no contestas: quien llama recibe un mensaje",
+    "code": "Código:",
+    "if_error": "¿Te dio error? Marca este:",
+    "other_title": "Tu compañía lo activa en los ajustes del teléfono o por llamada. Desvía a {number}:",
+    "other_android": "Android",
+    "other_android_steps": "App Teléfono → ⋮ (arriba a la derecha) → Ajustes → Llamadas o Servicios suplementarios → Desvío de llamadas → pon “Si no contesta” y “Si está ocupado” en {number}.",
+    "other_iphone": "iPhone (o si tu Android no tiene ese menú)",
+    "other_iphone_steps": "Llama a tu compañía (marca 611) y di: “Por favor desvíen mis llamadas a {number} cuando no conteste o esté ocupado.”",
+    "other_avoid": "No uses “Desviar todas las llamadas”: tu teléfono dejaría de sonar.",
+    "working": "Funciona. La última llamada perdida llegó el {when}.",
+    "test_it": "Pruébalo: pide que alguien llame a tu celular y lo deje sonar. Debe recibir el mensaje en un minuto."
   }
 }

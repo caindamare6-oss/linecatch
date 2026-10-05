@@ -10,6 +10,7 @@
 - `20261002g_sticker_handout.sql`
 - `20261004_call_mode_number_pool.sql`: forwarded-calls mode and the phone-number pool.
 - `20261005_missed_call_style_short_links.sql`: missed-call text style and short links.
+- `20261005b_carrier.sql`: the barber's cell carrier (one-tap forwarding code).
 - `20261002h_lock_users_writes.sql`: security fix, stops barbers editing their own plan,
   trial or lockout from the browser. Run this one even if nothing else ships.
 

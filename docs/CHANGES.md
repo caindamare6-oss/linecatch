@@ -169,6 +169,13 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
   - **Opt-out line:** "Reply STOP to opt out" goes on a client's first text from that barber and on every marketing text (Wednesday texts, broadcasts, review requests). Later service texts (confirmations, reminders, replies) leave it off. STOP works on every text either way.
   - **On the call:** the caller hears "We're going to send you a booking link." If no text goes out (they opted out, texting is off), the call just ends.
   - **Carrier codes:** Settings asks for the carrier and shows only that code, with a Tap to dial button. The T-Mobile/AT&T code now has the 1 in front (`**61*1…#`), the format that worked on the live test.
+- **One-tap forwarding** (Oct 5):
+  - **Carrier found automatically** from the barber's cell number (Twilio Lookup, about half a cent once per number). The barber can change it; a new cell number is looked up again.
+  - **One button: "Turn on missed-call texts".** It opens the phone with the code typed in, and the barber presses call.
+  - **T-Mobile / AT&T:** one code, `**004*1<number>**10#`, covers a 10-second ring, Decline, and phone off or no signal. A plain version without the 10 seconds is shown in case a phone rejects it. Off: `##004#`.
+  - **Verizon:** `*71<number>` (no answer and Decline). Off: `*73`.
+  - **Other carriers:** step-by-step Android menu path, and what to say to the carrier (611) on iPhone.
+  - **"✓ Working"** shows once a missed call has come in, with its time; before that, how to test it.
 
 ---
 
@@ -185,6 +192,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 | `20261002g_sticker_handout` | Which shop each sticker was handed to |
 | `20261004_call_mode_number_pool` | Forwarded-calls mode and the phone-number pool |
 | `20261005_missed_call_style_short_links` | Missed-call text style (Casual by default) and short links |
+| `20261005b_carrier` | The barber's cell carrier, for the one-tap forwarding code |
 | `20261002h_lock_users_writes` | **Security fix.** Run this one even if nothing else ships. |
 
 ## Before you deploy
