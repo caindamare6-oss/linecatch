@@ -1,6 +1,7 @@
 import twilio from "twilio";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isOptedOut } from "@/lib/opt-out";
+import { shortenLinks } from "@/lib/short-link";
 
 let client: ReturnType<typeof twilio> | null = null;
 
@@ -27,9 +28,14 @@ const OPT_OUT: Record<string, string> = {
 // Rotating-number abuse is handled by the Vercel firewall rate limit on public routes.
 const MAX_CLIENT_SMS_PER_HOUR = 10;
 
-function withOptOut(body: string, audience: "client" | "barber", language: string): string {
-  if (audience === "barber") return body;
-  return /\bSTOP\b/i.test(body) ? body : body + (OPT_OUT[language] || OPT_OUT.en);
+/** Marketing texts always carry the opt-out line; service texts only on the first text to a client. */
+export const isMarketingTemplate = (key: string) =>
+  key === "broadcast" || key === "review_request" || key === "cadence_nudge" || key.startsWith("winback_");
+
+export function withOptOut(body: string, opts: { audience: "client" | "barber"; language: string; templateKey: string; firstText: boolean }): string {
+  if (opts.audience === "barber" || /\bSTOP\b/i.test(body)) return body;
+  if (!opts.firstText && !isMarketingTemplate(opts.templateKey)) return body;
+  return body + (OPT_OUT[opts.language] || OPT_OUT.en);
 }
 
 export async function sendSMS(opts: {
@@ -42,7 +48,6 @@ export async function sendSMS(opts: {
   audience?: "client" | "barber";
 }): Promise<boolean> {
   const { to, from, userId, templateKey, language, audience = "client" } = opts;
-  const body = withOptOut(opts.body, audience, language);
   const admin = createAdminClient();
   const isDevMode = process.env.SMS_DEV_MODE === "true";
 
@@ -63,6 +68,19 @@ export async function sendSMS(opts: {
       return false;
     }
   }
+
+  let firstText = false;
+  if (audience === "client") {
+    const { count } = await admin
+      .from("sms_log")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("to_number", to)
+      .eq("direction", "outbound")
+      .neq("status", "failed");
+    firstText = (count ?? 0) === 0;
+  }
+  const body = await shortenLinks(admin, withOptOut(opts.body, { audience, language, templateKey, firstText }));
 
   const { data: row } = await admin
     .from("sms_log")

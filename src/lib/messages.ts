@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { missedCallTemplate, withShopName } from "@/lib/missed-call-text";
 
 export { CONSENT_TEXT } from "./consent";
 
@@ -99,26 +100,24 @@ export async function buildSMS(opts: {
 
   const { data: barberProfile } = await supabase
     .from("users")
-    .select("first_name, barber_language, custom_message, winback_offer")
+    .select("first_name, business_name, barber_language, custom_message, missed_call_style, winback_offer")
     .eq("user_id", opts.userId)
     .single();
 
   const isBarberFacing = BARBER_FACING_TEMPLATES.has(opts.templateKey);
-  const language = isBarberFacing
+  const isMissedCall = opts.templateKey === "missed_call";
+  // A first-time caller's language isn't known yet: write to them in the barber's.
+  const language = isBarberFacing || (isMissedCall && !client?.client_language)
     ? (barberProfile?.barber_language || "en")
     : (client?.client_language || "en");
 
   const firstName = client?.first_name || "";
   const barberName = barberProfile?.first_name || "";
 
-  let template: string | null;
-  // The barber's own missed-call text wins, but only if it can carry the booking link.
-  // (The column's legacy default asks callers to "Reply YES or NO", which nothing handles.)
-  if (opts.templateKey === "missed_call" && barberProfile?.custom_message?.includes("{link}")) {
-    template = barberProfile.custom_message;
-  } else {
-    template = await resolveTemplate(opts.userId, opts.templateKey, language);
-  }
+  // Missed-call text: the style the barber picked in Settings (Casual unless they changed it).
+  const template = isMissedCall
+    ? missedCallTemplate(barberProfile?.missed_call_style, barberProfile?.custom_message, language)
+    : await resolveTemplate(opts.userId, opts.templateKey, language);
   if (!template) return null;
 
   const allVars: Record<string, string> = {
@@ -127,7 +126,9 @@ export async function buildSMS(opts: {
     barber_name: barberName,
     offer: barberProfile?.winback_offer || "",
   };
-  const body = interpolateTemplate(template, allVars);
+  let body = interpolateTemplate(template, allVars);
+  // The caller sees right away whose shop is texting them.
+  if (isMissedCall) body = withShopName(body, barberProfile?.business_name || barberProfile?.first_name);
 
   return { body, language };
 }

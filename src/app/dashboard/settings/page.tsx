@@ -12,8 +12,8 @@ import { useT, useLocale, LanguageToggle, type Locale } from "@/lib/i18n";
 import { money, STICKER_PRICE_CENTS, SUPPORT_EMAIL } from "@/lib/config";
 import { REWARD_CENTS } from "@/lib/loyalty-rules";
 import { forwardingCodes } from "@/lib/call-mode";
+import { MISSED_CALL_PRESETS, MISSED_CALL_STYLES, isMissedCallStyle, missedCallTemplate, withShopName, type MissedCallStyle } from "@/lib/missed-call-text";
 
-type T = ReturnType<typeof useT>;
 
 type Address = { name: string; line1: string; line2: string | null; city: string; state: string; zip: string };
 
@@ -29,6 +29,7 @@ type Settings = {
   google_review_url: string | null;
   booking_link: string | null;
   custom_message: string | null;
+  missed_call_style: string | null;
   business_hours: Hours | null;
   timezone: string;
   feature_autotext: boolean | null;
@@ -47,8 +48,14 @@ type Settings = {
   appUrl: string;
 };
 
-const PRESETS = ["casual", "pro", "short"] as const;
-const presets = (t: T) => PRESETS.map((id) => ({ id, label: t(`settings.preset_${id}`), message: t(`settings.msg_${id}`) }));
+const CARRIERS = [
+  { id: "tmobile", label: "T-Mobile", codes: "attTmobile" },
+  { id: "att", label: "AT&T", codes: "attTmobile" },
+  { id: "verizon", label: "Verizon", codes: "verizon" },
+  { id: "other", label: "", codes: "verizon" },
+] as const;
+type CarrierId = (typeof CARRIERS)[number]["id"];
+const CARRIER_KEY = "lc_carrier";
 
 async function patch(body: Record<string, unknown>): Promise<string | null> {
   const res = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -211,7 +218,7 @@ export default function SettingsPage() {
 
       <section>
         <SectionLabel>{t("settings.missed_text")}</SectionLabel>
-        <MissedCallText initial={s.custom_message || t("settings.msg_casual")} shop={s.business_name || s.first_name || t("settings.your_barber")} onSaved={(m) => set({ custom_message: m })} />
+        <MissedCallText s={s} onSaved={(v) => set(v)} />
       </section>
 
       <section id="hours">
@@ -272,6 +279,21 @@ function ForwardingCard({ s, onMode }: { s: Settings; onMode: (m: "forwarded" | 
   const t = useT();
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState("");
+  // This card only renders after Settings loads in the browser, so localStorage is there.
+  const [carrier, setCarrier] = useState<CarrierId | "">(() => {
+    try {
+      const c = localStorage.getItem(CARRIER_KEY);
+      return CARRIERS.some((x) => x.id === c) ? (c as CarrierId) : "";
+    } catch {
+      return "";
+    }
+  });
+  function pickCarrier(c: CarrierId) {
+    setCarrier(c);
+    try {
+      localStorage.setItem(CARRIER_KEY, c);
+    } catch {}
+  }
 
   if (!s.phone_number) {
     const missing = s.numberMissing || [];
@@ -306,10 +328,8 @@ function ForwardingCard({ s, onMode }: { s: Settings; onMode: (m: "forwarded" | 
       setTimeout(() => setCopied(""), 1500);
     } catch {}
   }
-  const rows: [string, { on: string; off: string }][] = [
-    ["Verizon", codes.verizon],
-    ["AT&T / T-Mobile", codes.attTmobile],
-  ];
+  const picked = carrier ? CARRIERS.find((c) => c.id === carrier) : null;
+  const code = picked && picked.id !== "other" ? codes[picked.codes] : null;
 
   return (
     <Card className="p-4 space-y-4">
@@ -344,19 +364,32 @@ function ForwardingCard({ s, onMode }: { s: Settings; onMode: (m: "forwarded" | 
       {forwarded ? (
         <>
           <p className="text-[13px] text-white/60 leading-relaxed">{t("forward.how")}</p>
-          <div className="space-y-2">
-            {rows.map(([carrier, c]) => (
-              <div key={carrier} className="rounded-xl bg-white/[0.03] px-3.5 py-3">
-                <p className="text-[12px] text-white/45 mb-1.5">{carrier}</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <a href={dial(c.on)} className="font-mono text-[15px] text-[var(--accent-color)] tracking-[0.5px]">{c.on}</a>
-                  <button onClick={() => copy(c.on)} className="text-[11px] text-white/45 underline-offset-2 hover:underline">{copied === c.on ? t("common.copied") : t("common.copy")}</button>
-                  <span className="text-[11px] text-white/35 ml-auto">{t("forward.off")} <a href={dial(c.off)} className="font-mono text-white/60">{c.off}</a></span>
-                </div>
-              </div>
+          <div role="radiogroup" aria-label={t("forward.carrier")} className="flex flex-wrap gap-1.5">
+            {CARRIERS.map((c) => (
+              <button
+                key={c.id}
+                role="radio"
+                aria-checked={carrier === c.id}
+                onClick={() => pickCarrier(c.id)}
+                className={`h-8 px-3 rounded-lg text-[12px] ${carrier === c.id ? "bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold" : "bg-white/[0.06] text-white/60"}`}
+              >
+                {c.id === "other" ? t("forward.carrier_other") : c.label}
+              </button>
             ))}
           </div>
-          <p className="text-[11px] text-white/35 leading-relaxed">{t("forward.other")}</p>
+          {!picked && <p className="text-[12px] text-white/40">{t("forward.pick_carrier")}</p>}
+          {code && (
+            <div className="rounded-xl bg-white/[0.03] px-3.5 py-3 space-y-2">
+              <p className="text-[12px] text-white/45">{t("forward.dial_this")}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <a href={dial(code.on)} className="font-mono text-[17px] text-[var(--accent-color)] tracking-[0.5px]">{code.on}</a>
+                <button onClick={() => copy(code.on)} className="text-[11px] text-white/45 underline-offset-2 hover:underline">{copied === code.on ? t("common.copied") : t("common.copy")}</button>
+              </div>
+              <a href={dial(code.on)} className="flex items-center justify-center h-10 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[13px] font-semibold">{t("forward.tap_to_dial")}</a>
+              <p className="text-[11px] text-white/35">{t("forward.off")} <a href={dial(code.off)} className="font-mono text-white/60">{code.off}</a></p>
+            </div>
+          )}
+          {picked?.id === "other" && <p className="text-[12px] text-white/50 leading-relaxed">{t("forward.other")}</p>}
         </>
       ) : (
         <p className="text-[13px] text-white/60 leading-relaxed">{t("forward.direct_how")}</p>
@@ -522,60 +555,76 @@ function Toggle({ label, hint, on, onChange, disabled }: { label: string; hint: 
   );
 }
 
-function MissedCallText({ initial, shop, onSaved }: { initial: string; shop: string; onSaved: (m: string) => void }) {
+function MissedCallText({ s, onSaved }: { s: Settings; onSaved: (v: Pick<Settings, "missed_call_style" | "custom_message">) => void }) {
   const t = useT();
-  const opts = presets(t);
-  const cleaned = initial.replace(/\s*(Reply STOP to opt out|Responde STOP[^.]*)\.?\s*$/i, "").trim();
-  // A saved text without {link} can't carry the booking link, so it isn't what callers get.
-  const legacy = !cleaned.includes("{link}");
-  const [msg, setMsg] = useState(legacy ? opts[0].message : cleaned);
-  const [saved, setSaved] = useState(legacy ? "" : cleaned);
+  const locale = useLocale();
+  const savedStyle: MissedCallStyle = isMissedCallStyle(s.missed_call_style) ? s.missed_call_style : "casual";
+  // A saved text without {link} can't carry the booking link, so start the editor from Casual.
+  const savedCustom = s.custom_message?.includes("{link}") ? s.custom_message.replace(/\s*(Reply STOP to opt out|Responde STOP[^.]*)\.?\s*$/i, "").trim() : "";
+  const [style, setStyle] = useState<MissedCallStyle>(savedStyle);
+  const [draft, setDraft] = useState(savedCustom || MISSED_CALL_PRESETS.casual[locale]);
+  const [saved, setSaved] = useState({ style: savedStyle, custom: savedCustom });
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [err, setErr] = useState("");
-  const preview = msg.replace(/\{link\}/g, "linecatch.app/book/…") + (/\bstop\b/i.test(msg) ? "" : `\n${t("settings.stop_footer")}`);
+
+  const template = style === "custom" ? draft : missedCallTemplate(style, null, locale);
+  const shop = s.business_name?.trim() || s.first_name?.trim() || "";
+  const preview = withShopName(template.replace(/\{link\}/g, "www.linecatch.app/c/K7mP2xQa"), shop);
+  const unchanged = style === saved.style && (style !== "custom" || draft === saved.custom);
+  const missingLink = style === "custom" && !draft.includes("{link}");
+
   return (
     <Card className="p-4 space-y-3">
-      {legacy && saved === "" && (
-        <p className="text-[12px] text-[#E0926A] leading-relaxed">{t("settings.legacy_text")}</p>
-      )}
-      <div className="flex gap-1.5 flex-wrap">
-        {opts.map((p) => (
+      <div role="radiogroup" aria-label={t("settings.missed_text")} className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-white/[0.04]">
+        {MISSED_CALL_STYLES.map((id) => (
           <button
-            key={p.id}
-            onClick={() => setMsg(p.message)}
-            className={`h-8 px-3 rounded-lg text-[12px] ${msg === p.message ? "bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold" : "bg-white/[0.06] text-white/60"}`}
+            key={id}
+            role="radio"
+            aria-checked={style === id}
+            onClick={() => setStyle(id)}
+            className={`h-9 rounded-lg text-[12px] font-semibold transition-colors ${style === id ? "bg-[var(--accent-color)] text-[var(--accent-fg)]" : "text-white/55"}`}
           >
-            {p.label}
+            {t(`settings.style_${id}`)}
           </button>
         ))}
       </div>
-      <label htmlFor="mc-text" className="sr-only">{t("settings.missed_text")}</label>
-      <textarea
-        id="mc-text"
-        value={msg}
-        onChange={(e) => setMsg(e.target.value.slice(0, 300))}
-        rows={3}
-        className="w-full rounded-xl bg-white/[0.04] border border-white/[0.1] px-3.5 py-3 text-[14px] outline-none focus:border-[var(--accent-color)]/50 resize-none"
-      />
+      {style === "custom" && (
+        <>
+          <label htmlFor="mc-text" className="sr-only">{t("settings.missed_text")}</label>
+          <textarea
+            id="mc-text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.slice(0, 300))}
+            rows={3}
+            className="w-full rounded-xl bg-white/[0.04] border border-white/[0.1] px-3.5 py-3 text-[14px] outline-none focus:border-[var(--accent-color)]/50 resize-none"
+          />
+          {missingLink && <p className="text-[12px] text-[#E0926A]">{t("settings.keep_link")}</p>}
+        </>
+      )}
       <div className="rounded-xl bg-white/[0.03] px-3.5 py-3">
-        <p className="text-[10px] uppercase tracking-[0.6px] font-semibold text-white/30 mb-1">{t("settings.callers_see", { shop })}</p>
+        <p className="text-[10px] uppercase tracking-[0.6px] font-semibold text-white/30 mb-1">{t("settings.callers_see", { shop: shop || t("settings.your_barber") })}</p>
         <p className="text-[13px] text-white/70 whitespace-pre-line">{preview}</p>
+        <p className="text-[12px] text-white/35 mt-1">{t("settings.stop_footer")}</p>
+        <p className="text-[11px] text-white/30 mt-2 leading-snug">{t("settings.stop_first_only")}</p>
       </div>
-      {!msg.includes("{link}") && <p className="text-[12px] text-[#E0926A]">{t("settings.keep_link")}</p>}
+      {!s.business_name?.trim() && (
+        <a href="#business" className="block text-[12px] text-[var(--accent-color)]">{t("settings.add_shop_name")}</a>
+      )}
       {err && <p className="text-[12px] text-[#F08A8A]" role="alert">{t(err)}</p>}
       <button
-        disabled={msg === saved || !msg.includes("{link}") || state === "saving"}
+        disabled={unchanged || missingLink || state === "saving"}
         onClick={async () => {
           setState("saving");
-          const er = await patch({ custom_message: msg });
+          const er = await patch({ missed_call_style: style, ...(style === "custom" ? { custom_message: draft } : {}) });
           if (er) {
             setErr(er);
             setState("idle");
             return;
           }
           setErr("");
-          setSaved(msg);
-          onSaved(msg);
+          const custom = style === "custom" ? draft : saved.custom;
+          setSaved({ style, custom });
+          onSaved({ missed_call_style: style, custom_message: style === "custom" ? draft : s.custom_message });
           setState("saved");
           setTimeout(() => setState("idle"), 1500);
         }}

@@ -43,12 +43,13 @@ export async function POST(request: Request) {
 
   // Forwarded mode: the barber's own phone already rang and wasn't answered, and the carrier sent
   // the call here. Never dial the barber again (it would loop back through the forward): text the
-  // caller now, tell them so, and hang up. Twilio keeps the original caller in From.
+  // caller now, tell them in one short line, and hang up. Twilio keeps the original caller in From.
   if (barber.call_mode !== "direct") {
     const outcome = await handleMissedCall(supabase, { to, from: params.From, callSid: params.CallSid || null });
     // cooldown / no_consent: the link was texted to them before, so it's already on their phone.
     const line = outcome === "texted" ? "texted" : outcome === "cooldown" || outcome === "no_consent" ? "already" : "none";
-    return twiml(`${say(lang, forwardedCallLine(lang, line))}\n  <Hangup/>`);
+    const spoken = forwardedCallLine(lang, line);
+    return twiml(`${spoken ? `${say(lang, spoken)}\n` : ""}  <Hangup/>`);
   }
 
   // Direct mode: clients call the LineCatch number, which rings the barber's cell first.

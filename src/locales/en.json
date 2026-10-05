@@ -471,13 +471,6 @@
     "winback_hint": "Added once to the Wednesday text for clients gone 8+ weeks. Leave empty for none.",
     "winback_placeholder": "{reward} off",
     "missed_text": "Missed-call text",
-    "preset_casual": "Casual",
-    "preset_pro": "Professional",
-    "preset_short": "Short",
-    "msg_casual": "Hey! Sorry I missed your call. Book your next appointment here: {link}",
-    "msg_pro": "Thank you for calling. I'm with a client and can't answer. You can schedule here: {link}",
-    "msg_short": "Missed your call! Book here: {link}",
-    "legacy_text": "Your old text had no booking link, so callers get LineCatch's default instead. Save one below to make it yours.",
     "callers_see": "What {shop}'s callers see",
     "keep_link": "Keep {link} in the text so callers can book.",
     "save_text": "Save text",
@@ -521,7 +514,12 @@
     "privacy": "Privacy policy",
     "terms": "Terms",
     "support": "Contact support",
-    "sign_out": "Sign out"
+    "sign_out": "Sign out",
+    "style_casual": "Casual",
+    "style_professional": "Professional",
+    "style_custom": "Write my own",
+    "stop_first_only": "“Reply STOP to opt out” is added to a caller’s first text only.",
+    "add_shop_name": "Add your shop name so callers know who’s texting →"
   },
   "login": {
     "tagline": "Never lose a customer to a missed call",
@@ -1022,6 +1020,11 @@
     "step_cell": "Add your cell number",
     "step_services": "Add a service",
     "step_hours": "Set your hours",
-    "step_portfolio": "Add a photo to your portfolio"
+    "step_portfolio": "Add a photo to your portfolio",
+    "carrier": "Your carrier",
+    "carrier_other": "Other",
+    "pick_carrier": "Pick your carrier to see your code.",
+    "dial_this": "Dial this once from your phone:",
+    "tap_to_dial": "Tap to dial"
   }
 }

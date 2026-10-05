@@ -6,15 +6,15 @@ describe("forwarded calls", () => {
   it("carrier codes use the 10-digit LineCatch number", () => {
     const c = forwardingCodes("+18575052551");
     expect(c.verizon).toEqual({ on: "*718575052551", off: "*73" });
-    expect(c.attTmobile).toEqual({ on: "**61*8575052551#", off: "##61#" });
+    expect(c.attTmobile).toEqual({ on: "**61*18575052551#", off: "##61#" });
   });
 
   it("the caller hears one short line in the barber's language", () => {
-    expect(forwardedCallLine("en", "texted")).toBe("Sorry we missed you. We'll text you a link to book.");
-    expect(forwardedCallLine("es", "texted")).toMatch(/Te enviamos un mensaje de texto/);
-    expect(forwardedCallLine("en", "already")).toBe("Sorry we missed you. We already texted you a link to book.");
-    // No promise of a text when none goes out (opted out, texting off).
-    expect(forwardedCallLine("en", "none")).not.toMatch(/text/i);
+    expect(forwardedCallLine("en", "texted")).toBe("We're going to send you a booking link.");
+    expect(forwardedCallLine("es", "texted")).toBe("Te vamos a enviar un enlace para reservar.");
+    expect(forwardedCallLine("en", "already")).toBe("We already sent you a booking link.");
+    // No text goes out (opted out, texting off): nothing is said, the call just ends.
+    expect(forwardedCallLine("en", "none")).toBeNull();
     expect(numberChangedLine("es")).toMatch(/ya no pertenece/);
   });
 

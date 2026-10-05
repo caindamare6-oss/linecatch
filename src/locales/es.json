@@ -471,13 +471,6 @@
     "winback_hint": "Se agrega una vez al mensaje del miércoles para clientes que no vienen hace 8+ semanas. Déjalo vacío si no hay oferta.",
     "winback_placeholder": "{reward} de descuento",
     "missed_text": "Texto de llamada perdida",
-    "preset_casual": "Casual",
-    "preset_pro": "Profesional",
-    "preset_short": "Corto",
-    "msg_casual": "¡Hola! Perdón que no pude contestar. Reserva tu próxima cita aquí: {link}",
-    "msg_pro": "Gracias por llamar. Estoy con un cliente y no puedo contestar. Puedes agendar aquí: {link}",
-    "msg_short": "¡Perdí tu llamada! Reserva aquí: {link}",
-    "legacy_text": "Tu texto anterior no tenía enlace para reservar, así que quien llama recibe el texto predeterminado de LineCatch. Guarda uno abajo para personalizarlo.",
     "callers_see": "Lo que ven quienes llaman a {shop}",
     "keep_link": "Deja {link} en el texto para que puedan reservar.",
     "save_text": "Guardar texto",
@@ -521,7 +514,12 @@
     "privacy": "Política de privacidad",
     "terms": "Términos",
     "support": "Contactar soporte",
-    "sign_out": "Cerrar sesión"
+    "sign_out": "Cerrar sesión",
+    "style_casual": "Casual",
+    "style_professional": "Profesional",
+    "style_custom": "Escribir el mío",
+    "stop_first_only": "“Responde STOP…” se agrega solo al primer mensaje de cada persona.",
+    "add_shop_name": "Agrega el nombre de tu barbería para que sepan quién les escribe →"
   },
   "login": {
     "tagline": "No pierdas otro cliente por una llamada perdida",
@@ -938,7 +936,8 @@
     "File too large. Maximum 5MB": "El archivo es muy grande. Máximo 5 MB.",
     "Code and shop name are required": "Se necesitan el código y el nombre de la barbería.",
     "This sticker is already set up or doesn't exist": "Este sticker ya está configurado o no existe.",
-    "Invalid call mode": "Modo de llamada no válido."
+    "Invalid call mode": "Modo de llamada no válido.",
+    "Invalid text style": "Estilo de mensaje no válido."
   },
   "vip": {
     "your_barber": "tu barbero",
@@ -1078,6 +1077,11 @@
     "step_cell": "Agrega tu número de celular",
     "step_services": "Agrega un servicio",
     "step_hours": "Define tu horario",
-    "step_portfolio": "Agrega una foto a tu portafolio"
+    "step_portfolio": "Agrega una foto a tu portafolio",
+    "carrier": "Tu compañía",
+    "carrier_other": "Otra",
+    "pick_carrier": "Elige tu compañía para ver tu código.",
+    "dial_this": "Marca esto una vez desde tu teléfono:",
+    "tap_to_dial": "Toca para marcar"
   }
 }

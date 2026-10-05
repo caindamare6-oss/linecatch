@@ -40,12 +40,13 @@ export async function middleware(request: NextRequest) {
   const isBooking = path.startsWith("/book/");
   const isManage = path.startsWith("/manage/");
   const isSticker = path.startsWith("/s/");
+  const isShortLink = path.startsWith("/c/");
   const isJoin = path.startsWith("/join/");
   // Barber portfolio: a single path segment that isn't one of the app's own routes.
   const segments = path.split("/").filter(Boolean);
   const isPortfolio = segments.length === 1 && !RESERVED_SLUGS.has(segments[0]);
 
-  if (isApiRoute || isCallbackRoute || isVip || isPublicPage || isBooking || isManage || isSticker || isJoin || isPortfolio) {
+  if (isApiRoute || isCallbackRoute || isVip || isPublicPage || isBooking || isManage || isSticker || isShortLink || isJoin || isPortfolio) {
     return supabaseResponse;
   }
 

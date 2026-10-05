@@ -1,6 +1,6 @@
 // Top-level paths the app already uses (or may soon); a barber's page can never take one.
 export const RESERVED_SLUGS = new Set([
-  "api", "auth", "book", "dashboard", "join", "login", "manage", "onboarding", "privacy", "s", "terms", "vip",
+  "api", "auth", "book", "c", "dashboard", "join", "login", "manage", "onboarding", "privacy", "s", "terms", "vip",
   "admin", "settings", "app", "www", "help", "support", "about", "pricing", "blog", "static", "public",
   "_next", "favicon.ico", "robots.txt", "sitemap.xml",
 ]);

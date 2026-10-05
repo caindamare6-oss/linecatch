@@ -162,6 +162,13 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 
 - **Forwarded calls** (branch `claude/forwarded-calls`). Barbers keep their own shop/cell number and forward unanswered calls to their LineCatch number. The caller hears one short line in the barber's language ("Sorry we missed you, we'll text you a link to book"), the call ends, and the text goes out right away. Same rules as before: STOP respected, first-time callers texted once, 3-hour cooldown. "Clients call this number" (the old way) is still available in Settings.
 - **Automatic LineCatch numbers.** A barber gets a number as soon as setup, cell, services, hours and a portfolio photo are done: a freed number from the pool first (same area code preferred, after its 30-day wait), otherwise a new local number bought and added to the A2P Messaging Service. Numbers are never released back to Twilio. Callers to a freed number hear that the shop's number changed.
+- **Shorter missed-call texts** (Oct 5, after the first live test call worked):
+  - **Text styles in Settings:** Casual (the default for every barber), Professional, or Write my own. Callers get the ready-made styles in their own language.
+  - **Shop name first:** "Fresh Cuts: Hey, sorry I missed you!…", unless the barber's own words already name the shop. Falls back to the barber's first name.
+  - **Short links:** every long app link in a text becomes `www.linecatch.app/c/Ab3dE6fG`, which opens the same link (caller still recognized, taps still counted).
+  - **Opt-out line:** "Reply STOP to opt out" goes on a client's first text from that barber and on every marketing text (Wednesday texts, broadcasts, review requests). Later service texts (confirmations, reminders, replies) leave it off. STOP works on every text either way.
+  - **On the call:** the caller hears "We're going to send you a booking link." If no text goes out (they opted out, texting is off), the call just ends.
+  - **Carrier codes:** Settings asks for the carrier and shows only that code, with a Tap to dial button. The T-Mobile/AT&T code now has the 1 in front (`**61*1…#`), the format that worked on the live test.
 
 ---
 
@@ -177,6 +184,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 | `20261002f_winback_copy` | Fixes the "Last one from me" and "1 cuts" texts |
 | `20261002g_sticker_handout` | Which shop each sticker was handed to |
 | `20261004_call_mode_number_pool` | Forwarded-calls mode and the phone-number pool |
+| `20261005_missed_call_style_short_links` | Missed-call text style (Casual by default) and short links |
 | `20261002h_lock_users_writes` | **Security fix.** Run this one even if nothing else ships. |
 
 ## Before you deploy

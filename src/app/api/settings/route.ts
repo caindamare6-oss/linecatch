@@ -8,9 +8,10 @@ import { hasActiveSticker, marketingState } from "@/lib/marketing";
 import { cleanAddress, requestSticker } from "@/lib/sticker-request";
 import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
 import { isCallMode } from "@/lib/call-mode";
+import { isMissedCallStyle } from "@/lib/missed-call-text";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode";
+  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode, missed_call_style";
 
 export async function GET() {
   const supabase = await createClient();
@@ -58,6 +59,10 @@ export async function PATCH(request: Request) {
     if (!msg) return bad("Your missed-call text can't be empty");
     if (!msg.includes("{link}")) return bad("Keep {link} in the message so callers can book");
     update.custom_message = msg;
+  }
+  if ("missed_call_style" in body) {
+    if (!isMissedCallStyle(body.missed_call_style)) return bad("Invalid text style");
+    update.missed_call_style = body.missed_call_style;
   }
   if ("winback_offer" in body) update.winback_offer = cleanText(body.winback_offer, 40);
   if ("business_hours" in body) {
