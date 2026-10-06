@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeNext } from "@/lib/next-path";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTemplate } from "@/lib/messages";
@@ -57,7 +58,7 @@ export async function GET(request: Request) {
       // Signing in from a sticker with an existing account: connect it now (setup won't run again).
       const pendingSticker = searchParams.get("sticker") || (await cookies()).get(STICKER_COOKIE)?.value;
       const claimed = await claimOnSignIn(createAdminClient(), data.user.id, pendingSticker);
-      const res = carryCodes(NextResponse.redirect(`${origin}/dashboard`), searchParams);
+      const res = carryCodes(NextResponse.redirect(`${origin}${safeNext(searchParams.get("next"))}`), searchParams);
       if (claimed) res.cookies.delete(STICKER_COOKIE);
       return res;
     }

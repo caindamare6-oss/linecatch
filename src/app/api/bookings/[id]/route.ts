@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { scheduleLink } from "@/lib/next-path";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sendSMS } from "@/lib/twilio";
@@ -220,7 +221,9 @@ export async function PATCH(
         });
         if (cancelNotifySms && barber.forwarding_number) {
           try {
-            await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: cancelNotifySms.body, userId: booking.user_id, templateKey: "barber_cancel_notify", language: cancelNotifySms.language, audience: "barber" });
+            // The freed day on their schedule.
+            const body = `${cancelNotifySms.body}\n${scheduleLink(appUrl(), booking.id, oldTime, tz)}`;
+            await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body, userId: booking.user_id, templateKey: "barber_cancel_notify", language: cancelNotifySms.language, audience: "barber" });
           } catch (err) {
             console.error("Barber cancel notify failed:", err);
           }
@@ -314,7 +317,8 @@ export async function PATCH(
         });
         if (rescheduleNotifySms && barber.forwarding_number) {
           try {
-            await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: rescheduleNotifySms.body, userId: booking.user_id, templateKey: "barber_reschedule_notify", language: rescheduleNotifySms.language, audience: "barber" });
+            const body = `${rescheduleNotifySms.body}\n${scheduleLink(appUrl(), booking.id, newBookingTime, tz)}`;
+            await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body, userId: booking.user_id, templateKey: "barber_reschedule_notify", language: rescheduleNotifySms.language, audience: "barber" });
           } catch (err) {
             console.error("Barber reschedule notify failed:", err);
           }

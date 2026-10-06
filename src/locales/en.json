@@ -563,7 +563,8 @@
     "sticker_banner": "QR sticker {code} is ready",
     "sticker_banner_shop": "QR sticker {code} for {shop} is ready",
     "sticker_sub": "Sign up and it connects to your shop. No address needed.",
-    "sticker_sub_in": "Sign in and it connects to your shop."
+    "sticker_sub_in": "Sign in and it connects to your shop.",
+    "stay_in": "You’ll stay logged in on this phone."
   },
   "book": {
     "morning": "Morning",
@@ -1058,6 +1059,7 @@
     "android_2": "Tap ⋮ (top right).",
     "android_3": "Tap “Add to Home screen” or “Install app”.",
     "login": "You stay logged in for a year.",
-    "login_iphone": "The first time you open it from the home screen, log in once with your phone number (not Google). After that you stay logged in for a year."
+    "login_iphone": "The first time you open it from the home screen, log in once with your phone number (not Google). After that you stay logged in for a year.",
+    "safari_tip": "Links in your texts open in Safari, so log in there once too. You stay logged in for a year."
   }
 }

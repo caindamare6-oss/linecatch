@@ -183,6 +183,11 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
   - The stamp is dated the day of the cut, even when it's finished later.
 - **Home-screen app:** LineCatch has an app icon and name, and opens full screen from the home screen. Settings → App shows the iPhone or Android steps (or an Install button on Android Chrome). Logins last a year; on iPhone the home-screen app needs one login with the phone-number code.
 - **Setup:** new barbers start with 10am–7pm hours. Their own photo is now one of the steps before they get a LineCatch number.
+- **Staying logged in and links** (Oct 6):
+  - Fixed a way barbers could get logged out: when the app redirected (for example, opening the login page while already logged in), it dropped the freshly renewed login.
+  - A link to a page in the app opens that page. Logged out, you log in once and land on that page, not Home (Google, email and phone-code logins all return there).
+  - Texts to the barber about a new booking, a cancellation or a reschedule end with a short link that opens that day on their schedule with the booking marked.
+  - Login screen: "You'll stay logged in on this phone." Settings → App on iPhone: log in once in Safari too, since links in texts open there.
 
 ---
 

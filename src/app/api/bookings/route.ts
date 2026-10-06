@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { scheduleLink } from "@/lib/next-path";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
@@ -300,7 +301,9 @@ export async function POST(request: Request) {
 
       if (notifySms) {
         try {
-          await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: notifySms.body, userId, templateKey: "barber_booking_notify", language: notifySms.language, audience: "barber" });
+          // A link straight to the booking on their schedule (the login is remembered on the phone).
+          const body = `${notifySms.body}\n${scheduleLink(appUrl(), booking.id, bTime, tz)}`;
+          await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body, userId, templateKey: "barber_booking_notify", language: notifySms.language, audience: "barber" });
         } catch (err) {
           console.error("Barber booking notify failed:", err);
         }

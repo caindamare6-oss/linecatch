@@ -64,7 +64,8 @@ function Schedule() {
   const dayLabel = (ymd: string, o: Intl.DateTimeFormatOptions) => fmtDay(tag, ymd, o);
   const params = useSearchParams();
   const highlight = params.get("booking");
-  const [from, setFrom] = useState<string | null>(null);
+  // A link from a text opens the week starting on the booking's day.
+  const [from, setFrom] = useState<string | null>(() => (/^\d{4}-\d{2}-\d{2}$/.test(params.get("day") || "") ? params.get("day") : null));
   const [data, setData] = useState<Data | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [open, setOpen] = useState<Booking | null>(null);

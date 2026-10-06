@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { RESERVED_SLUGS } from "@/lib/slug";
+import { safeNext } from "@/lib/next-path";
 
 export async function middleware(request: NextRequest) {
   const supabaseResponse = NextResponse.next({ request });
@@ -50,16 +51,25 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // A redirect must carry any login cookies getUser() just refreshed. Supabase refresh tokens are
+  // single-use: dropping the new ones would log the barber out on a later request.
+  const redirect = (url: URL) => {
+    const res = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((c) => res.cookies.set(c));
+    return res;
+  };
+
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    // After logging in, land on the page the link pointed to (e.g. a booking from a text).
+    url.search = "";
+    if (path !== "/" && path !== "/dashboard") url.searchParams.set("next", path + request.nextUrl.search);
+    return redirect(url);
   }
 
   if (user && isAuthRoute) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+    return redirect(new URL(safeNext(request.nextUrl.searchParams.get("next")), request.url));
   }
 
   if (user && !isOnboarding && !isAuthRoute) {
@@ -72,7 +82,8 @@ export async function middleware(request: NextRequest) {
     if (profile && !profile.onboarding_completed) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
+      url.search = "";
+      return redirect(url);
     }
   }
 

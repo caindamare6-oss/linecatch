@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { normalizePhone } from "@/lib/phone";
+import { safeNext } from "@/lib/next-path";
 import { useT, LanguageToggle } from "@/lib/i18n";
 
 type Invite = { code: string; name: string | null; percentOff: number };
@@ -67,6 +68,8 @@ function Login() {
     const u = new URL("/auth/callback", window.location.origin);
     if (invite?.code) u.searchParams.set("ref", invite.code);
     if (sticker?.code) u.searchParams.set("sticker", sticker.code);
+    const next = params.get("next");
+    if (next) u.searchParams.set("next", safeNext(next));
     return u.toString();
   }
 
@@ -161,7 +164,7 @@ function Login() {
       await fetch("/api/auth/setup-profile", { method: "POST" });
     }
 
-    router.push("/dashboard");
+    router.push(safeNext(params.get("next")));
   }
 
   function resetToInput() {
@@ -378,6 +381,7 @@ function Login() {
         </div>
 
         <div className="text-center mt-6" style={{ animation: "ob-fade-up 500ms ease-out 240ms both" }}>
+          <p className="text-[12px] text-white/35 mb-3">{t("login.stay_in")}</p>
           <p className="text-[13px] text-white/40">
             {up ? t("login.have_account") : t("login.new_here")}{" "}
             <button onClick={() => { setMode(up ? "in" : "up"); setError(""); setMessage(""); }} className="text-[var(--accent-color)] font-semibold">

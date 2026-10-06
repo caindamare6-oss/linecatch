@@ -496,6 +496,7 @@ function InstallCard() {
           </ol>
         )}
         <p className="text-[12px] text-white/40 leading-relaxed">{t(iphone ? "install.login_iphone" : "install.login")}</p>
+        {iphone && <p className="text-[12px] text-white/40 leading-relaxed">{t("install.safari_tip")}</p>}
       </Card>
     </section>
   );

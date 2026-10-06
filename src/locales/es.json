@@ -563,7 +563,8 @@
     "sticker_banner": "El sticker QR {code} está listo",
     "sticker_banner_shop": "El sticker QR {code} para {shop} está listo",
     "sticker_sub": "Regístrate y se conecta a tu barbería. No necesitas dirección.",
-    "sticker_sub_in": "Inicia sesión y se conecta a tu barbería."
+    "sticker_sub_in": "Inicia sesión y se conecta a tu barbería.",
+    "stay_in": "Tu sesión se queda abierta en este teléfono."
   },
   "book": {
     "morning": "Mañana",
@@ -1116,6 +1117,7 @@
     "android_2": "Toca ⋮ (arriba a la derecha).",
     "android_3": "Toca “Agregar a la pantalla principal” o “Instalar app”.",
     "login": "Tu sesión se mantiene abierta por un año.",
-    "login_iphone": "La primera vez que la abras desde la pantalla de inicio, entra una vez con tu número de teléfono (no con Google). Después tu sesión se mantiene abierta por un año."
+    "login_iphone": "La primera vez que la abras desde la pantalla de inicio, entra una vez con tu número de teléfono (no con Google). Después tu sesión se mantiene abierta por un año.",
+    "safari_tip": "Los enlaces de tus mensajes se abren en Safari, así que entra ahí una vez también. Tu sesión dura un año."
   }
 }
