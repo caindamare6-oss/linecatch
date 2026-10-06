@@ -16,7 +16,8 @@ export default function VIPOptIn() {
   const barberId = params.id as string;
   const t = useT();
   const locale = useLocale();
-  const reward = money(REWARD_CENTS, locale);
+  const [rewardCents, setRewardCents] = useState(REWARD_CENTS);
+  const reward = money(rewardCents, locale);
 
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -36,6 +37,7 @@ export default function VIPOptIn() {
         if (res.ok) {
           const data = await res.json();
           if (data.businessName) setBusinessName(data.businessName);
+          if (data.loyalty?.cents) setRewardCents(data.loyalty.cents);
           if (data.isLockedOut) setIsLockedOut(true);
           if (data.accentColor) document.documentElement.style.setProperty("--accent-color", data.accentColor);
         }

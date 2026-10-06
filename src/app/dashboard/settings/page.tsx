@@ -31,6 +31,8 @@ type Settings = {
   custom_message: string | null;
   missed_call_style: string | null;
   carrier: Carrier | null;
+  loyalty_enabled: boolean | null;
+  loyalty_reward_cents: number | null;
   lastMissedCallAt: string | null;
   business_hours: Hours | null;
   timezone: string;
@@ -211,11 +213,35 @@ export default function SettingsPage() {
               label={t("settings.winback")}
               hint={t("settings.winback_hint")}
               value={s.winback_offer || ""}
-              placeholder={t("settings.winback_placeholder", { reward: money(REWARD_CENTS, locale) })}
+              placeholder={t("settings.winback_placeholder", { reward: money(s.loyalty_reward_cents ?? REWARD_CENTS, locale) })}
               onSave={async (v) => (await patch({ winback_offer: v })) ?? (set({ winback_offer: v || null }), null)}
             />
           </div>
         )}
+      </section>
+
+      <section id="loyalty">
+        <SectionLabel>{t("loyalty_settings.section")}</SectionLabel>
+        <div className="space-y-2">
+          <Toggle
+            label={t("loyalty_settings.toggle")}
+            hint={t("loyalty_settings.hint", { amount: money(s.loyalty_reward_cents ?? REWARD_CENTS, locale) })}
+            on={s.loyalty_enabled !== false}
+            onChange={async (v) => (await patch({ loyalty_enabled: v })) ?? (set({ loyalty_enabled: v }), null)}
+          />
+          {s.loyalty_enabled !== false && (
+            <EditRow
+              label={t("loyalty_settings.amount")}
+              hint={t("loyalty_settings.amount_hint")}
+              value={money(s.loyalty_reward_cents ?? REWARD_CENTS, locale)}
+              placeholder="$5"
+              onSave={async (v) => {
+                const cents = Math.round(Number(v.replace(/[^\d.,]/g, "").replace(",", ".")) * 100);
+                return (await patch({ loyalty_reward_cents: cents })) ?? (set({ loyalty_reward_cents: cents }), null);
+              }}
+            />
+          )}
+        </div>
       </section>
 
       <section>

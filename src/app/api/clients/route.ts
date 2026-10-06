@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { normalizePhone } from "@/lib/phone";
 import { summarizeClients } from "@/lib/clients";
-import { toPlan } from "@/lib/loyalty-rules";
+import { toLoyalty } from "@/lib/loyalty-rules";
 import { appUrl } from "@/lib/config";
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
@@ -19,7 +19,7 @@ async function loadAll(supabase: Supa, userId: string, phone?: string) {
     optOutsQ = optOutsQ.eq("caller_phone", phone);
   }
   const [barber, vips, contacts, bookings, services, optOuts] = await Promise.all([
-    supabase.from("users").select("plan").eq("user_id", userId).single(),
+    supabase.from("users").select("loyalty_enabled, loyalty_reward_cents").eq("user_id", userId).single(),
     vipsQ,
     contactsQ,
     bookingsQ.order("booking_time", { ascending: false }).limit(phone ? 200 : 5000),
@@ -28,16 +28,16 @@ async function loadAll(supabase: Supa, userId: string, phone?: string) {
   ]);
   const prices = Object.fromEntries((services.data || []).map((s) => [s.id, Number(s.price)]));
   const serviceNames = Object.fromEntries((services.data || []).map((s) => [s.id, s.name as string]));
-  const plan = toPlan(barber.data?.plan);
+  const loyalty = toLoyalty(barber.data);
   const clients = summarizeClients({
     vips: vips.data || [],
     contacts: contacts.data || [],
     bookings: bookings.data || [],
     prices,
     optOuts: (optOuts.data || []).map((o) => o.caller_phone),
-    plan,
+    loyalty,
   });
-  return { clients, bookings: bookings.data || [], vips: vips.data || [], contacts: contacts.data || [], prices, serviceNames, plan };
+  return { clients, bookings: bookings.data || [], vips: vips.data || [], contacts: contacts.data || [], prices, serviceNames, loyalty };
 }
 
 export async function GET(request: Request) {
@@ -47,8 +47,8 @@ export async function GET(request: Request) {
 
   const raw = new URL(request.url).searchParams.get("phone");
   if (!raw) {
-    const { clients } = await loadAll(supabase, user.id);
-    return NextResponse.json({ clients, vipLink: `${appUrl()}/vip/${user.id}` });
+    const { clients, loyalty } = await loadAll(supabase, user.id);
+    return NextResponse.json({ clients, loyalty, vipLink: `${appUrl()}/vip/${user.id}` });
   }
 
   const p = normalizePhone(raw);
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     barberId: user.id,
     notes: data.contacts[0]?.notes ?? "",
     source: vip?.opt_in_source ?? null,
-    plan: data.plan,
+    loyalty: data.loyalty,
     history: data.bookings.map((b) => ({
       id: b.id,
       time: b.booking_time,

@@ -42,7 +42,7 @@ export default async function StickerPage({
     );
   }
 
-  // Active code with owner → redirect to VIP page, log the scan
+  // Active code with owner → the barber's portfolio (their work, the Book button, the loyalty offer); log the scan
   if (sticker.status === "active" && sticker.owner_user_id) {
     const headers = await import("next/headers");
     const headersList = await headers.headers();
@@ -56,7 +56,8 @@ export default async function StickerPage({
         if (error) console.error("Sticker scan log failed:", error.message);
       });
 
-    redirect(`/vip/${sticker.owner_user_id}?src=qr`);
+    const { data: owner } = await admin.from("users").select("slug").eq("user_id", sticker.owner_user_id).maybeSingle();
+    redirect(owner?.slug ? `/${owner.slug}?src=qr` : `/book/${sticker.owner_user_id}?src=qr`);
   }
 
   // Unclaimed code — check if visitor is a signed-in barber

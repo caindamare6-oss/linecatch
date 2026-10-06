@@ -6,8 +6,11 @@ import { AUTO_COMPLETE_AFTER_HOURS, completeBooking } from "@/lib/complete-booki
 export const maxDuration = 60;
 
 const HOUR = 3_600_000;
-/** Older than this, a booking nobody touched is left for the barber (it predates auto-complete). */
-const LOOKBACK_DAYS = 7;
+/**
+ * Only cuts from the last day. Anything older nobody touched is left for the barber, so a
+ * loyalty text never goes out days after the visit.
+ */
+const LOOKBACK_HOURS = 24;
 const PER_RUN = 200;
 
 /**
@@ -25,7 +28,7 @@ export async function GET(request: Request) {
     .from("bookings")
     .select("id, user_id, booking_time, service_id")
     .eq("status", "confirmed")
-    .gte("booking_time", new Date(now - LOOKBACK_DAYS * 24 * HOUR).toISOString())
+    .gte("booking_time", new Date(now - LOOKBACK_HOURS * HOUR).toISOString())
     .lte("booking_time", new Date(now - AUTO_COMPLETE_AFTER_HOURS * HOUR).toISOString())
     .order("booking_time", { ascending: true })
     .limit(PER_RUN);

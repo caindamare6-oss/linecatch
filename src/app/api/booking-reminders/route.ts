@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualTime } from "@/lib/format";
-import { projectVisit, rewardVars } from "@/lib/loyalty";
+import { projectVisit, rewardVars, REWARD_CENTS } from "@/lib/loyalty";
 import { DEFAULT_TZ, appUrl } from "@/lib/config";
 
 const REVIEW_DELAY_HOURS = 2;
@@ -116,7 +116,7 @@ export async function GET(request: Request) {
         shop_name: shopName,
         time: timeStr,
         link: `${appUrl()}/manage/${booking.id}`,
-        ...rewardVars(!!loyalty?.due),
+        ...rewardVars(!!loyalty?.due, loyalty?.loyalty.cents ?? REWARD_CENTS),
       },
     });
 

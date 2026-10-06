@@ -10,7 +10,7 @@ const NOW = new Date("2026-10-15T16:00:00Z"); // Thu Oct 15, noon in New York
 describe("summarizeClients", () => {
   const base = {
     vips: [
-      { phone_number: "+16175550001", first_name: "Alex", is_opted_in: true, opted_out_at: null, cut_count: 3 },
+      { phone_number: "+16175550001", first_name: "Alex", is_opted_in: true, opted_out_at: null, cut_count: 4 },
       { phone_number: "+16175550002", first_name: "Bo", is_opted_in: true, opted_out_at: "2026-10-01T00:00:00Z", cut_count: 1 },
     ],
     contacts: [{ caller_phone: "+16175550001", name: "Alex Rivera" }, { caller_phone: "+16175550003", name: null }],
@@ -22,7 +22,7 @@ describe("summarizeClients", () => {
     ],
     prices: { a: 35, b: 50 },
     optOuts: [],
-    plan: "full" as const,
+    loyalty: { enabled: true, cents: 500 },
     now: NOW,
   };
 
@@ -46,12 +46,14 @@ describe("summarizeClients", () => {
     expect(viaTable.isVip).toBe(false);
   });
 
-  it("loyalty: full plan rewards cut 4 after 3 stamps; basic rewards cut 3 after 2", () => {
+  it("loyalty: after 4 cuts the 5th is the reward; after 2, the 5th is 3 away; off means never due", () => {
     const alex = summarizeClients(base).find((c) => c.phone === "+16175550001")!;
     expect(alex.rewardDue).toBe(true);
-    const basic = summarizeClients({ ...base, plan: "basic", vips: [{ ...base.vips[0], cut_count: 1 }] }).find((c) => c.phone === "+16175550001")!;
-    expect(basic.rewardDue).toBe(false);
-    expect(basic.cutsToReward).toBe(2);
+    const two = summarizeClients({ ...base, vips: [{ ...base.vips[0], cut_count: 2 }] }).find((c) => c.phone === "+16175550001")!;
+    expect(two.rewardDue).toBe(false);
+    expect(two.cutsToReward).toBe(3);
+    const off = summarizeClients({ ...base, loyalty: { enabled: false, cents: 500 } }).find((c) => c.phone === "+16175550001")!;
+    expect(off.rewardDue).toBe(false);
   });
 
   it("people with an upcoming booking sort first", () => {

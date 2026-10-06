@@ -649,7 +649,8 @@
     "err_past": "Pick a time in the future",
     "err_outside_hours": "That time is outside business hours",
     "err_taken": "This time slot is no longer available",
-    "err_create": "Failed to create booking"
+    "err_create": "Failed to create booking",
+    "loyalty_note": "Your 2nd cut is {amount} off, then every 3rd"
   },
   "manage": {
     "load_error": "Could not load booking",
@@ -1000,7 +1001,8 @@
     "next_photo": "Next photo",
     "open_photo": "Open photo {n}",
     "meta_title": "{shop} · Book a cut",
-    "meta_desc": "See recent cuts from {shop} and book in about a minute."
+    "meta_desc": "See recent cuts from {shop} and book in about a minute.",
+    "loyalty_chip": "2nd cut {amount} off"
   },
   "legal": {
     "privacy_title": "Privacy Policy",
@@ -1061,5 +1063,12 @@
     "login": "You stay logged in for a year.",
     "login_iphone": "The first time you open it from the home screen, log in once with your phone number (not Google). After that you stay logged in for a year.",
     "safari_tip": "Links in your texts open in Safari, so log in there once too. You stay logged in for a year."
+  },
+  "loyalty_settings": {
+    "section": "Loyalty rewards",
+    "toggle": "Reward returning clients",
+    "hint": "Every client: first cut full price, 2nd cut {amount} off, then {amount} off every 3rd cut (5th, 8th, 11th…). Applied automatically at the visit.",
+    "amount": "Reward",
+    "amount_hint": "Dollars off, $1 to $50."
   }
 }

@@ -8,7 +8,7 @@ import { normalizePhone } from "@/lib/phone";
 import { barberLocalToUTC } from "@/lib/format";
 import { consentText } from "@/lib/consent";
 import { DEFAULT_TZ, money } from "@/lib/config";
-import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { REWARD_CENTS, type Loyalty } from "@/lib/loyalty-rules";
 import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { saveToken, useClientSession } from "./use-client-session";
@@ -109,6 +109,8 @@ function BookingContent() {
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
   const [rewardDue, setRewardDue] = useState(false);
+  const [rewardCents, setRewardCents] = useState(REWARD_CENTS);
+  const [loyalty, setLoyalty] = useState<Loyalty | null>(null);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -131,6 +133,7 @@ function BookingContent() {
         const data = await barberRes.json();
         if (data.businessName) setShopName(data.businessName);
         if (data.timezone) setTimezone(data.timezone);
+        if (data.loyalty) setLoyalty(data.loyalty);
         if (Array.isArray(data.openDays) && data.openDays.length) setOpenDays(data.openDays);
         document.documentElement.style.setProperty("--accent-color", data.accentColor || "#D4AF7A");
       }
@@ -221,6 +224,7 @@ function BookingContent() {
       if (data.sessionToken && !forBarber) saveToken(barberId, data.sessionToken);
       setBookingId(data.bookingId);
       setRewardDue(!!data.rewardDue);
+      if (typeof data.rewardCents === "number") setRewardCents(data.rewardCents);
       setStep("done");
     } catch {
       setError(t("book.something_wrong"));
@@ -264,8 +268,8 @@ function BookingContent() {
           <SummaryRow label={t("book.party")} value={partyLabel} />
           <SummaryRow label={t("book.date")} value={dateLabel} />
           <SummaryRow label={t("book.time")} value={formatSlot(selectedTime)} />
-          {total > 0 && <SummaryRow label={t("book.total")} value={rewardDue ? money(Math.max(Math.round(total * 100) - REWARD_CENTS, 0), locale) : usd(total, locale)} accent last={!rewardDue} />}
-          {rewardDue && <SummaryRow label={t("book.loyalty_reward")} value={t("book.reward_off", { amount: money(REWARD_CENTS, locale) })} accent last />}
+          {total > 0 && <SummaryRow label={t("book.total")} value={rewardDue ? money(Math.max(Math.round(total * 100) - rewardCents, 0), locale) : usd(total, locale)} accent last={!rewardDue} />}
+          {rewardDue && <SummaryRow label={t("book.loyalty_reward")} value={t("book.reward_off", { amount: money(rewardCents, locale) })} accent last />}
         </div>
 
         <div className="mt-4 w-full max-w-[300px]" style={fadeUp(500)}>
@@ -345,6 +349,12 @@ function BookingContent() {
           <h1 className={`${HEADING} ${step === "service" && known ? "mt-1" : "mt-5"} text-[34px] leading-[1.05] font-semibold tracking-[-0.8px]`}>
             {step === "service" ? <>{t("book.title_service_a")}<em className="text-[var(--accent-color)]">{t("book.title_service_b")}</em></> : step === "time" ? <>{t("book.title_time_a")}<em className="text-[var(--accent-color)]">{t("book.title_time_b")}</em></> : <>{t("book.title_confirm_a")}<em className="text-[var(--accent-color)]">{t("book.title_confirm_b")}</em></>}
           </h1>
+          {/* The loyalty offer, for anyone the page doesn't already know (returning clients see their own badge). */}
+          {step === "service" && !known && loyalty?.enabled && (
+            <p className="mt-2 inline-flex text-[12px] font-semibold px-2.5 py-1 rounded-full bg-[var(--accent-color)]/15 text-[var(--accent-color)]">
+              {t("book.loyalty_note", { amount: money(loyalty.cents, locale) })}
+            </p>
+          )}
           {step === "time" && service && (
             <p className="text-[13px] text-white/40 mt-1.5">
               {service.name} · {partyLabel.toLowerCase()} · {t("book.minutes", { n: totalMinutes })}{total > 0 && ` · ${usd(total, locale)}`}

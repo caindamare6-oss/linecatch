@@ -10,9 +10,10 @@ import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
 import { isCallMode, isCarrier } from "@/lib/call-mode";
 import { detectCarrier } from "@/lib/carrier";
 import { isMissedCallStyle } from "@/lib/missed-call-text";
+import { MIN_REWARD_CENTS, MAX_REWARD_CENTS } from "@/lib/loyalty-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode, missed_call_style, carrier";
+  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_cents";
 
 export async function GET() {
   const supabase = await createClient();
@@ -82,6 +83,15 @@ export async function PATCH(request: Request) {
   if ("missed_call_style" in body) {
     if (!isMissedCallStyle(body.missed_call_style)) return bad("Invalid text style");
     update.missed_call_style = body.missed_call_style;
+  }
+  if ("loyalty_enabled" in body) {
+    if (typeof body.loyalty_enabled !== "boolean") return bad("Invalid request");
+    update.loyalty_enabled = body.loyalty_enabled;
+  }
+  if ("loyalty_reward_cents" in body) {
+    const c = Number(body.loyalty_reward_cents);
+    if (!Number.isInteger(c) || c < MIN_REWARD_CENTS || c > MAX_REWARD_CENTS) return bad("The reward must be between $1 and $50");
+    update.loyalty_reward_cents = c;
   }
   if ("winback_offer" in body) update.winback_offer = cleanText(body.winback_offer, 40);
   if ("business_hours" in body) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { toLoyalty } from "@/lib/loyalty-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
 import { recordedConsentText, toOptInSource } from "@/lib/consent";
@@ -17,9 +18,10 @@ export async function GET(request: Request) {
   const supabase = createAdminClient();
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name, first_name, is_locked_out, accent_color, timezone, business_hours")
+    .select("business_name, first_name, is_locked_out, accent_color, timezone, business_hours, loyalty_enabled, loyalty_reward_cents")
     .eq("user_id", barberId)
     .single();
+  const loyalty = toLoyalty(barber);
 
   const hours = (barber?.business_hours || {}) as Record<string, unknown>;
   const openDays = Object.keys(hours).filter((d) => !!hours[d]);
@@ -30,6 +32,7 @@ export async function GET(request: Request) {
     isLockedOut: barber?.is_locked_out || false,
     accentColor: barber?.accent_color || null,
     timezone: barber?.timezone || DEFAULT_TZ,
+    loyalty,
   });
 }
 

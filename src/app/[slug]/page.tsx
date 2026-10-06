@@ -7,6 +7,7 @@ import { getTheme, isAccent, themeVars } from "@/lib/themes";
 import { getT } from "@/lib/i18n-server";
 import { LanguageToggle } from "@/lib/i18n";
 import { money, DEFAULT_TZ } from "@/lib/config";
+import { toLoyalty } from "@/lib/loyalty-rules";
 import { weekdayInTz } from "@/lib/availability";
 import { checkSlug } from "@/lib/slug";
 import PortfolioGallery from "./portfolio-gallery";
@@ -21,7 +22,7 @@ const loadBarber = cache(async (slug: string) => {
   const db = createAdminClient();
   const { data: barber } = await db
     .from("users")
-    .select("user_id, business_name, first_name, avatar_url, theme, accent_color, timezone, business_hours, is_active")
+    .select("user_id, business_name, first_name, avatar_url, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_cents")
     .eq("slug", slug)
     .maybeSingle();
   if (!barber || barber.is_active === false) return null;
@@ -86,6 +87,7 @@ export default async function PortfolioPage({
   if (!data) notFound();
 
   const { barber, shopName, photos, lowestPrice } = data;
+  const loyalty = toLoyalty(barber);
   const { t, locale, tag } = await getT();
   const base = getTheme(barber.theme);
   // The barber's accent wins on dark themes (every accent pick is light, so it reads on dark and takes dark text).
@@ -173,6 +175,11 @@ export default async function PortfolioPage({
           {lowestPrice !== null && (
             <span className={`inline-flex items-center px-3 py-2 rounded-full text-xs font-medium ${glass}`}>
               {t("shop.from", { price: money(Math.round(Number(lowestPrice) * 100), locale) })}
+            </span>
+          )}
+          {loyalty.enabled && (
+            <span className="inline-flex items-center px-3 py-2 rounded-full text-xs font-semibold bg-[var(--t-cta-bg)] text-[var(--t-cta-text)]">
+              {t("shop.loyalty_chip", { amount: money(loyalty.cents, locale) })}
             </span>
           )}
         </div>

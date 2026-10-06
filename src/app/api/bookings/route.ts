@@ -10,7 +10,7 @@ import { DEFAULT_TZ, appUrl } from "@/lib/config";
 import { isLocale, translate } from "@/lib/i18n-shared";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
 import { isSlotFree, withinBusinessHours, MAX_PARTY_SIZE } from "@/lib/availability";
-import { projectVisit, rewardVars } from "@/lib/loyalty";
+import { projectVisit, rewardVars, REWARD_CENTS } from "@/lib/loyalty";
 import { findToken, issueToken, touchToken } from "@/lib/client-session";
 
 export async function POST(request: Request) {
@@ -257,7 +257,7 @@ export async function POST(request: Request) {
         link: manageLink,
         party: partySize > 1 ? `, party of ${partySize}` : "",
         party_es: partySize > 1 ? `, grupo de ${partySize}` : "",
-        ...rewardVars(rewardDue),
+        ...rewardVars(rewardDue, loyalty?.loyalty.cents ?? REWARD_CENTS),
       },
     });
 
@@ -327,5 +327,5 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json({ success: true, bookingId: booking.id, bookingIds: createdIds, partySize, rewardDue, sessionToken: nextToken });
+  return NextResponse.json({ success: true, bookingId: booking.id, bookingIds: createdIds, partySize, rewardDue, rewardCents: loyalty?.loyalty.cents ?? REWARD_CENTS, sessionToken: nextToken });
 }

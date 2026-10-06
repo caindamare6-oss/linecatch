@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
-import { DEFAULT_TZ, appUrl } from "@/lib/config";
+import { DEFAULT_TZ, appUrl, money } from "@/lib/config";
 import { completeBookingLoyalty, closeVisitIfResolved, localDate } from "@/lib/loyalty";
 import { hasTextConsent } from "@/lib/opt-out";
 import { AUTO_COMPLETE_AFTER_HOURS, UNDO_WINDOW_HOURS } from "@/lib/complete-booking-rules";
@@ -13,7 +13,7 @@ export { AUTO_COMPLETE_AFTER_HOURS, UNDO_WINDOW_HOURS };
 export type CompleteResult = { ok: true } | { ok: false; error: "not_found" | "not_active" | "failed" };
 
 /**
- * Marks one booking done, by the barber's tap or automatically: a loyalty stamp, the $5 reward
+ * Marks one booking done, by the barber's tap or automatically: a loyalty stamp, the reward
  * when it's due, the activity feed, and once the whole visit is settled, one loyalty text and
  * (if it's due) a review request.
  */
@@ -55,8 +55,8 @@ export async function completeBooking(db: Admin, bookingId: string, by: "barber"
       event_type: "loyalty_claimed",
       client_name: name,
       client_phone: booking.customer_phone,
-      description: `${name || "Client"} got $5 off (cut #${projection.rewardCut})`,
-      metadata: { booking_id: bookingId, visit_key: projection.visitKey, cut_count: projection.rewardCut },
+      description: `${name || "Client"} got ${money(projection.loyalty.cents)} off (cut #${projection.rewardCut})`,
+      metadata: { booking_id: bookingId, visit_key: projection.visitKey, cut_count: projection.rewardCut, amount_cents: projection.loyalty.cents },
     });
   }
 
@@ -70,7 +70,8 @@ export async function completeBooking(db: Admin, bookingId: string, by: "barber"
  */
 export async function closeOutVisit(db: Admin, bookingId: string) {
   const closeout = await closeVisitIfResolved(db, bookingId);
-  if (!closeout || closeout.cutCount === null || closeout.nextCut === null) return;
+  // Loyalty off: no loyalty text (the review request was already decided above).
+  if (!closeout || !closeout.loyalty.enabled || closeout.cutCount === null || closeout.nextCut === null) return;
   const { data: booking } = await db.from("bookings").select("user_id, customer_phone").eq("id", bookingId).maybeSingle();
   if (!booking) return;
   const { data: barber } = await db
@@ -92,6 +93,7 @@ export async function closeOutVisit(db: Admin, bookingId: string) {
       cuts: String(closeout.cutCount),
       next_cut: String(closeout.nextCut),
       cuts_left: String(closeout.nextCut - closeout.cutCount),
+      amount: money(closeout.loyalty.cents),
     },
   });
   if (!sms) return;
@@ -143,35 +145,36 @@ export async function markNoShow(db: Admin, bookingId: string): Promise<NoShowRe
     .maybeSingle();
   if (!flipped) return { ok: false, error: "not_active" };
 
-  // Take the stamp back, and put "last cut" back on their previous real cut.
-  const { data: barber } = await db.from("users").select("timezone").eq("user_id", booking.user_id).maybeSingle();
-  const tz = barber?.timezone || DEFAULT_TZ;
-  const [{ data: vip }, { data: prev }] = await Promise.all([
-    db.from("vip_clients").select("cut_count").eq("user_id", booking.user_id).eq("phone_number", booking.customer_phone).maybeSingle(),
-    db
-      .from("bookings")
-      .select("booking_time")
-      .eq("user_id", booking.user_id)
-      .eq("customer_phone", booking.customer_phone)
-      .eq("status", "completed")
-      .order("booking_time", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
-  if (vip) {
-    await db
-      .from("vip_clients")
-      .update({ cut_count: Math.max((vip.cut_count || 0) - 1, 0), last_cut_date: prev ? localDate(prev.booking_time, tz) : null })
-      .eq("user_id", booking.user_id)
-      .eq("phone_number", booking.customer_phone);
-  }
-
-  // Nobody in the visit was actually cut: no $5 reward, no review request, not in the feed.
+  // Is anyone else in this party still done? Then the visit (and its one stamp) still happened.
   const visitKey = booking.group_id || booking.id;
   const { count: stillDone } = booking.group_id
     ? await db.from("bookings").select("id", { count: "exact", head: true }).eq("group_id", booking.group_id).eq("status", "completed")
     : { count: 0 };
+
   if (!stillDone) {
+    // Take the visit's stamp back, and put "last cut" back on their previous real cut.
+    const { data: barber } = await db.from("users").select("timezone").eq("user_id", booking.user_id).maybeSingle();
+    const tz = barber?.timezone || DEFAULT_TZ;
+    const [{ data: vip }, { data: prev }] = await Promise.all([
+      db.from("vip_clients").select("cut_count").eq("user_id", booking.user_id).eq("phone_number", booking.customer_phone).maybeSingle(),
+      db
+        .from("bookings")
+        .select("booking_time")
+        .eq("user_id", booking.user_id)
+        .eq("customer_phone", booking.customer_phone)
+        .eq("status", "completed")
+        .order("booking_time", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (vip) {
+      await db
+        .from("vip_clients")
+        .update({ cut_count: Math.max((vip.cut_count || 0) - 1, 0), last_cut_date: prev ? localDate(prev.booking_time, tz) : null })
+        .eq("user_id", booking.user_id)
+        .eq("phone_number", booking.customer_phone);
+    }
+    // Nobody in the visit was actually cut: no reward, no review request.
     await db.from("loyalty_rewards").delete().eq("visit_key", visitKey);
     const { data: group } = booking.group_id ? await db.from("bookings").select("id").eq("group_id", booking.group_id) : { data: [{ id: booking.id }] };
     await db.from("booking_reminders").delete().in("booking_id", (group || []).map((g) => g.id)).eq("reminder_type", "review");

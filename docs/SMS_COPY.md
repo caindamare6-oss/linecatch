@@ -75,7 +75,7 @@ English texts, busy barber. Spanish-speaking clients cost up to about 2× on tex
 - **Sent to:** The client who booked
 - **When:** Right after a booking, if the client agreed to texts (checkbox on the booking page, VIP page or sticker). The link opens their page to move or cancel.
 - **"Reply STOP to opt out":** Only on the client's first text from this barber
-- **Note:** Adds ", party of 3" for group bookings and " $5 off this visit." when a reward is due.
+- **Note:** Adds ", party of 3" for group bookings and " $5 off this visit." (the barber's amount) when a reward is due.
 
 | | Text (with example values) | Characters | Type | Segments | Cost per send |
 |---|---|---|---|---|---|
@@ -140,15 +140,15 @@ English texts, busy barber. Spanish-speaking clients cost up to about 2× on tex
 ### Loyalty: progress
 
 - **Sent to:** The client
-- **When:** After the visit is done (barber taps Done, or automatically 2 hours after it ends). Only to clients who agreed to texts.
+- **When:** After the visit is done (barber taps Done, or automatically 2 hours after it ends). Only to clients who agreed to texts, and only while the barber's loyalty rewards are on. Schedule: 1st cut full price, 2nd off, then every 3rd (5, 8, 11…).
 - **"Reply STOP to opt out":** Only on the client's first text from this barber
 
 | | Text (with example values) | Characters | Type | Segments | Cost per send |
 |---|---|---|---|---|---|
-| English | Cuts so far: 4. Cut #7 is $5 off. | 33 | Standard | 1 | $0.0113 |
-| English + STOP line | Cuts so far: 4. Cut #7 is $5 off.<br>Reply STOP to opt out. | 56 | Standard | 1 | $0.0113 |
-| Spanish | Cortes hasta ahora: 4. El corte #7 lleva $5 de descuento. | 57 | Standard | 1 | $0.0113 |
-| Spanish + STOP line | Cortes hasta ahora: 4. El corte #7 lleva $5 de descuento.<br>Responde STOP para no recibir más mensajes. | 101 | Unicode (á) | 2 | $0.0226 |
+| English | Cuts so far: 1. Cut #2 is $5 off. | 33 | Standard | 1 | $0.0113 |
+| English + STOP line | Cuts so far: 1. Cut #2 is $5 off.<br>Reply STOP to opt out. | 56 | Standard | 1 | $0.0113 |
+| Spanish | Cortes hasta ahora: 1. El corte #2 lleva $5 de descuento. | 57 | Standard | 1 | $0.0113 |
+| Spanish + STOP line | Cortes hasta ahora: 1. El corte #2 lleva $5 de descuento.<br>Responde STOP para no recibir más mensajes. | 101 | Unicode (á) | 2 | $0.0226 |
 
 ### Loyalty: $5 earned
 
@@ -158,10 +158,10 @@ English texts, busy barber. Spanish-speaking clients cost up to about 2× on tex
 
 | | Text (with example values) | Characters | Type | Segments | Cost per send |
 |---|---|---|---|---|---|
-| English | Your $5 off was applied today. Your next $5 off is cut #7. | 58 | Standard | 1 | $0.0113 |
-| English + STOP line | Your $5 off was applied today. Your next $5 off is cut #7.<br>Reply STOP to opt out. | 81 | Standard | 1 | $0.0113 |
-| Spanish | Hoy se aplicaron tus $5 de descuento. Tu próximo descuento de $5 es en el corte #7. | 83 | Unicode (ó) | 2 | $0.0226 |
-| Spanish + STOP line | Hoy se aplicaron tus $5 de descuento. Tu próximo descuento de $5 es en el corte #7.<br>Responde STOP para no recibir más mensajes. | 127 | Unicode (ó á) | 2 | $0.0226 |
+| English | Your $5 off was applied today. Your next $5 off is cut #2. | 58 | Standard | 1 | $0.0113 |
+| English + STOP line | Your $5 off was applied today. Your next $5 off is cut #2.<br>Reply STOP to opt out. | 81 | Standard | 1 | $0.0113 |
+| Spanish | Hoy se aplicaron tus $5 de descuento. Tu próximo descuento de $5 es en el corte #2. | 83 | Unicode (ó) | 2 | $0.0226 |
+| Spanish + STOP line | Hoy se aplicaron tus $5 de descuento. Tu próximo descuento de $5 es en el corte #2.<br>Responde STOP para no recibir más mensajes. | 127 | Unicode (ó á) | 2 | $0.0226 |
 
 ### Auto-reply when a client texts in
 
@@ -416,8 +416,8 @@ English texts, busy barber. Spanish-speaking clients cost up to about 2× on tex
 
 | | Text (with example values) | Characters | Type | Segments | Cost per send |
 |---|---|---|---|---|---|
-| English | Weekly recap for Marcus: 4 cuts, $1,240 earned, 6 new VIPs, 11 missed calls caught, 3 review requests sent. | 107 | Standard | 1 | $0.0113 |
-| Spanish | Resumen semanal de Marcus: 4 cortes, $1,240 ganados, 6 nuevos VIPs, 11 llamadas perdidas recuperadas, 3 solicitudes de reseñas enviadas. | 136 | Standard | 1 | $0.0113 |
+| English | Weekly recap for Marcus: 1 cuts, $1,240 earned, 6 new VIPs, 11 missed calls caught, 3 review requests sent. | 107 | Standard | 1 | $0.0113 |
+| Spanish | Resumen semanal de Marcus: 1 cortes, $1,240 ganados, 6 nuevos VIPs, 11 llamadas perdidas recuperadas, 3 solicitudes de reseñas enviadas. | 136 | Standard | 1 | $0.0113 |
 
 ### LATE confirmation
 

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMarketingState } from "@/lib/marketing";
-import { toPlan, visitReward, nextRewardCut, REWARD_CENTS, type Plan } from "@/lib/loyalty-rules";
+import { toLoyalty, visitReward, nextRewardCut, type Loyalty } from "@/lib/loyalty-rules";
+import { money } from "@/lib/config";
 
 export * from "@/lib/loyalty-rules";
 
@@ -13,7 +14,7 @@ export const localDate = (d: string | Date, tz: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(d));
 
 export type VisitProjection = ReturnType<typeof visitReward> & {
-  plan: Plan;
+  loyalty: Loyalty;
   stampsBefore: number;
   partySize: number;
   visitKey: string;
@@ -45,15 +46,16 @@ export async function projectVisit(db: Admin, bookingId: string): Promise<VisitP
     if (group && group.length) rows = group;
   }
   const first = rows[0];
-  const completedInVisit = rows.filter((r) => r.status === "completed").length;
+  // One stamp per visit: once anyone in the party is done, the visit's stamp is already counted.
+  const visitStamped = rows.some((r) => r.status === "completed") ? 1 : 0;
   const visitKey = anchor.group_id || anchor.id;
 
-  const [{ data: barber }, { data: vip }, { count: earlierPending }, { data: reward }] = await Promise.all([
-    db.from("users").select("plan").eq("user_id", anchor.user_id).single(),
+  const [{ data: barber }, { data: vip }, { data: earlier }, { data: reward }] = await Promise.all([
+    db.from("users").select("loyalty_enabled, loyalty_reward_cents").eq("user_id", anchor.user_id).single(),
     db.from("vip_clients").select("cut_count").eq("user_id", anchor.user_id).eq("phone_number", anchor.customer_phone).maybeSingle(),
     db
       .from("bookings")
-      .select("id", { count: "exact", head: true })
+      .select("id, group_id")
       .eq("user_id", anchor.user_id)
       .eq("customer_phone", anchor.customer_phone)
       .eq("status", "confirmed")
@@ -63,13 +65,15 @@ export async function projectVisit(db: Admin, bookingId: string): Promise<VisitP
     db.from("loyalty_rewards").select("id").eq("visit_key", visitKey).maybeSingle(),
   ]);
 
-  const plan = toPlan(barber?.plan);
-  const stampsBefore = Math.max((vip?.cut_count || 0) - completedInVisit, 0) + (earlierPending || 0);
+  const loyalty = toLoyalty(barber);
+  // Earlier visits still to come count as future stamps (a party is one visit).
+  const earlierVisits = new Set((earlier || []).map((b) => b.group_id || b.id)).size;
+  const stampsBefore = Math.max((vip?.cut_count || 0) - visitStamped, 0) + earlierVisits;
   const partySize = rows.length;
 
   return {
-    ...visitReward(stampsBefore, partySize, plan),
-    plan,
+    ...visitReward(stampsBefore, loyalty),
+    loyalty,
     stampsBefore,
     partySize,
     visitKey,
@@ -79,8 +83,9 @@ export async function projectVisit(db: Admin, bookingId: string): Promise<VisitP
 }
 
 /**
- * Marks one booking completed and settles its loyalty: one stamp per person (atomic),
- * $5 recorded at most once per visit. Returns null if the booking wasn't confirmed.
+ * Marks one booking completed and settles its loyalty: one stamp per visit (the first person
+ * in a party to be done adds it), the reward recorded at most once per visit.
+ * Returns null if the booking wasn't confirmed.
  */
 export async function completeBookingLoyalty(db: Admin, bookingId: string, tz: string) {
   // Project before flipping status so the numbers match the badge the barber just saw.
@@ -96,14 +101,21 @@ export async function completeBookingLoyalty(db: Admin, bookingId: string, tz: s
   if (error) throw error;
   if (!row) return null;
 
-  // The day of the cut itself (completing it later, or automatically after midnight, doesn't move it).
-  const cutDay = localDate(row.booking_time, tz);
-  const { data: stamp } = await db.rpc("loyalty_add_stamp", {
-    p_user_id: row.user_id,
-    p_phone: row.customer_phone,
-    p_date: cutDay,
-  });
-  const newCutCount = typeof stamp === "number" ? stamp : null;
+  // A party is one visit: only the first person marked done adds the stamp.
+  const { count: doneInVisit } = row.group_id
+    ? await db.from("bookings").select("id", { count: "exact", head: true }).eq("group_id", row.group_id).eq("status", "completed")
+    : { count: 1 };
+  let newCutCount: number | null = null;
+  if ((doneInVisit ?? 1) <= 1) {
+    // The day of the cut itself (completing it later, or automatically after midnight, doesn't move it).
+    const cutDay = localDate(row.booking_time, tz);
+    const { data: stamp } = await db.rpc("loyalty_add_stamp", {
+      p_user_id: row.user_id,
+      p_phone: row.customer_phone,
+      p_date: cutDay,
+    });
+    newCutCount = typeof stamp === "number" ? stamp : null;
+  }
 
   // visit_key is unique, so a second insert for the same group fails harmlessly.
   let rewardedNow = false;
@@ -113,7 +125,7 @@ export async function completeBookingLoyalty(db: Admin, bookingId: string, tz: s
       client_phone: row.customer_phone,
       booking_id: projection.firstBookingId,
       visit_key: projection.visitKey,
-      amount_cents: REWARD_CENTS,
+      amount_cents: projection.loyalty.cents,
       cut_number: projection.rewardCut,
     });
     rewardedNow = !rewardError;
@@ -159,7 +171,7 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
   if (claimError) return null;
 
   const [{ data: barber }, { data: vip }, { data: reward }] = await Promise.all([
-    db.from("users").select("plan, google_review_url, feature_reviews").eq("user_id", row.user_id).single(),
+    db.from("users").select("google_review_url, feature_reviews, loyalty_enabled, loyalty_reward_cents").eq("user_id", row.user_id).single(),
     db
       .from("vip_clients")
       .select("cut_count, is_opted_in, opted_out_at, last_review_request_at")
@@ -169,7 +181,7 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
     db.from("loyalty_rewards").select("id").eq("visit_key", visitKey).maybeSingle(),
   ]);
 
-  const plan = toPlan(barber?.plan);
+  const loyalty = toLoyalty(barber);
   const cutCount = vip?.cut_count ?? null;
 
   // The review cron keys off the last completed person's booking_completed event.
@@ -193,16 +205,19 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
   return {
     visitKey,
     cutCount,
-    nextCut: cutCount !== null ? nextRewardCut(cutCount, plan) : null,
+    nextCut: cutCount !== null ? nextRewardCut(cutCount) : null,
     visitRewarded: !!reward,
+    loyalty,
     reviewScheduled: reviewDue,
     completedCount: completed.length,
   };
 }
 
-export function rewardVars(due: boolean) {
+/** The reward line in the booking confirmation and 2-hour reminder: " $5 off this visit." */
+export function rewardVars(due: boolean, cents: number) {
+  const amount = money(cents);
   return {
-    reward: due ? " $5 off this visit." : "",
-    reward_es: due ? " $5 de descuento en esta visita." : "",
+    reward: due ? ` ${amount} off this visit.` : "",
+    reward_es: due ? ` ${amount} de descuento en esta visita.` : "",
   };
 }

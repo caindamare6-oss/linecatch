@@ -183,6 +183,13 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
   - The stamp is dated the day of the cut, even when it's finished later.
 - **Home-screen app:** LineCatch has an app icon and name, and opens full screen from the home screen. Settings → App shows the iPhone or Android steps (or an Install button on Android Chrome). Logins last a year; on iPhone the home-screen app needs one login with the phone-number code.
 - **Setup:** new barbers start with 10am–7pm hours. Their own photo is now one of the steps before they get a LineCatch number.
+- **Loyalty v2** (Oct 6):
+  - **One schedule for every client**, however they booked or signed up: 1st cut full price, 2nd cut off, then every 3rd (5, 8, 11…). Replaces the Basic/Full plan difference.
+  - **One stamp per visit.** A party booked from one number counts once.
+  - **Settings → Loyalty rewards:** on/off (on by default) and the amount ($1–$50, $5 by default). Off: no reward and no loyalty texts; stamps keep counting.
+  - **The offer is shown** as a "2nd cut $5 off" chip on the portfolio and a note on the booking page for new clients. Loyalty texts, confirmations, reminders, the morning summary and the client screens use the barber's amount.
+  - **The sticker QR opens the barber's portfolio** (or the booking page until they have a portfolio link). The VIP sign-up page stays for the link barbers share from Clients.
+  - **Auto-complete only looks back 24 hours**, so a loyalty text never goes out days after a visit.
 - **Staying logged in and links** (Oct 6):
   - Fixed a way barbers could get logged out: when the app redirected (for example, opening the login page while already logged in), it dropped the freshly renewed login.
   - A link to a page in the app opens that page. Logged out, you log in once and land on that page, not Home (Google, email and phone-code logins all return there).
@@ -205,6 +212,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 | `20261004_call_mode_number_pool` | Forwarded-calls mode and the phone-number pool |
 | `20261005_missed_call_style_short_links` | Missed-call text style (Casual by default) and short links |
 | `20261005b_carrier` | The barber's cell carrier, for the one-tap forwarding code |
+| `20261006_loyalty_settings` | Loyalty on/off and amount per barber; loyalty texts name the amount |
 | `20261002h_lock_users_writes` | **Security fix.** Run this one even if nothing else ships. |
 
 ## Before you deploy

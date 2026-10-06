@@ -8,7 +8,7 @@ import { PageSkeleton } from "@/components/ui/skeleton";
 import { formatPhone, shortAgo, clientPathId, type ClientSummary } from "@/lib/clients";
 import { useT, useFormat, useLocale } from "@/lib/i18n";
 import { money } from "@/lib/config";
-import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { DEFAULT_LOYALTY, type Loyalty } from "@/lib/loyalty-rules";
 
 type Filter = "all" | "vip" | "due" | "notexts";
 const FILTERS: { value: Filter; label: string }[] = [
@@ -43,7 +43,8 @@ function Clients() {
   const t = useT();
   const f = useFormat();
   const locale = useLocale();
-  const reward = money(REWARD_CENTS, locale);
+  const [loyalty, setLoyalty] = useState<Loyalty>(DEFAULT_LOYALTY);
+  const reward = money(loyalty.cents, locale);
   const params = useSearchParams();
   const router = useRouter();
   const initial = (FILTERS.find((f) => f.value === params.get("filter"))?.value ?? "all") as Filter;
@@ -61,6 +62,7 @@ function Clients() {
       .then((d) => {
         setClients(d.clients);
         setVipLink(d.vipLink);
+        if (d.loyalty) setLoyalty(d.loyalty);
       })
       .catch(() => setError(t("clients.load_error")));
   }, [t]);
@@ -182,7 +184,9 @@ function Clients() {
                     <p className={`text-[12px] mt-0.5 ${c.nextBooking ? "text-[var(--accent-color)]" : "text-white/30"}`}>
                       {c.nextBooking
                         ? t("clients.next", { when: nextLabel(c.nextBooking, t, f.tag) })
-                        : c.rewardDue
+                        : !loyalty.enabled
+                          ? ""
+                          : c.rewardDue
                           ? t("clients.reward_next", { reward })
                           : c.cutsToReward === 1
                             ? t("clients.cuts_to_one", { reward })

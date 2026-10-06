@@ -60,6 +60,7 @@ export async function GET(
     accentColor: barber?.accent_color ?? null,
     partySize,
     rewardDue: !!loyalty?.due,
+    rewardCents: loyalty?.loyalty.cents ?? null,
     id: booking.id,
     status: booking.status,
     bookingTime: booking.booking_time,

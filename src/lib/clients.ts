@@ -1,4 +1,4 @@
-import { isRewardCut, nextRewardCut, type Plan } from "@/lib/loyalty-rules";
+import { isRewardCut, nextRewardCut, type Loyalty } from "@/lib/loyalty-rules";
 
 export type ClientSummary = {
   phone: string;
@@ -39,7 +39,7 @@ export function summarizeClients(input: {
   bookings: BookingRow[];
   prices: Record<string, number>;
   optOuts: string[];
-  plan: Plan;
+  loyalty: Loyalty;
   now?: Date;
 }): ClientSummary[] {
   const now = (input.now ?? new Date()).getTime();
@@ -82,8 +82,8 @@ export function summarizeClients(input: {
     }
   }
   for (const c of byPhone.values()) {
-    c.rewardDue = isRewardCut(c.stamps + 1, input.plan);
-    c.cutsToReward = nextRewardCut(c.stamps, input.plan) - c.stamps;
+    c.rewardDue = input.loyalty.enabled && isRewardCut(c.stamps + 1);
+    c.cutsToReward = nextRewardCut(c.stamps) - c.stamps;
   }
 
   return [...byPhone.values()].sort((a, b) => {

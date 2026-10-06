@@ -64,7 +64,9 @@ function activityText(e: FeedEvent, t: T, reward: string) {
   const service = typeof m.service_name === "string" ? m.service_name : "";
   const known = ["booking_created", "booking_completed", "booking_cancelled", "missed_call_caught", "loyalty_claimed", "review_sent", "cron_reengagement", "qr_scan", "sticker_request", "referral_qualified", "sticker_activated", "number_assigned"];
   if (!known.includes(e.event_type) || ((e.event_type === "booking_created" || e.event_type === "booking_completed") && !service)) return e.description;
-  return t(`activity.${e.event_type}`, { name, service, reward, code: typeof m.code === "string" ? m.code : "", phone: typeof m.phone === "string" ? formatPhone(m.phone) : "" });
+  // The reward the client actually got (barbers can change the amount later).
+  const amount = typeof m.amount_cents === "number" ? fmtMoney(m.amount_cents) : reward;
+  return t(`activity.${e.event_type}`, { name, service, reward: amount, code: typeof m.code === "string" ? m.code : "", phone: typeof m.phone === "string" ? formatPhone(m.phone) : "" });
 }
 
 

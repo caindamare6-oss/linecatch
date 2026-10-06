@@ -29,31 +29,31 @@ const base = { date: "Friday", time: "3pm", link: "https://x.co/m", party: "", p
 
 describe("client texts after the template-copy migration", () => {
   it("confirmation says $5 off this visit when a reward is due", () => {
-    expect(interpolateTemplate(confirmEn, { ...base, ...rewardVars(true) })).toBe(
+    expect(interpolateTemplate(confirmEn, { ...base, ...rewardVars(true, 500) })).toBe(
       "You're in. Friday at 3pm. $5 off this visit. If anything comes up, move it here: https://x.co/m"
     );
   });
 
   it("confirmation is unchanged when no reward is due", () => {
-    expect(interpolateTemplate(confirmEn, { ...base, ...rewardVars(false) })).toBe(
+    expect(interpolateTemplate(confirmEn, { ...base, ...rewardVars(false, 500) })).toBe(
       "You're in. Friday at 3pm. If anything comes up, move it here: https://x.co/m"
     );
   });
 
   it("group confirmation with a reward", () => {
-    expect(interpolateTemplate(confirmEn, { ...base, party: ", party of 3", ...rewardVars(true) })).toBe(
+    expect(interpolateTemplate(confirmEn, { ...base, party: ", party of 3", ...rewardVars(true, 500) })).toBe(
       "You're in, party of 3. Friday at 3pm. $5 off this visit. If anything comes up, move it here: https://x.co/m"
     );
   });
 
   it("Spanish confirmation with a reward", () => {
-    expect(interpolateTemplate(confirmEs, { ...base, ...rewardVars(true) })).toBe(
+    expect(interpolateTemplate(confirmEs, { ...base, ...rewardVars(true, 500) })).toBe(
       "Listo. Friday a las 3pm. $5 de descuento en esta visita. Si necesitas cambiarlo: https://x.co/m"
     );
   });
 
   it("2-hour reminder says $5 off this visit", () => {
-    expect(interpolateTemplate(twoHourEn, { time: "3pm", ...rewardVars(true) })).toBe(
+    expect(interpolateTemplate(twoHourEn, { time: "3pm", ...rewardVars(true, 500) })).toBe(
       "Chair's yours at 3pm. $5 off this visit. See you in a couple hours."
     );
   });

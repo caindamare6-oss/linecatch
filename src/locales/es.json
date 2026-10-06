@@ -649,7 +649,8 @@
     "err_past": "Elige una hora en el futuro",
     "err_outside_hours": "Esa hora está fuera del horario de la barbería",
     "err_taken": "Ese horario ya no está disponible",
-    "err_create": "No se pudo crear la cita"
+    "err_create": "No se pudo crear la cita",
+    "loyalty_note": "Tu 2.º corte lleva {amount} de descuento, y luego cada 3"
   },
   "manage": {
     "load_error": "No se pudo cargar la cita",
@@ -942,7 +943,8 @@
     "This sticker is already set up or doesn't exist": "Este sticker ya está configurado o no existe.",
     "Invalid call mode": "Modo de llamada no válido.",
     "Invalid text style": "Estilo de mensaje no válido.",
-    "Invalid carrier": "Compañía no válida."
+    "Invalid carrier": "Compañía no válida.",
+    "The reward must be between $1 and $50": "La recompensa debe ser de $1 a $50."
   },
   "vip": {
     "your_barber": "tu barbero",
@@ -1058,7 +1060,8 @@
     "next_photo": "Foto siguiente",
     "open_photo": "Abrir foto {n}",
     "meta_title": "{shop} · Reserva tu corte",
-    "meta_desc": "Mira los cortes recientes de {shop} y reserva en un minuto."
+    "meta_desc": "Mira los cortes recientes de {shop} y reserva en un minuto.",
+    "loyalty_chip": "2.º corte {amount} menos"
   },
   "legal": {
     "privacy_title": "Política de privacidad",
@@ -1119,5 +1122,12 @@
     "login": "Tu sesión se mantiene abierta por un año.",
     "login_iphone": "La primera vez que la abras desde la pantalla de inicio, entra una vez con tu número de teléfono (no con Google). Después tu sesión se mantiene abierta por un año.",
     "safari_tip": "Los enlaces de tus mensajes se abren en Safari, así que entra ahí una vez también. Tu sesión dura un año."
+  },
+  "loyalty_settings": {
+    "section": "Recompensas de lealtad",
+    "toggle": "Premiar a los clientes que vuelven",
+    "hint": "Todos los clientes: el primer corte a precio completo, el 2.º con {amount} de descuento y luego {amount} cada 3 cortes (5.º, 8.º, 11.º…). Se aplica solo en la visita.",
+    "amount": "Recompensa",
+    "amount_hint": "Dólares de descuento, de $1 a $50."
   }
 }

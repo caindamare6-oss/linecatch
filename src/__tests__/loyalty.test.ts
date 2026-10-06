@@ -1,72 +1,55 @@
 import { describe, it, expect } from "vitest";
-import { isRewardCut, nextRewardCut, visitReward } from "../lib/loyalty-rules";
+import { isRewardCut, nextRewardCut, visitReward, toLoyalty, DEFAULT_LOYALTY } from "../lib/loyalty-rules";
 
-const rewardCuts = (plan: "basic" | "full") =>
-  Array.from({ length: 16 }, (_, i) => i + 1).filter((n) => isRewardCut(n, plan));
+const ON = DEFAULT_LOYALTY;
+const rewardCuts = Array.from({ length: 14 }, (_, i) => i + 1).filter((n) => isRewardCut(n));
 
-describe("reward cadence by plan", () => {
-  it("Basic rewards cuts 3, 6, 9, 12, 15 — no signup reward", () => {
-    expect(rewardCuts("basic")).toEqual([3, 6, 9, 12, 15]);
+describe("one schedule for every client", () => {
+  it("1st cut full price, 2nd off, then every 3rd: 2, 5, 8, 11, 14", () => {
+    expect(rewardCuts).toEqual([2, 5, 8, 11, 14]);
   });
 
-  it("Full rewards cuts 1, 4, 7, 10, 13, 16", () => {
-    expect(rewardCuts("full")).toEqual([1, 4, 7, 10, 13, 16]);
+  it("cut 0 and cut 1 are never a reward", () => {
+    expect(isRewardCut(0)).toBe(false);
+    expect(isRewardCut(1)).toBe(false);
   });
 
-  it("cut 0 is never a reward", () => {
-    expect(isRewardCut(0, "basic")).toBe(false);
-    expect(isRewardCut(0, "full")).toBe(false);
-  });
-
-  it("nextRewardCut names the right upcoming cut (the old progress text was one late)", () => {
-    expect(nextRewardCut(3, "full")).toBe(4);
-    expect(nextRewardCut(2, "full")).toBe(4);
-    expect(nextRewardCut(0, "full")).toBe(1);
-    expect(nextRewardCut(0, "basic")).toBe(3);
-    expect(nextRewardCut(3, "basic")).toBe(6);
+  it("nextRewardCut names the right upcoming cut", () => {
+    expect(nextRewardCut(0)).toBe(2);
+    expect(nextRewardCut(1)).toBe(2);
+    expect(nextRewardCut(2)).toBe(5);
+    expect(nextRewardCut(4)).toBe(5);
+    expect(nextRewardCut(5)).toBe(8);
   });
 });
 
-describe("solo visits", () => {
-  it("Full: 1st visit is $5 off, 2nd and 3rd aren't, 4th is", () => {
-    expect(visitReward(0, 1, "full").due).toBe(true);
-    expect(visitReward(1, 1, "full").due).toBe(false);
-    expect(visitReward(2, 1, "full").due).toBe(false);
-    expect(visitReward(3, 1, "full").due).toBe(true);
+describe("visits", () => {
+  it("visit by visit: only the 2nd, 5th and 8th are off", () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7].map((before) => visitReward(before, ON).due)).toEqual([false, true, false, false, true, false, false, true]);
   });
 
-  it("Basic: only the 3rd visit is $5 off", () => {
-    expect([0, 1, 2, 3, 4, 5].map((before) => visitReward(before, 1, "basic").due)).toEqual([
-      false, false, true, false, false, true,
-    ]);
-  });
-});
-
-describe("group visits", () => {
-  it("each person adds a stamp to the booker's card", () => {
-    expect(visitReward(2, 3, "basic").stampsAfter).toBe(5);
-  });
-
-  it("a group that lands on a reward cut gets $5 once", () => {
-    const r = visitReward(1, 2, "basic"); // stamps 2,3 → hits 3
-    expect(r.due).toBe(true);
-    expect(r.rewardCut).toBe(3);
-  });
-
-  it("a group crossing two reward cuts still gets only one $5", () => {
-    // Full from 0 with a party of 4: stamps 1,2,3,4 cross cuts 1 and 4
-    const r = visitReward(0, 4, "full");
-    expect(r.due).toBe(true);
-    expect(r.rewardCut).toBe(1);
-    expect(r.stampsAfter).toBe(4);
-  });
-
-  it("a group that doesn't reach a reward cut gets nothing", () => {
-    expect(visitReward(3, 2, "basic").due).toBe(false); // stamps 4,5
+  it("a visit adds one stamp, however many people are in the party", () => {
+    expect(visitReward(2, ON).stampsAfter).toBe(3);
   });
 
   it("after the visit, the next reward is counted from the new total", () => {
-    expect(visitReward(0, 4, "full").nextRewardCut).toBe(7);
-    expect(visitReward(1, 2, "basic").nextRewardCut).toBe(6);
+    expect(visitReward(1, ON).nextRewardCut).toBe(5);
+    expect(visitReward(0, ON).upcomingRewardCut).toBe(2);
+  });
+
+  it("with loyalty off nothing is ever due", () => {
+    expect([0, 1, 4, 7].map((b) => visitReward(b, { enabled: false, cents: 500 }).due)).toEqual([false, false, false, false]);
+  });
+});
+
+describe("barber settings", () => {
+  it("on by default with $5", () => {
+    expect(toLoyalty(null)).toEqual({ enabled: true, cents: 500 });
+    expect(toLoyalty({ loyalty_enabled: null, loyalty_reward_cents: null })).toEqual({ enabled: true, cents: 500 });
+  });
+  it("their own amount, within $1–$50", () => {
+    expect(toLoyalty({ loyalty_enabled: true, loyalty_reward_cents: 1000 })).toEqual({ enabled: true, cents: 1000 });
+    expect(toLoyalty({ loyalty_enabled: true, loyalty_reward_cents: 99999 }).cents).toBe(500);
+    expect(toLoyalty({ loyalty_enabled: false, loyalty_reward_cents: 700 })).toEqual({ enabled: false, cents: 700 });
   });
 });

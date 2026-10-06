@@ -8,10 +8,10 @@ import { PageSkeleton } from "@/components/ui/skeleton";
 import { formatPhone, phoneFromPathId, clientPathId, shortAgo, type ClientSummary } from "@/lib/clients";
 import { useT, useFormat, useLocale } from "@/lib/i18n";
 import { money } from "@/lib/config";
-import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { DEFAULT_LOYALTY, type Loyalty } from "@/lib/loyalty-rules";
 
 type Visit = { id: string; time: string; status: string; service: string; price: number };
-type Detail = { client: ClientSummary; barberId: string; notes: string; source: string | null; plan: "basic" | "full"; history: Visit[] };
+type Detail = { client: ClientSummary; barberId: string; notes: string; source: string | null; loyalty: Loyalty; history: Visit[] };
 
 const STATUS: Record<string, { label: string; tone: string }> = {
   completed: { label: "", tone: "var(--accent-color)" },
@@ -25,9 +25,9 @@ export default function ClientDetailPage() {
   const t = useT();
   const f = useFormat();
   const locale = useLocale();
-  const reward = money(REWARD_CENTS, locale);
   const phone = phoneFromPathId(id);
   const [data, setData] = useState<Detail | null>(null);
+  const reward = money((data?.loyalty ?? DEFAULT_LOYALTY).cents, locale);
   const [error, setError] = useState(phone ? "" : t("client.not_found"));
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function ClientDetailPage() {
         <Action href={bookHref} label={t("common.book")} primary icon={<path d="M12 5v14M5 12h14" />} />
       </div>
 
-      <section className="mb-6">
+      {data.loyalty?.enabled !== false && <section className="mb-6">
         <SectionLabel>{t("client.loyalty")}</SectionLabel>
         <Card className="p-4">
           <div className="flex gap-1.5" aria-label={t("client.stamped", { n: c.stamps })}>
@@ -105,7 +105,7 @@ export default function ClientDetailPage() {
             {c.rewardDue ? t("client.reward_due", { reward }) : c.cutsToReward === 1 ? t("client.cuts_to_one", { reward }) : t("client.cuts_to", { n: c.cutsToReward, reward })}
           </p>
         </Card>
-      </section>
+      </section>}
 
       <section className="mb-6">
         <SectionLabel>{t("client.history")}</SectionLabel>

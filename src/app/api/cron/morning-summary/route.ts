@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { barberLocalToUTC, formatCasualTime } from "@/lib/format";
-import { projectVisit } from "@/lib/loyalty";
-import { DEFAULT_TZ } from "@/lib/config";
+import { projectVisit, REWARD_CENTS } from "@/lib/loyalty";
+import { DEFAULT_TZ, money } from "@/lib/config";
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -55,11 +55,13 @@ export async function GET(request: Request) {
 
     const visitKeys = new Set<string>();
     let rewardsDue = 0;
+    let rewardCents = REWARD_CENTS;
     for (const b of todayBookings) {
       const key = b.group_id || b.id;
       if (visitKeys.has(key)) continue;
       visitKeys.add(key);
       const p = await projectVisit(supabase, b.id);
+      if (p) rewardCents = p.loyalty.cents;
       if (p?.due && !p.alreadyRewarded) rewardsDue++;
     }
 
@@ -67,8 +69,8 @@ export async function GET(request: Request) {
     const rewardLine = !rewardsDue
       ? ""
       : es
-        ? `${rewardsDue} ${rewardsDue === 1 ? "tiene" : "tienen"} $5 de descuento (mira la insignia).`
-        : `${rewardsDue} get${rewardsDue === 1 ? "s" : ""} $5 off (check the badge).`;
+        ? `${rewardsDue} ${rewardsDue === 1 ? "tiene" : "tienen"} ${money(rewardCents)} de descuento (mira la insignia).`
+        : `${rewardsDue} get${rewardsDue === 1 ? "s" : ""} ${money(rewardCents)} off (check the badge).`;
 
     const msg = (es
       ? `${cutsToday} ${cutsToday > 1 ? "cortes" : "corte"} hoy, el primero a las ${firstTime}. ${rewardLine}`
