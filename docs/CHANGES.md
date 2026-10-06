@@ -190,6 +190,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
   - **The offer is shown** as a "2nd cut $5 off" chip on the portfolio and a note on the booking page for new clients. Loyalty texts, confirmations, reminders, the morning summary and the client screens use the barber's amount.
   - **The sticker QR opens the barber's portfolio** (or the booking page until they have a portfolio link). The VIP sign-up page stays for the link barbers share from Clients.
   - **Auto-complete only looks back 24 hours**, so a loyalty text never goes out days after a visit.
+- **Admin → Texts** (Oct 6): a founder-only page (Settings → Admin: Texts) to rewrite every default text, English and Spanish, with a preview, a character / text / cost counter and checks that needed fill-ins like {link} stay in. The missed-call Casual and Professional wording are editable there too. Saving changes it for every barber right away (barbers who wrote their own missed-call text keep theirs). STOP / HELP / START replies stay fixed.
 - **Staying logged in and links** (Oct 6):
   - Fixed a way barbers could get logged out: when the app redirected (for example, opening the login page while already logged in), it dropped the freshly renewed login.
   - A link to a page in the app opens that page. Logged out, you log in once and land on that page, not Home (Google, email and phone-code logins all return there).
@@ -213,6 +214,7 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
 | `20261005_missed_call_style_short_links` | Missed-call text style (Casual by default) and short links |
 | `20261005b_carrier` | The barber's cell carrier, for the one-tap forwarding code |
 | `20261006_loyalty_settings` | Loyalty on/off and amount per barber; loyalty texts name the amount |
+| `20261006b_missed_call_presets` | Optional: stores the missed-call Casual/Professional wording (Admin → Texts creates them on first save anyway) |
 | `20261002h_lock_users_writes` | **Security fix.** Run this one even if nothing else ships. |
 
 ## Before you deploy

@@ -21,3 +21,23 @@ describe("links in texts to the barber", () => {
     );
   });
 });
+
+import { TEXT_CATALOG, missingFillIns, unknownFillIns, fillExample } from "@/lib/text-catalog";
+import { measure } from "@/lib/sms-segments";
+
+describe("Admin → Texts checks", () => {
+  const confirm = TEXT_CATALOG.find((t) => t.key === "booking_confirm")!;
+  it("a text that loses its link can't be saved", () => {
+    expect(missingFillIns("You're in. {date} at {time}.", confirm)).toEqual(["link"]);
+    expect(missingFillIns("You're in. {date} at {time}. {link}", confirm)).toEqual([]);
+  });
+  it("a fill-in the text can't use is caught", () => {
+    expect(unknownFillIns("Hi {first_nam}. {link}", confirm)).toEqual(["first_nam"]);
+  });
+  it("counter: 160 plain characters is 1 text, one accent makes it 70 per text", () => {
+    expect(measure("a".repeat(160)).segments).toBe(1);
+    expect(measure("a".repeat(161)).segments).toBe(2);
+    expect(measure("á" + "a".repeat(70)).segments).toBe(2);
+    expect(fillExample("Book: {link}")).toBe("Book: www.linecatch.app/c/K7mP2xQa");
+  });
+});

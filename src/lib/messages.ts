@@ -115,9 +115,16 @@ export async function buildSMS(opts: {
   const barberName = barberProfile?.first_name || "";
 
   // Missed-call text: the style the barber picked in Settings (Casual unless they changed it).
-  const template = isMissedCall
-    ? missedCallTemplate(barberProfile?.missed_call_style, barberProfile?.custom_message, language)
-    : await resolveTemplate(opts.userId, opts.templateKey, language);
+  // Casual and Professional wording comes from Admin → Texts, with the built-in copy as backup.
+  let template: string | null;
+  if (isMissedCall) {
+    const style = barberProfile?.missed_call_style;
+    const own = style === "custom" && barberProfile?.custom_message?.includes("{link}");
+    const preset = own ? null : await resolveTemplate(opts.userId, `missed_call_${style === "professional" ? "professional" : "casual"}`, language);
+    template = preset?.includes("{link}") ? preset : missedCallTemplate(style, barberProfile?.custom_message, language);
+  } else {
+    template = await resolveTemplate(opts.userId, opts.templateKey, language);
+  }
   if (!template) return null;
 
   const allVars: Record<string, string> = {

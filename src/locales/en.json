@@ -521,7 +521,8 @@
     "style_professional": "Professional",
     "style_custom": "Write my own",
     "stop_first_only": "“Reply STOP to opt out” is added to a caller’s first text only.",
-    "add_shop_name": "Add your shop name so callers know who’s texting →"
+    "add_shop_name": "Add your shop name so callers know who’s texting →",
+    "admin_texts": "Admin: Texts"
   },
   "login": {
     "tagline": "Never lose a customer to a missed call",

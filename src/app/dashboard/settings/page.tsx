@@ -34,6 +34,7 @@ type Settings = {
   loyalty_enabled: boolean | null;
   loyalty_reward_cents: number | null;
   lastMissedCallAt: string | null;
+  missedCallPresets?: Partial<Record<"casual" | "professional", { en: string; es: string }>>;
   business_hours: Hours | null;
   timezone: string;
   feature_autotext: boolean | null;
@@ -271,6 +272,7 @@ export default function SettingsPage() {
         <div className="space-y-2">
           {s.isAdmin && <NavRow href="/dashboard/admin/stickers" label={t("settings.admin_stickers")} />}
           {s.isAdmin && <NavRow href="/dashboard/admin/twilio" label={t("settings.admin_twilio")} />}
+          {s.isAdmin && <NavRow href="/dashboard/admin/texts" label={t("settings.admin_texts")} />}
           <NavRow href="/privacy" label={t("settings.privacy")} />
           <NavRow href="/terms" label={t("settings.terms")} />
           <a href={`mailto:${SUPPORT_EMAIL}`} className="block">
@@ -691,12 +693,13 @@ function MissedCallText({ s, onSaved }: { s: Settings; onSaved: (v: Pick<Setting
   // A saved text without {link} can't carry the booking link, so start the editor from Casual.
   const savedCustom = s.custom_message?.includes("{link}") ? s.custom_message.replace(/\s*(Reply STOP to opt out|Responde STOP[^.]*)\.?\s*$/i, "").trim() : "";
   const [style, setStyle] = useState<MissedCallStyle>(savedStyle);
-  const [draft, setDraft] = useState(savedCustom || MISSED_CALL_PRESETS.casual[locale]);
+  const [draft, setDraft] = useState(savedCustom || s.missedCallPresets?.casual?.[locale] || MISSED_CALL_PRESETS.casual[locale]);
   const [saved, setSaved] = useState({ style: savedStyle, custom: savedCustom });
   const [state, setState] = useState<"idle" | "saving" | "saved">("idle");
   const [err, setErr] = useState("");
 
-  const template = style === "custom" ? draft : missedCallTemplate(style, null, locale);
+  const preset = style === "custom" ? null : s.missedCallPresets?.[style]?.[locale];
+  const template = style === "custom" ? draft : preset || missedCallTemplate(style, null, locale);
   const shop = s.business_name?.trim() || s.first_name?.trim() || "";
   const preview = withShopName(template.replace(/\{link\}/g, "www.linecatch.app/c/K7mP2xQa"), shop);
   const unchanged = style === saved.style && (style !== "custom" || draft === saved.custom);

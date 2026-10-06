@@ -521,7 +521,8 @@
     "style_professional": "Profesional",
     "style_custom": "Escribir el mío",
     "stop_first_only": "“Responde STOP…” se agrega solo al primer mensaje de cada persona.",
-    "add_shop_name": "Agrega el nombre de tu barbería para que sepan quién les escribe →"
+    "add_shop_name": "Agrega el nombre de tu barbería para que sepan quién les escribe →",
+    "admin_texts": "Admin: Mensajes"
   },
   "login": {
     "tagline": "No pierdas otro cliente por una llamada perdida",

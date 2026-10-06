@@ -35,7 +35,10 @@ export async function GET() {
   }
   // Proof forwarding works: the last missed call that reached their LineCatch number.
   const { data: last } = await admin.from("missed_calls").select("received_at").eq("user_id", user.id).order("received_at", { ascending: false }).limit(1).maybeSingle();
-  return NextResponse.json({ ...data, numberMissing, lastMissedCallAt: last?.received_at ?? null, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
+  // Casual and Professional wording as the founder set it on Admin → Texts, for the Settings preview.
+  const { data: presetRows } = await admin.from("message_templates").select("template_key, custom_message, custom_message_es").is("user_id", null).in("template_key", ["missed_call_casual", "missed_call_professional"]);
+  const missedCallPresets = Object.fromEntries((presetRows || []).map((r) => [r.template_key.replace("missed_call_", ""), { en: r.custom_message, es: r.custom_message_es || r.custom_message }]));
+  return NextResponse.json({ ...data, numberMissing, missedCallPresets, lastMissedCallAt: last?.received_at ?? null, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
 }
 
 /** Partial update: only the keys sent are validated and saved. */

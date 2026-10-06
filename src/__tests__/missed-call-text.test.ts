@@ -87,3 +87,14 @@ describe("short links", () => {
     expect(await shortenLinks(db as never, long)).toBe(long);
   });
 });
+
+describe("missed-call styles in the database (Admin → Texts)", () => {
+  it("start out with exactly the built-in wording", async () => {
+    const { readFileSync } = await import("node:fs");
+    const sql = readFileSync(new URL("../../supabase/migrations/20261006b_missed_call_presets.sql", import.meta.url), "utf8").replace(/''/g, "'");
+    for (const p of Object.values(MISSED_CALL_PRESETS)) {
+      expect(sql).toContain(`'${p.en}'`);
+      expect(sql).toContain(`'${p.es}'`);
+    }
+  });
+});
