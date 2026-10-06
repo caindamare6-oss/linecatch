@@ -8,6 +8,10 @@ type Admin = ReturnType<typeof createAdminClient>;
 
 const NO_SHOW_AFTER_HOURS = 12;
 
+/** "2026-10-05" for this moment in the barber's timezone. */
+export const localDate = (d: string | Date, tz: string) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(d));
+
 export type VisitProjection = ReturnType<typeof visitReward> & {
   plan: Plan;
   stampsBefore: number;
@@ -87,16 +91,17 @@ export async function completeBookingLoyalty(db: Admin, bookingId: string, tz: s
     .update({ status: "completed" })
     .eq("id", bookingId)
     .eq("status", "confirmed")
-    .select("id, user_id, customer_phone, group_id")
+    .select("id, user_id, customer_phone, group_id, booking_time")
     .maybeSingle();
   if (error) throw error;
   if (!row) return null;
 
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  // The day of the cut itself (completing it later, or automatically after midnight, doesn't move it).
+  const cutDay = localDate(row.booking_time, tz);
   const { data: stamp } = await db.rpc("loyalty_add_stamp", {
     p_user_id: row.user_id,
     p_phone: row.customer_phone,
-    p_date: today,
+    p_date: cutDay,
   });
   const newCutCount = typeof stamp === "number" ? stamp : null;
 

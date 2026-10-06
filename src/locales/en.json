@@ -356,7 +356,9 @@
     "marked_no_show": "Marked as a no-show.",
     "action_error": "That didn't work. Try again.",
     "min": "{n} min",
-    "back_today": "Back to today"
+    "back_today": "Back to today",
+    "didnt_show": "Didn't show up? Mark as no-show",
+    "auto_done_note": "Not tapped? It’s marked done {hours} hours after it ends."
   },
   "clients": {
     "title": "Clients",
@@ -701,7 +703,8 @@
     "err_outside_hours": "That time is outside business hours",
     "err_taken": "That time slot was just taken. Please pick another.",
     "err_reschedule": "Failed to reschedule booking. Please try again.",
-    "err_invalid_action": "Invalid action"
+    "err_invalid_action": "Invalid action",
+    "err_no_show_late": "It's been more than 24 hours, so this can't be changed to a no-show anymore"
   },
   "ui": {
     "back": "Back",
@@ -1040,6 +1043,21 @@
     "other_iphone_steps": "Call your carrier (dial 611) and say: “Please forward my calls to {number} when I don’t answer or I’m busy.”",
     "other_avoid": "Don’t use “Forward all calls”: your phone would stop ringing.",
     "working": "Working. Last missed call came in {when}.",
-    "test_it": "Test it: have someone call your cell and let it ring. They should get the text within a minute."
+    "test_it": "Test it: have someone call your cell and let it ring. They should get the text within a minute.",
+    "step_photo": "Add a photo of yourself"
+  },
+  "install": {
+    "section": "App",
+    "title": "Put LineCatch on your home screen. It opens full screen, like an app.",
+    "button": "Install LineCatch",
+    "done": "Installed. Open it from your home screen.",
+    "iphone_1": "Open this page in Safari.",
+    "iphone_2": "Tap the Share button (the square with an arrow) at the bottom.",
+    "iphone_3": "Scroll down, tap “Add to Home Screen”, then “Add”.",
+    "android_1": "Open this page in Chrome.",
+    "android_2": "Tap ⋮ (top right).",
+    "android_3": "Tap “Add to Home screen” or “Install app”.",
+    "login": "You stay logged in for a year.",
+    "login_iphone": "The first time you open it from the home screen, log in once with your phone number (not Google). After that you stay logged in for a year."
   }
 }

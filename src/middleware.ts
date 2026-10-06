@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
   const isCallbackRoute = path.startsWith("/auth/callback");
   const isOnboarding = path.startsWith("/onboarding");
   const isVip = path.startsWith("/vip/");
-  const isPublicPage = path === "/privacy" || path === "/terms" || path === "/robots.txt";
+  const isPublicPage = path === "/privacy" || path === "/terms" || path === "/robots.txt" || path === "/manifest.webmanifest";
   const isBooking = path.startsWith("/book/");
   const isManage = path.startsWith("/manage/");
   const isSticker = path.startsWith("/s/");

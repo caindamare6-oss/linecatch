@@ -7,7 +7,8 @@ import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
 import { getT } from "@/lib/i18n-server";
 import { DEFAULT_TZ, appUrl } from "@/lib/config";
-import { completeBookingLoyalty, closeVisitIfResolved, projectVisit } from "@/lib/loyalty";
+import { projectVisit } from "@/lib/loyalty";
+import { completeBooking, markNoShow, closeOutVisit } from "@/lib/complete-booking";
 import { hasTextConsent } from "@/lib/opt-out";
 
 const CLIENT_CUTOFF_HOURS = 3;
@@ -142,108 +143,29 @@ export async function PATCH(
   // Texts to the client (loyalty, cancel, reschedule) only go to someone who agreed to get texts.
   const clientConsented = await hasTextConsent(supabase as unknown as Parameters<typeof hasTextConsent>[0], booking.user_id, booking.customer_phone);
 
-  // Once every person in the visit is completed or cancelled: one loyalty text + review request.
-  async function closeOutVisit() {
-    const closeout = await closeVisitIfResolved(supabase, id);
-    if (!closeout || closeout.cutCount === null || closeout.nextCut === null || !barber?.phone_number) return;
-    const templateKey = closeout.visitRewarded ? "loyalty_earned" : "loyalty_progress";
-    const loyaltySms = await buildSMS({
-      userId: booking!.user_id,
-      templateKey,
-      clientPhone: booking!.customer_phone,
-      vars: {
-        shop_name: shopName,
-        link,
-        cuts: String(closeout.cutCount),
-        next_cut: String(closeout.nextCut),
-        cuts_left: String(closeout.nextCut - closeout.cutCount),
-      },
-    });
-    if (!loyaltySms || !clientConsented) return;
-    try {
-      await sendSMS({ to: booking!.customer_phone, from: barber.phone_number, body: loyaltySms.body, userId: booking!.user_id, templateKey, language: loyaltySms.language });
-      await markFirstMessageSent(booking!.user_id, booking!.customer_phone);
-    } catch (err) {
-      console.error("Loyalty SMS failed:", err);
+  if (action === "complete") {
+    if (!isOwner) return NextResponse.json({ error: t("manage.err_not_allowed") }, { status: 403 });
+    const r = await completeBooking(supabase, id, "barber");
+    if (!r.ok) {
+      return NextResponse.json({ error: t(r.error === "failed" ? "manage.err_complete" : "manage.err_not_active") }, { status: r.error === "failed" ? 500 : 400 });
     }
+    return NextResponse.json({ success: true, status: "completed" });
   }
 
-  if (action === "complete") {
-    if (booking.status !== "confirmed") {
-      return NextResponse.json({ error: t("manage.err_not_active") }, { status: 400 });
+  // Barber marks a client who never showed: a booking still waiting, or one already marked done
+  // (by them or automatically) within 24 hours. No stamp, no texts.
+  if (action === "no_show") {
+    if (!isOwner) return NextResponse.json({ error: t("manage.err_not_allowed") }, { status: 403 });
+    const r = await markNoShow(supabase, id);
+    if (!r.ok) {
+      const key = r.error === "too_early" ? "manage.err_no_show_early" : r.error === "too_late" ? "manage.err_no_show_late" : r.error === "failed" ? "manage.err_update" : "manage.err_not_active";
+      return NextResponse.json({ error: t(key) }, { status: r.error === "failed" ? 500 : 400 });
     }
-
-    let result: Awaited<ReturnType<typeof completeBookingLoyalty>>;
-    try {
-      result = await completeBookingLoyalty(supabase, id, tz);
-    } catch (err) {
-      console.error("[bookings/complete]", err);
-      return NextResponse.json({ error: t("manage.err_complete") }, { status: 500 });
-    }
-    if (!result) {
-      return NextResponse.json({ error: t("manage.err_not_active") }, { status: 400 });
-    }
-    const { projection, rewardedNow } = result;
-
-    // Get client name for activity feed
-    const { data: vipForName } = await supabase
-      .from("vip_clients")
-      .select("first_name")
-      .eq("user_id", booking.user_id)
-      .eq("phone_number", booking.customer_phone)
-      .single();
-    const completedClientName = vipForName?.first_name || null;
-
-    await supabase.from("activity_feed").insert({
-      user_id: booking.user_id,
-      event_type: "booking_completed",
-      client_name: completedClientName,
-      client_phone: booking.customer_phone,
-      description: `${completedClientName || "Client"}'s ${service?.name || "cut"} completed`,
-      metadata: { booking_id: id, service_name: service?.name || null },
-    });
-
-    // Delete unsent reminders
-    await supabase
-      .from("booking_reminders")
-      .delete()
-      .eq("booking_id", id)
-      .in("reminder_type", ["24h", "2h"]);
-
-    if (rewardedNow && projection) {
-      await supabase.from("activity_feed").insert({
-        user_id: booking.user_id,
-        event_type: "loyalty_claimed",
-        client_name: completedClientName,
-        client_phone: booking.customer_phone,
-        description: `${completedClientName || "Client"} got $5 off (cut #${projection.rewardCut})`,
-        metadata: { booking_id: id, visit_key: projection.visitKey, cut_count: projection.rewardCut },
-      });
-    }
-
-    await closeOutVisit();
-
-    return NextResponse.json({ success: true, status: "completed" });
+    return NextResponse.json({ success: true, status: "no_show" });
   }
 
   if (booking.status !== "confirmed") {
     return NextResponse.json({ error: t("manage.err_not_active") }, { status: 400 });
-  }
-
-  // Barber marks a client who never showed. No stamp, no texts; reminders that haven't gone out are dropped.
-  if (action === "no_show") {
-    if (!isOwner) return NextResponse.json({ error: t("manage.err_not_allowed") }, { status: 403 });
-    if (new Date(booking.booking_time).getTime() > Date.now()) {
-      return NextResponse.json({ error: t("manage.err_no_show_early") }, { status: 400 });
-    }
-    const { error: nsError } = await supabase.from("bookings").update({ status: "no_show" }).eq("id", id).eq("status", "confirmed");
-    if (nsError) {
-      console.error("[bookings/no_show]", nsError);
-      return NextResponse.json({ error: t("manage.err_update") }, { status: 500 });
-    }
-    await supabase.from("booking_reminders").delete().eq("booking_id", id).in("reminder_type", ["24h", "2h"]);
-    await closeOutVisit();
-    return NextResponse.json({ success: true, status: "no_show" });
   }
 
   if (action === "cancel") {
@@ -307,7 +229,7 @@ export async function PATCH(
     }
 
     // Cancelling the last unresolved person of a partly-completed group finishes that visit.
-    await closeOutVisit();
+    await closeOutVisit(supabase, id);
 
     return NextResponse.json({ success: true, status: "cancelled" });
   }

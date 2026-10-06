@@ -9,6 +9,7 @@ import { minutesInTz } from "@/lib/format";
 import { formatPhone, clientPathId } from "@/lib/clients";
 import { useT, useFormat, useLocale } from "@/lib/i18n";
 import { money } from "@/lib/config";
+import { AUTO_COMPLETE_AFTER_HOURS, UNDO_WINDOW_HOURS } from "@/lib/complete-booking-rules";
 
 type Booking = {
   id: string;
@@ -245,6 +246,7 @@ function Schedule() {
           booking={open}
           tz={data.timezone}
           started={new Date(open.time).getTime() <= now}
+          canUndo={now - new Date(open.time).getTime() < UNDO_WINDOW_HOURS * 3_600_000}
           onClose={() => setOpen(null)}
           onChanged={() => {
             setOpen(null);
@@ -275,7 +277,7 @@ function Closed({ lo, from, to }: { lo: number; from: number; to: number }) {
   );
 }
 
-function BookingSheet({ booking: b, tz, started, onClose, onChanged }: { booking: Booking; tz: string; started: boolean; onClose: () => void; onChanged: () => void }) {
+function BookingSheet({ booking: b, tz, started, canUndo, onClose, onChanged }: { booking: Booking; tz: string; started: boolean; canUndo: boolean; onClose: () => void; onChanged: () => void }) {
   const t = useT();
   const f = useFormat();
   const locale = useLocale();
@@ -348,9 +350,22 @@ function BookingSheet({ booking: b, tz, started, onClose, onChanged }: { booking
               </button>
             </div>
             {confirmCancel && <p className="text-[11px] text-white/40 text-center">{t("schedule.cancel_note")}</p>}
+            <p className="text-[11px] text-white/35 text-center">{t("schedule.auto_done_note", { hours: AUTO_COMPLETE_AFTER_HOURS })}</p>
           </div>
         ) : (
-          <p className="mt-4 text-[13px] text-white/45 text-center">{b.status === "completed" ? t("schedule.marked_done") : t("schedule.marked_no_show")}</p>
+          <div className="mt-4 space-y-2">
+            <p className="text-[13px] text-white/45 text-center">{b.status === "completed" ? t("schedule.marked_done") : t("schedule.marked_no_show")}</p>
+            {/* Done automatically (or by mistake) but they never came: take the stamp back. */}
+            {b.status === "completed" && canUndo && (
+              <button
+                onClick={() => act("no_show")}
+                disabled={!!busy}
+                className="w-full h-11 rounded-xl border border-white/[0.1] text-[13px] text-white/70 disabled:opacity-35"
+              >
+                {busy === "no_show" ? t("common.saving") : t("schedule.didnt_show")}
+              </button>
+            )}
+          </div>
         )}
         {error && <p className="mt-3 text-[13px] text-[#F08A8A]">{error}</p>}
       </div>

@@ -356,7 +356,9 @@
     "marked_no_show": "Marcado como que no vino.",
     "action_error": "No funcionó. Inténtalo de nuevo.",
     "min": "{n} min",
-    "back_today": "Volver a hoy"
+    "back_today": "Volver a hoy",
+    "didnt_show": "¿No vino? Marcar como inasistencia",
+    "auto_done_note": "¿No lo marcaste? Se marca como hecho {hours} horas después de terminar."
   },
   "clients": {
     "title": "Clientes",
@@ -701,7 +703,8 @@
     "err_outside_hours": "Esa hora está fuera del horario de la barbería",
     "err_taken": "Alguien acaba de tomar ese horario. Elige otro.",
     "err_reschedule": "No se pudo cambiar la cita. Inténtalo de nuevo.",
-    "err_invalid_action": "Acción no válida"
+    "err_invalid_action": "Acción no válida",
+    "err_no_show_late": "Pasaron más de 24 horas, ya no se puede cambiar a inasistencia"
   },
   "ui": {
     "back": "Atrás",
@@ -1098,6 +1101,21 @@
     "other_iphone_steps": "Llama a tu compañía (marca 611) y di: “Por favor desvíen mis llamadas a {number} cuando no conteste o esté ocupado.”",
     "other_avoid": "No uses “Desviar todas las llamadas”: tu teléfono dejaría de sonar.",
     "working": "Funciona. La última llamada perdida llegó el {when}.",
-    "test_it": "Pruébalo: pide que alguien llame a tu celular y lo deje sonar. Debe recibir el mensaje en un minuto."
+    "test_it": "Pruébalo: pide que alguien llame a tu celular y lo deje sonar. Debe recibir el mensaje en un minuto.",
+    "step_photo": "Agrega una foto tuya"
+  },
+  "install": {
+    "section": "App",
+    "title": "Pon LineCatch en tu pantalla de inicio. Se abre en pantalla completa, como una app.",
+    "button": "Instalar LineCatch",
+    "done": "Instalada. Ábrela desde tu pantalla de inicio.",
+    "iphone_1": "Abre esta página en Safari.",
+    "iphone_2": "Toca el botón Compartir (el cuadro con una flecha) abajo.",
+    "iphone_3": "Baja, toca “Agregar a inicio” y luego “Agregar”.",
+    "android_1": "Abre esta página en Chrome.",
+    "android_2": "Toca ⋮ (arriba a la derecha).",
+    "android_3": "Toca “Agregar a la pantalla principal” o “Instalar app”.",
+    "login": "Tu sesión se mantiene abierta por un año.",
+    "login_iphone": "La primera vez que la abras desde la pantalla de inicio, entra una vez con tu número de teléfono (no con Google). Después tu sesión se mantiene abierta por un año."
   }
 }

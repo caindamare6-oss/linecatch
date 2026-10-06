@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { assignNumberSoon } from "@/lib/phone-numbers";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = new Set([
@@ -89,5 +90,7 @@ export async function POST(request: Request) {
     );
   }
 
+  // Their photo may be the last step before they get a LineCatch number.
+  assignNumberSoon(user.id);
   return NextResponse.json({ avatar_url: avatarUrl });
 }

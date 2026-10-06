@@ -158,12 +158,12 @@ function OnboardingFlow({
     }
   });
   const [businessHours, setBusinessHours] = useState<BusinessHours>({
-    monday: { open: "09:00", close: "18:00" },
-    tuesday: { open: "09:00", close: "18:00" },
-    wednesday: { open: "09:00", close: "18:00" },
-    thursday: { open: "09:00", close: "18:00" },
-    friday: { open: "09:00", close: "18:00" },
-    saturday: { open: "09:00", close: "18:00" },
+    monday: { open: "10:00", close: "19:00" },
+    tuesday: { open: "10:00", close: "19:00" },
+    wednesday: { open: "10:00", close: "19:00" },
+    thursday: { open: "10:00", close: "19:00" },
+    friday: { open: "10:00", close: "19:00" },
+    saturday: { open: "10:00", close: "19:00" },
     sunday: null,
   });
 
@@ -406,14 +406,14 @@ function OnboardingFlow({
   function toggleDay(day: string) {
     setBusinessHours((prev) => ({
       ...prev,
-      [day]: prev[day] ? null : { open: "09:00", close: "18:00" },
+      [day]: prev[day] ? null : { open: "10:00", close: "19:00" },
     }));
   }
 
   function updateHours(day: string, field: "open" | "close", value: string) {
     setBusinessHours((prev) => ({
       ...prev,
-      [day]: { ...(prev[day] || { open: "09:00", close: "18:00" }), [field]: value },
+      [day]: { ...(prev[day] || { open: "10:00", close: "19:00" }), [field]: value },
     }));
   }
 

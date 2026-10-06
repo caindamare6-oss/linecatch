@@ -171,6 +171,8 @@ export default function SettingsPage() {
         />
       </section>
 
+      <InstallCard />
+
       <section id="features">
         <SectionLabel>{t("settings.included")}</SectionLabel>
         <div className="space-y-2">
@@ -272,6 +274,7 @@ const STEP_LINKS: Record<string, string> = {
   services: "/dashboard/services",
   hours: "/dashboard/settings#hours",
   portfolio: "/dashboard/portfolio",
+  photo: "/dashboard/portfolio",
 };
 
 /** The barber's LineCatch number and how to send unanswered calls to it. */
@@ -438,6 +441,63 @@ function ForwardSetup({ s, onCarrier, copy, copied }: { s: Settings; onCarrier: 
       )}
       {err && <p className="text-[12px] text-[#F08A8A]" role="alert">{err}</p>}
     </div>
+  );
+}
+
+type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+
+/** "Put LineCatch on your home screen": hidden once it's opened from the home screen. */
+function InstallCard() {
+  const t = useT();
+  // Settings only renders in the browser (after it loads), so navigator and matchMedia are there.
+  const [installed] = useState(() => window.matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true);
+  const [iphone] = useState(() => /iPhone|iPad|iPod/i.test(navigator.userAgent));
+  const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    // Android Chrome offers a real "Install" button.
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setPrompt(e as InstallPrompt);
+    };
+    const onInstalled = () => setDone(true);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  if (installed) return null;
+
+  return (
+    <section id="app">
+      <SectionLabel>{t("install.section")}</SectionLabel>
+      <Card className="p-4 space-y-3">
+        <p className="text-[14px] text-white/85">{t("install.title")}</p>
+        {done ? (
+          <p className="text-[13px] text-[#7FC79A]">✓ {t("install.done")}</p>
+        ) : prompt ? (
+          <button
+            onClick={async () => {
+              await prompt.prompt();
+              if ((await prompt.userChoice).outcome === "accepted") setDone(true);
+              setPrompt(null);
+            }}
+            className="w-full h-11 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[13px] font-semibold"
+          >
+            {t("install.button")}
+          </button>
+        ) : (
+          <ol className="space-y-1.5 text-[13px] text-white/65 list-decimal pl-5">
+            {(iphone ? ["iphone_1", "iphone_2", "iphone_3"] : ["android_1", "android_2", "android_3"]).map((k) => (
+              <li key={k}>{t(`install.${k}`)}</li>
+            ))}
+          </ol>
+        )}
+        <p className="text-[12px] text-white/40 leading-relaxed">{t(iphone ? "install.login_iphone" : "install.login")}</p>
+      </Card>
+    </section>
   );
 }
 
@@ -699,7 +759,7 @@ function HoursEditor({ initial, timezone, onSaved }: { initial: Hours | null; ti
                 role="switch"
                 aria-checked={!!v}
                 aria-label={t("settings.open_day", { day: t(`days.${day}`) })}
-                onClick={() => update(day, v ? null : { open: "09:00", close: "18:00" })}
+                onClick={() => update(day, v ? null : { open: "10:00", close: "19:00" })}
                 className={`relative w-[38px] h-[22px] rounded-full shrink-0 transition-colors ${v ? "bg-[var(--accent-color)]" : "bg-white/[0.14]"}`}
               >
                 <span className={`absolute top-[3px] w-4 h-4 rounded-full bg-[#FAF7F2] transition-[left] ${v ? "left-[19px]" : "left-[3px]"}`} />

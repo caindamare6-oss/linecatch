@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { DevThemeEditorLoader } from "@/components/dev-theme-loader";
@@ -21,7 +21,11 @@ const body = DM_Sans({
 export const metadata: Metadata = {
   title: "LineCatch",
   description: "Never lose a customer to a missed call",
+  // iPhone "Add to Home Screen": open full screen with the app's name under the icon.
+  appleWebApp: { capable: true, title: "LineCatch", statusBarStyle: "black" },
 };
+
+export const viewport: Viewport = { themeColor: "#121110" };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Saved choice wins; otherwise follow the browser (Spanish phones open in Spanish).

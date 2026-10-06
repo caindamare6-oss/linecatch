@@ -176,6 +176,13 @@ The barber app was reskinned to the gold design canvas, then tested end to end o
   - **Verizon:** `*71<number>` (no answer and Decline). Off: `*73`.
   - **Other carriers:** step-by-step Android menu path, and what to say to the carrier (611) on iPhone.
   - **"✓ Working"** shows once a missed call has come in, with its time; before that, how to test it.
+- **Cuts finish on their own** (Oct 6):
+  - A cut nobody marked counts as done **2 hours after it ends**, exactly as if the barber tapped Done: loyalty stamp, $5 reward when due, loyalty text, review request. Locked accounts and bookings older than a week are left for the barber.
+  - **"Didn't show up? Mark as no-show"** on a done cut, for 24 hours after the appointment. It takes back the stamp, the $5 and a pending review request, and puts "last cut" back on their previous real cut so Wednesday texts stay right.
+  - The "Done with Jamie?" text to barbers is gone.
+  - The stamp is dated the day of the cut, even when it's finished later.
+- **Home-screen app:** LineCatch has an app icon and name, and opens full screen from the home screen. Settings → App shows the iPhone or Android steps (or an Install button on Android Chrome). Logins last a year; on iPhone the home-screen app needs one login with the phone-number code.
+- **Setup:** new barbers start with 10am–7pm hours. Their own photo is now one of the steps before they get a LineCatch number.
 
 ---
 
