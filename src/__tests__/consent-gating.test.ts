@@ -15,27 +15,26 @@ function shouldDispatchSMS(
   isLockedOut: boolean
 ): { dispatch: boolean; reason: string | null } {
   if (isLockedOut) return { dispatch: false, reason: "trial_locked" };
-  if (!vipClient || !vipClient.is_opted_in) return { dispatch: false, reason: "no_consent" };
-  if (vipClient.opted_out_at) return { dispatch: false, reason: "opted_out" };
+  if (vipClient?.opted_out_at) return { dispatch: false, reason: "opted_out" };
   if (optOut) return { dispatch: false, reason: "opted_out" };
   return { dispatch: true, reason: null };
 }
 
 describe("consent gating", () => {
-  it("non-opted-in caller gets logged and not texted", () => {
+  it("caller who never opted in still gets texted", () => {
     const result = shouldDispatchSMS(null, false, false);
-    expect(result.dispatch).toBe(false);
-    expect(result.reason).toBe("no_consent");
+    expect(result.dispatch).toBe(true);
+    expect(result.reason).toBeNull();
   });
 
-  it("caller with is_opted_in=false gets logged and not texted", () => {
+  it("caller with is_opted_in=false still gets texted", () => {
     const result = shouldDispatchSMS(
       { id: "1", is_opted_in: false, opted_out_at: null },
       false,
       false
     );
-    expect(result.dispatch).toBe(false);
-    expect(result.reason).toBe("no_consent");
+    expect(result.dispatch).toBe(true);
+    expect(result.reason).toBeNull();
   });
 
   it("opted-out caller gets logged and not texted", () => {

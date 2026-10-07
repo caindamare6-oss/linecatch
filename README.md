@@ -26,7 +26,7 @@ Barbers lose bookings every day because they can't answer the phone with clipper
 1. Each barber gets a **LineCatch number** (a Twilio number). Clients call it.
 2. The call rings through to the barber's own cell for 20 seconds.
 3. If nobody answers, the caller gets a text: *"Sorry I missed your call. Book here: link"*. The barber can write their own text.
-   A caller who hasn't agreed to texts gets this text **once**, ever. Clients who opted in (consent box at booking, VIP list or sticker) get it on every missed call, at most once every 3 hours.
+   Every missed caller gets this text, opted in or not, unless they replied STOP. Two calls inside 15 minutes get one text.
 4. That's the only text a missed call sends. There's no follow-up.
 5. Anyone who texted STOP never gets a missed-call text again.
 

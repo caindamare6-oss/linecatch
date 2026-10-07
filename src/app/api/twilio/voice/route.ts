@@ -46,8 +46,8 @@ export async function POST(request: Request) {
   // caller now, tell them in one short line, and hang up. Twilio keeps the original caller in From.
   if (barber.call_mode !== "direct") {
     const outcome = await handleMissedCall(supabase, { to, from: params.From, callSid: params.CallSid || null });
-    // cooldown / no_consent: the link was texted to them before, so it's already on their phone.
-    const line = outcome === "texted" ? "texted" : outcome === "cooldown" || outcome === "no_consent" ? "already" : "none";
+    // cooldown: the link was texted to them minutes ago, so it's already on their phone.
+    const line = outcome === "texted" ? "texted" : outcome === "cooldown" ? "already" : "none";
     const spoken = forwardedCallLine(lang, line);
     return twiml(`${spoken ? `${say(lang, spoken)}\n` : ""}  <Hangup/>`);
   }
