@@ -34,7 +34,7 @@ English texts, busy barber. Spanish-speaking clients cost up to about 2× on tex
 ### Missed-call text: Casual (default)
 
 - **Sent to:** The caller
-- **When:** Right after an unanswered call reaches the barber's LineCatch number (forwarded or direct). Once per caller every 3 hours; someone who never opted in gets it only once ever; never after STOP.
+- **When:** Right after an unanswered call reaches the barber's LineCatch number (forwarded or direct). Every missed caller, opted in or not; at most once per caller every 15 minutes; never after STOP.
 - **"Reply STOP to opt out":** Only on the client's first text from this barber
 - **Note:** Starts with the shop name (barber's first name if no shop name).
 

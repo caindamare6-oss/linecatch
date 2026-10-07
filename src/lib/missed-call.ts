@@ -6,7 +6,8 @@ import { appUrl } from "@/lib/config";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
-const COOLDOWN_HOURS = 3;
+// Two calls inside 15 minutes get one text; a call after that gets another.
+const COOLDOWN_MINUTES = 15;
 
 export type MissedCallOutcome =
   | "texted"
@@ -14,7 +15,6 @@ export type MissedCallOutcome =
   | "autotext_disabled"
   | "trial_locked"
   | "opted_out"
-  | "no_consent"
   | "cooldown"
   | "no_template"
   | "send_failed"
@@ -25,8 +25,8 @@ export type MissedCallOutcome =
  * Used both when we rang the barber and nobody picked up (direct mode) and when the carrier
  * forwarded an unanswered call to us (forwarded mode).
  *
- * Rules: STOP and opt-outs are respected; a caller who never agreed to texts gets the link once,
- * as a reply to their own call; one text per caller every 3 hours; the link recognizes the caller;
+ * Rules: every missed caller gets the link, opted in or not, as a reply to their own call; STOP and
+ * opt-outs are respected; one text per caller every 15 minutes; the link recognizes the caller;
  * every call is logged in missed_calls, and a sent text shows in the activity feed.
  */
 export async function handleMissedCall(
@@ -75,23 +75,7 @@ export async function handleMissedCall(
       return "opted_out";
     }
 
-    // A caller who never agreed to texts gets the booking link once, as a reply to their own call.
-    // After that, only clients who opt in (booking checkbox, VIP page, sticker) hear from us again.
-    if (!vipClient?.is_opted_in) {
-      const { count: textedBefore } = await supabase
-        .from("sms_log")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", barber.user_id)
-        .eq("to_number", from)
-        .eq("template_key", "missed_call");
-      if ((textedBefore ?? 0) > 0) {
-        await logMissedCall(supabase, barber.user_id, from, callSid, false, "no_consent");
-        await logCallLegacy(supabase, barber.user_id, from, to, "logged");
-        return "no_consent";
-      }
-    }
-
-    const cooldownTime = new Date(Date.now() - COOLDOWN_HOURS * 60 * 60 * 1000).toISOString();
+    const cooldownTime = new Date(Date.now() - COOLDOWN_MINUTES * 60 * 1000).toISOString();
     const { data: recentSend } = await supabase
       .from("missed_calls_log")
       .select("call_id")
