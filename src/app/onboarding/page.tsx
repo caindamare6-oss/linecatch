@@ -7,6 +7,7 @@ import { ACCENT_COLORS } from "@/lib/themes";
 import { money, STICKER_PRICE_CENTS, REFERRED_PERCENT_OFF, DEFAULT_TZ } from "@/lib/config";
 import PortfolioSection from "@/app/dashboard/settings/portfolio-section";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import ForwardCallsStep from "./forward-calls-step";
 
 
 const LANGUAGES = [
@@ -120,6 +121,7 @@ function OnboardingFlow({
   const locale = useLocale();
   const stickerPrice = money(STICKER_PRICE_CENTS, locale);
   const [step, setStep] = useState(0);
+  const [forwarding, setForwarding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [animKey, setAnimKey] = useState(0);
@@ -400,7 +402,8 @@ function OnboardingFlow({
       setError(result.error || "Failed to complete setup");
       return;
     }
-    router.push("/dashboard");
+    // Their LineCatch number is being assigned now: next, forward calls to it.
+    setForwarding(true);
   }
 
   function toggleDay(day: string) {
@@ -505,6 +508,8 @@ function OnboardingFlow({
     animate();
     return () => { running = false; window.removeEventListener("resize", sizeCanvas); };
   }, [step, confettiDone]);
+
+  if (forwarding) return <ForwardCallsStep onDone={() => router.push("/dashboard")} />;
 
   const STEP_PROGRESS = quick ? [0, 33, 67, 100, 100, 100, 100, 100] : [0, 17, 33, 50, 67, 83, 100, 100];
   const progress = STEP_PROGRESS[step] ?? 0;

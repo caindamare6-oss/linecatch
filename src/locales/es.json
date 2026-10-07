@@ -1130,5 +1130,14 @@
     "hint": "Todos los clientes: el primer corte a precio completo, el 2.º con {amount} de descuento y luego {amount} cada 3 cortes (5.º, 8.º, 11.º…). Se aplica solo en la visita.",
     "amount": "Recompensa",
     "amount_hint": "Dólares de descuento, de $1 a $50."
+  },
+  "fwd_step": {
+    "title": "Desvía tus llamadas perdidas",
+    "subtitle": "Una última cosa: manda las llamadas que no contestas a LineCatch, para que cada cliente reciba tu enlace para reservar.",
+    "getting_number": "Obteniendo tu número de LineCatch…",
+    "slow": "Tu número está tardando un poco más de lo normal.",
+    "in_settings": "El desvío de llamadas te estará esperando en Ajustes → Llamadas perdidas.",
+    "later": "Configurar después",
+    "done": "Listo"
   }
 }

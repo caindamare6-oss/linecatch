@@ -1071,5 +1071,14 @@
     "hint": "Every client: first cut full price, 2nd cut {amount} off, then {amount} off every 3rd cut (5th, 8th, 11th…). Applied automatically at the visit.",
     "amount": "Reward",
     "amount_hint": "Dollars off, $1 to $50."
+  },
+  "fwd_step": {
+    "title": "Forward your missed calls",
+    "subtitle": "One last thing: send calls you don’t answer to LineCatch, so every caller gets your booking link.",
+    "getting_number": "Getting your LineCatch number…",
+    "slow": "Your number is taking a little longer than usual.",
+    "in_settings": "Call forwarding will be waiting for you in Settings → Missed calls.",
+    "later": "Set up later",
+    "done": "Done"
   }
 }
