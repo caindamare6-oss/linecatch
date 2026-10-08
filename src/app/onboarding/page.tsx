@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useT, useLocale, useSetLocale, type Locale } from "@/lib/i18n";
-import { ACCENT_COLORS } from "@/lib/themes";
+import { ACCENT_COLORS, DEFAULT_THEME, THEMES, THEME_IDS, applyAppTheme, type ThemeId } from "@/lib/themes";
 import { money, STICKER_PRICE_CENTS, REFERRED_PERCENT_OFF, DEFAULT_TZ } from "@/lib/config";
 import PortfolioSection from "@/app/dashboard/settings/portfolio-section";
 import { PageSkeleton } from "@/components/ui/skeleton";
@@ -24,6 +24,7 @@ type BusinessHours = Record<string, { open: string; close: string } | null>;
 
 type Service = {
   name: string;
+  description?: string | null;
   price: number;
   duration: number;
   enabled: boolean;
@@ -33,17 +34,26 @@ type Service = {
   durationInput?: string;
 };
 
-const SERVICE_NAMES: Record<string, Record<string, string>> = {
-  en: { lineup: "Lineup", lineup_taper: "Lineup + Taper", lineup_taper_beard: "Lineup + Taper + Beard" },
-  es: { lineup: "Lineup", lineup_taper: "Lineup + Taper", lineup_taper_beard: "Lineup + Taper + Barba" },
+// Short names, with what's included as a details line under each.
+const STARTER_SERVICES: Record<string, { name: string; description: string }[]> = {
+  en: [
+    { name: "Lineup", description: "Sharp edges and shape-up" },
+    { name: "Taper", description: "Taper with a lineup" },
+    { name: "Full Service", description: "Taper, lineup and beard" },
+  ],
+  es: [
+    { name: "Lineup", description: "Contornos definidos y perfilado" },
+    { name: "Taper", description: "Taper con lineup" },
+    { name: "Servicio completo", description: "Taper, lineup y barba" },
+  ],
 };
 
 function getDefaultServices(lang: string): Service[] {
-  const n = SERVICE_NAMES[lang] || SERVICE_NAMES.en;
+  const s = STARTER_SERVICES[lang] || STARTER_SERVICES.en;
   return [
-    { name: n.lineup, price: 30, duration: 30, enabled: true, sortOrder: 0 },
-    { name: n.lineup_taper, price: 35, duration: 45, enabled: true, sortOrder: 1 },
-    { name: n.lineup_taper_beard, price: 45, duration: 60, enabled: true, sortOrder: 2 },
+    { ...s[0], price: 30, duration: 30, enabled: true, sortOrder: 0 },
+    { ...s[1], price: 35, duration: 45, enabled: true, sortOrder: 1 },
+    { ...s[2], price: 45, duration: 60, enabled: true, sortOrder: 2 },
   ];
 }
 
@@ -57,7 +67,7 @@ export default function OnboardingPage() {
   const [loaded, setLoaded] = useState(false);
   const [initialData, setInitialData] = useState<{
     profile: Record<string, unknown>;
-    services: { id: string; name: string; price: number; duration_minutes: number; is_active: boolean; sort_order: number }[];
+    services: { id: string; name: string; description?: string | null; price: number; duration_minutes: number; is_active: boolean; sort_order: number }[];
     googleName: string;
     googleEmail: string;
     pendingCode?: string | null;
@@ -108,7 +118,7 @@ function OnboardingFlow({
   setLanguage: (l: Locale) => void;
   initialData: {
     profile: Record<string, unknown>;
-    services: { id: string; name: string; price: number; duration_minutes: number; is_active: boolean; sort_order: number }[];
+    services: { id: string; name: string; description?: string | null; price: number; duration_minutes: number; is_active: boolean; sort_order: number }[];
     googleName: string;
     googleEmail: string;
     pendingCode?: string | null;
@@ -127,10 +137,12 @@ function OnboardingFlow({
   const [animKey, setAnimKey] = useState(0);
 
   const [firstName, setFirstName] = useState("");
-  const [accentColor, setAccentColor] = useState("#D4AF7A");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
+  // null = the theme's own color.
+  const [accentColor, setAccentColor] = useState<string | null>("#D4AF7A");
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME);
 
   const [heardFrom, setHeardFrom] = useState(initialData?.sticker ? "in_person" : "");
   const appliedRef = initialData?.referral ?? null;
@@ -190,11 +202,10 @@ function OnboardingFlow({
     /* eslint-disable react-hooks/set-state-in-effect -- one-time seed from server data */
     const p = initialData.profile || {};
     if (p.first_name) setFirstName(p.first_name as string);
-    if (p.accent_color) {
-      setAccentColor(p.accent_color as string);
-      document.documentElement.style.setProperty("--accent-color", p.accent_color as string);
-    }
-    if (p.avatar_url) setAvatarUrl(p.avatar_url as string);
+    setAccentColor((p.accent_color as string | null) ?? null);
+    if (p.theme) setThemeId(p.theme as ThemeId);
+    applyAppTheme(p.theme, p.accent_color as string | null);
+    if (p.cover_url) setCoverUrl(p.cover_url as string);
     if (p.business_name) setBusinessName(p.business_name as string);
     else if (initialData.sticker?.shop) setBusinessName(initialData.sticker.shop);
     if (p.forwarding_number) setPhone(p.forwarding_number as string);
@@ -215,7 +226,7 @@ function OnboardingFlow({
     if (initialData.googleEmail && !p.email) setEmail(initialData.googleEmail);
     if (initialData.services && initialData.services.length > 0) {
       setServices(initialData.services.map((s) => ({
-        id: s.id, name: s.name, price: s.price, duration: s.duration_minutes,
+        id: s.id, name: s.name, description: s.description ?? null, price: s.price, duration: s.duration_minutes,
         enabled: s.is_active, sortOrder: s.sort_order,
       })));
     } else {
@@ -287,39 +298,46 @@ function OnboardingFlow({
     });
   }
 
-  async function uploadAvatar(file: File) {
-    setAvatarUploading(true);
+  async function uploadCover(file: File) {
+    setCoverUploading(true);
     try {
-      const blob = await resizeImage(file, 512);
-      const resized = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+      const blob = await resizeImage(file, 1600);
+      const resized = new File([blob], "cover.jpg", { type: "image/jpeg" });
       const formData = new FormData();
-      formData.append("avatar", resized);
-      const res = await fetch("/api/onboarding/avatar", { method: "POST", body: formData });
+      formData.append("cover", resized);
+      const res = await fetch("/api/cover", { method: "POST", body: formData });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: "Upload failed" }));
         setError(body.error || "Upload failed");
         return;
       }
-      const { avatar_url } = await res.json();
-      setAvatarUrl(avatar_url);
+      const { coverUrl: url } = await res.json();
+      setCoverUrl(url);
     } catch {
       setError("Upload failed");
     } finally {
-      setAvatarUploading(false);
+      setCoverUploading(false);
     }
   }
 
-  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) { setError("Image must be under 5MB"); return; }
     if (!file.type.startsWith("image/")) { setError("Invalid image"); return; }
-    uploadAvatar(file);
+    uploadCover(file);
   }
 
-  function handleAccentChange(hex: string) {
+  function handleAccentChange(hex: string | null) {
     setAccentColor(hex);
-    document.documentElement.style.setProperty("--accent-color", hex);
+    applyAppTheme(themeId, hex);
+  }
+
+  // A new theme starts on its own accent; they can pick another after.
+  function handleThemeChange(id: ThemeId) {
+    setThemeId(id);
+    setAccentColor(null);
+    applyAppTheme(id, null);
   }
 
   async function goNext() {
@@ -333,6 +351,7 @@ function OnboardingFlow({
         firstName,
         language: langToSave,
         accentColor,
+        theme: themeId,
         ...(heardFrom ? { heardFrom } : {}),
         ...(!appliedRef && referralCode.trim() ? { referralCode: referralCode.trim() } : {}),
       });
@@ -477,7 +496,7 @@ function OnboardingFlow({
     window.addEventListener("resize", sizeCanvas);
 
     const particles: { x: number; y: number; vx: number; vy: number; color: string; size: number; rotation: number; rotationSpeed: number }[] = [];
-    const colors = [accentColor, "#D4AF7A", "#FAF7F2", "#C29A62"];
+    const colors = [accentColor ?? THEMES[themeId].accent, "#D4AF7A", "#FAF7F2", "#C29A62"];
     for (let i = 0; i < 120; i++) {
       particles.push({
         x: Math.random() * canvas.width, y: -10 - Math.random() * canvas.height * 0.5,
@@ -608,60 +627,115 @@ function OnboardingFlow({
           {step === 1 && (
             <StepContainer title={t("step1.title")} subtitle={t("step1.subtitle")} stepNum={1}>
               {handed && (
-                <p className="mb-5 text-[13px] rounded-xl px-3.5 py-3 leading-relaxed" style={{ backgroundColor: "rgba(168,196,154,0.1)", color: "#A8C49A", border: "1px solid rgba(168,196,154,0.25)" }}>
+                <p className="mb-5 text-[13px] rounded-xl px-3.5 py-3 leading-relaxed" style={{ backgroundColor: "rgba(168,196,154,0.1)", color: "var(--app-ok)", border: "1px solid rgba(168,196,154,0.25)" }}>
                   ✓ {t("step1.quick_banner", { code: handed.code })}
                 </p>
               )}
-              <div className="flex flex-col items-center mb-6">
+              {/* Cover photo: the big photo at the top of their page (there is no profile photo) */}
+              <div className="mb-6">
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="text-xs uppercase tracking-wider font-medium" style={{ color: "var(--ob-text-muted)", fontFamily: "var(--ob-font-heading)" }}>{t("step1.cover_label")}</span>
+                  <span className="text-xs" style={{ color: "var(--ob-text-muted)" }}>{t("step1.cover_where")}</span>
+                </div>
                 <button
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden transition-transform hover:scale-105"
-                  style={{ backgroundColor: "var(--ob-surface)", border: "2px dashed var(--ob-border)" }}
+                  type="button"
+                  onClick={() => coverInputRef.current?.click()}
+                  aria-label={coverUrl ? t("step1.cover_change") : t("step1.cover_add")}
+                  className="relative w-full h-48 rounded-2xl overflow-hidden flex flex-col items-center justify-center gap-2 transition-transform active:scale-[0.99]"
+                  style={{ backgroundColor: "var(--ob-surface)", border: coverUrl ? "1px solid var(--ob-border-focus)" : "1.5px dashed var(--ob-border-focus)" }}
                 >
-                  {avatarUploading ? (
-                    <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "var(--ob-accent-glow)", borderTopColor: "var(--ob-accent)" }} />
-                  ) : avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  {coverUploading ? (
+                    <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "var(--ob-accent-glow)", borderTopColor: "var(--ob-accent)" }} />
+                  ) : coverUrl ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                      <span aria-hidden className="absolute inset-x-0 bottom-0 h-24" style={{ background: "linear-gradient(to bottom, transparent, var(--ob-bg))" }} />
+                      <span className="absolute left-3.5 bottom-3 text-left text-lg font-bold" style={{ color: "var(--ob-text)", fontFamily: "var(--ob-font-heading)" }}>{businessName || firstName || t("step1.cover_preview")}</span>
+                      <span className="absolute top-2.5 right-2.5 h-8 px-3 rounded-full inline-flex items-center text-xs font-semibold text-[#fff] bg-black/50 border border-[#fff]/20">{t("step1.cover_change")}</span>
+                    </>
                   ) : (
-                    <svg className="w-8 h-8" style={{ color: "var(--ob-text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-                    </svg>
+                    <>
+                      <span className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--ob-accent-glow)", color: "var(--ob-accent)" }}>
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                        </svg>
+                      </span>
+                      <span className="text-sm font-semibold" style={{ color: "var(--ob-text)" }}>{t("step1.cover_add")}</span>
+                      <span className="text-xs max-w-[260px] text-center leading-snug" style={{ color: "var(--ob-text-secondary)" }}>{t("step1.cover_hint")}</span>
+                    </>
                   )}
                 </button>
-                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-                <span className="text-xs mt-2" style={{ color: "var(--ob-text-muted)" }}>
-                  {avatarUrl ? t("step1.avatar_change") : t("step1.avatar_add")}
-                </span>
+                <input ref={coverInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleCoverChange} />
+                {!coverUrl && <p className="text-xs mt-2" style={{ color: "var(--ob-text-muted)" }}>{t("step1.cover_later")}</p>}
               </div>
               <InputField label={t("step1.name_label")} value={firstName} onChange={setFirstName} placeholder={t("step1.name_placeholder")} />
 
+              {/* Their colors: their page, their booking pages and their own app */}
+              <div className="mt-5">
+                <p id="ob-theme-label" className="text-xs uppercase tracking-wider font-medium mb-1" style={{ color: "var(--ob-text-muted)", fontFamily: "var(--ob-font-heading)" }}>
+                  {t("step1.colors_label")}
+                </p>
+                <p className="text-xs mb-3" style={{ color: "var(--ob-text-secondary)" }}>{t("step1.colors_hint")}</p>
+                <div role="radiogroup" aria-labelledby="ob-theme-label" className="grid grid-cols-5 gap-2">
+                  {THEME_IDS.map((id) => {
+                    const th = THEMES[id];
+                    const on = id === themeId;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => handleThemeChange(id)}
+                        className="rounded-xl pt-2 pb-2 flex flex-col items-center gap-1.5 transition-all duration-200"
+                        style={{ background: th.bg, border: `2px solid ${on ? "var(--ob-accent)" : th.border}`, boxShadow: on ? "0 6px 18px var(--ob-accent-glow)" : "none" }}
+                      >
+                        <span aria-hidden className="w-5 h-5 rounded-full" style={{ background: th.accent }} />
+                        <span className="text-[11px] font-semibold leading-tight" style={{ color: th.text }}>{t(`portfolio.theme_${id}`)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {THEMES[themeId].dark && (
               <div className="mt-5">
                 <label className="text-xs uppercase tracking-wider font-medium block mb-3" style={{ color: "var(--ob-text-muted)", fontFamily: "var(--ob-font-heading)" }}>
                   {t("step1.color_label")}
                 </label>
-                <div className="flex flex-wrap gap-2.5">
-                  {ACCENT_COLORS.map((c) => (
+                <div className="flex flex-wrap gap-2.5" role="radiogroup" aria-label={t("step1.color_label")}>
+                  {[{ name: t("step1.theme_color"), hex: null as string | null }, ...ACCENT_COLORS].map((c) => {
+                    const on = accentColor === c.hex;
+                    const swatch = c.hex ?? THEMES[themeId].accent;
+                    return (
                     <button
-                      key={c.hex}
+                      key={c.hex ?? "theme"}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      aria-label={c.name}
                       onClick={() => handleAccentChange(c.hex)}
-                      className="w-10 h-10 rounded-xl transition-all duration-200 relative"
+                      className="w-11 h-11 rounded-xl transition-all duration-200 relative"
                       style={{
-                        backgroundColor: c.hex,
-                        boxShadow: accentColor === c.hex ? `0 0 0 2px var(--ob-bg), 0 0 0 4px ${c.hex}` : "none",
-                        transform: accentColor === c.hex ? "scale(1.1)" : "scale(1)",
+                        backgroundColor: swatch,
+                        boxShadow: on ? `0 0 0 2px var(--ob-bg), 0 0 0 4px ${swatch}` : "none",
+                        transform: on ? "scale(1.1)" : "scale(1)",
                       }}
                       title={c.name}
                     >
-                      {accentColor === c.hex && (
-                        <svg className="w-4 h-4 absolute inset-0 m-auto text-[var(--accent-fg)]" fill="currentColor" viewBox="0 0 20 20">
+                      {on && (
+                        <svg className="w-4 h-4 absolute inset-0 m-auto text-[var(--accent-fg)]" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
+              )}
 
               <div className="mt-6">
                 <p className="text-xs uppercase tracking-wider font-medium mb-3" style={{ color: "var(--ob-text-muted)", fontFamily: "var(--ob-font-heading)" }}>
@@ -702,7 +776,7 @@ function OnboardingFlow({
                       onChange={(v) => { setReferralCode(v.toUpperCase().slice(0, 12)); setRefError(""); }}
                       placeholder={t("step1.ref_placeholder")}
                     />
-                    <p className="text-[12px] mt-1.5 min-h-[18px]" aria-live="polite" style={{ color: refError || refCheck.state === "bad" ? "#F08A8A" : refCheck.state === "ok" ? "#A8C49A" : "var(--ob-text-muted)" }}>
+                    <p className="text-[12px] mt-1.5 min-h-[18px]" aria-live="polite" style={{ color: refError || refCheck.state === "bad" ? "var(--app-danger)" : refCheck.state === "ok" ? "var(--app-ok)" : "var(--ob-text-muted)" }}>
                       {refError ||
                         (refCheck.state === "checking"
                           ? t("step1.ref_checking")
@@ -757,7 +831,10 @@ function OnboardingFlow({
                             </svg>
                           )}
                         </div>
-                        <span className="text-sm font-medium" style={{ color: svc.enabled ? "var(--ob-text)" : "var(--ob-text-muted)" }}>{svc.name}</span>
+                        <span className="text-left">
+                          <span className="block text-sm font-medium" style={{ color: svc.enabled ? "var(--ob-text)" : "var(--ob-text-muted)" }}>{svc.name}</span>
+                          {svc.description && <span className="block text-xs" style={{ color: "var(--ob-text-secondary)" }}>{svc.description}</span>}
+                        </span>
                       </button>
                     </div>
                     {svc.enabled && (
@@ -935,7 +1012,7 @@ function OnboardingFlow({
           {step === DONE && (
             <div className="flex flex-col items-center text-center pt-8 space-y-6">
               <div className="w-20 h-20 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: "var(--ob-accent-glow)", animation: "ob-scale-in 500ms ease-out" }}>
-                {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> : <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="var(--ob-accent)"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
+                {coverUrl ? <img src={coverUrl} alt="" className="w-full h-full object-cover" /> : <svg className="w-9 h-9" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="var(--ob-accent)"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}
               </div>
               <div style={{ animation: "ob-fade-up 500ms ease-out 200ms both" }}>
                 <h1 className="text-3xl font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("done.title")}</h1>
@@ -944,7 +1021,7 @@ function OnboardingFlow({
               <div className="w-full max-w-xs rounded-xl p-5 text-left" style={{ backgroundColor: "var(--ob-surface)", border: "1px solid var(--ob-border)", animation: "ob-fade-up 500ms ease-out 400ms both" }}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold overflow-hidden" style={{ backgroundColor: "var(--ob-accent-glow)", color: "var(--ob-accent)" }}>
-                    {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> : (businessName ? businessName[0].toUpperCase() : "L")}
+                    {coverUrl ? <img src={coverUrl} alt="" className="w-full h-full object-cover" /> : (businessName ? businessName[0].toUpperCase() : "L")}
                   </div>
                   <div>
                     <p className="text-sm font-semibold" style={{ color: "var(--ob-text)" }}>{businessName || "Your Shop"}</p>
@@ -973,7 +1050,7 @@ function OnboardingFlow({
                 </div>
                 <div className="flex items-center justify-between mt-1.5">
                   <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>{t("done.sticker")}</span>
-                  <span className="text-[11px]" style={{ color: handed ? "#A8C49A" : "var(--ob-text-secondary)" }}>{handed ? t("done.sticker_connect", { code: handed.code }) : wantsSticker ? t("done.sticker_on") : t("done.sticker_off")}</span>
+                  <span className="text-[11px]" style={{ color: handed ? "var(--app-ok)" : "var(--ob-text-secondary)" }}>{handed ? t("done.sticker_connect", { code: handed.code }) : wantsSticker ? t("done.sticker_on") : t("done.sticker_off")}</span>
                 </div>
               </div>
               {quick && <p className="text-[12px] max-w-xs" style={{ color: "var(--ob-text-muted)" }}>{t("done.quick_note")}</p>}
@@ -1068,7 +1145,7 @@ function ToggleCard({ label, description, checked, onChange }: {
           onClick={() => onChange(!checked)}
           className="relative shrink-0 -m-3 p-3"
         >
-          <span className="block w-10 h-5 rounded-full relative transition-colors duration-200" style={{ backgroundColor: checked ? "var(--ob-accent)" : "rgba(242,238,230,0.16)" }}>
+          <span className="block w-10 h-5 rounded-full relative transition-colors duration-200" style={{ backgroundColor: checked ? "var(--ob-accent)" : "color-mix(in srgb, var(--app-fg) 16%, transparent)" }}>
             <span className="block w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all duration-200 shadow-sm" style={{ left: checked ? "22px" : "2px" }} />
           </span>
         </button>

@@ -25,16 +25,16 @@ export default async function StickerPage({
 
   if (!sticker || sticker.status === "retired") {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4">
         <LanguageToggle className="fixed top-4 right-4 z-40" />
-        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
+        <div className="w-full max-w-md bg-[var(--app-card)] rounded-2xl p-8 border border-[var(--app-card-2)] text-center">
           <div className="text-3xl font-bold mb-4 text-white">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
-          <p className="text-stone-400 mb-2">
+          <p className="text-white/50 mb-2">
             {t("claim.gone_title")}
           </p>
-          <p className="text-stone-500 text-sm">
+          <p className="text-white/40 text-sm">
             {t("claim.gone_body")}
           </p>
         </div>
@@ -92,19 +92,19 @@ export default async function StickerPage({
   // Not signed in: a barber who was just handed this sticker sets up their shop with it.
   const shop = sticker.handed_to?.trim();
   return (
-    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4 py-10">
       <LanguageToggle className="fixed top-4 right-4 z-40" />
-      <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-7 border border-[#2C2A27]">
+      <div className="w-full max-w-md bg-[var(--app-card)] rounded-2xl p-7 border border-[var(--app-card-2)]">
         <div className="text-2xl font-bold mb-5 text-white text-center">
           Line<span className="text-[var(--accent-color)]">Catch</span>
         </div>
         <h1 className="text-[22px] font-semibold text-white text-center leading-tight">
           {shop ? t("claim.setup_title", { shop }) : t("claim.setup_title_generic")}
         </h1>
-        <p className="text-stone-400 text-sm mt-2 text-center">{t("claim.setup_body")}</p>
+        <p className="text-white/50 text-sm mt-2 text-center">{t("claim.setup_body")}</p>
         <ul className="mt-5 space-y-2.5">
           {t("claim.setup_points").split("|").map((p) => (
-            <li key={p} className="flex gap-2.5 text-[14px] text-stone-300">
+            <li key={p} className="flex gap-2.5 text-[14px] text-white/80">
               <span className="text-[var(--accent-color)]" aria-hidden>✓</span>
               {p}
             </li>
@@ -116,7 +116,7 @@ export default async function StickerPage({
         >
           {t("claim.setup_cta")}
         </a>
-        <a href={`/s/${sticker.code}/start?mode=in`} className="mt-3 block text-center text-[13px] text-stone-400 hover:text-stone-200">
+        <a href={`/s/${sticker.code}/start?mode=in`} className="mt-3 block text-center text-[13px] text-white/50 hover:text-stone-200">
           {t("claim.setup_signin")}
         </a>
         <p className="mt-5 text-center font-mono tracking-[2px] text-[12px] text-stone-600">{sticker.code}</p>

@@ -91,11 +91,11 @@ export default function ForwardSetup({ s, onCarrier, copy, copied }: { s: Forwar
       )}
 
       {!picking && (
-        <p className={`text-[12px] leading-relaxed ${s.lastMissedCallAt ? "text-[#7FC79A]" : "text-white/45"}`}>
+        <p className={`text-[12px] leading-relaxed ${s.lastMissedCallAt ? "text-[var(--app-ok)]" : "text-white/45"}`}>
           {s.lastMissedCallAt ? `✓ ${t("forward.working", { when: fmt.dateTime(s.lastMissedCallAt, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) })}` : t("forward.test_it")}
         </p>
       )}
-      {err && <p className="text-[12px] text-[#F08A8A]" role="alert">{err}</p>}
+      {err && <p className="text-[12px] text-[var(--app-danger)]" role="alert">{err}</p>}
     </div>
   );
 }

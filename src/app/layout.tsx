@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       lang={locale}
       className={`${display.variable} ${body.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#121110]">
+      <body className="min-h-full flex flex-col bg-[var(--app-bg)]">
         <I18nProvider locale={locale}>{children}</I18nProvider>
         <DevThemeEditorLoader />
       </body>

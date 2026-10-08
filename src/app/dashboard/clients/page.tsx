@@ -98,7 +98,7 @@ function Clients() {
           <div className="flex items-center gap-3">
             {clients && (
               <span className="text-[13px] text-white/40">
-                {t("clients.total", { n: clients.length })} · <span className="text-[#A8C49A] font-semibold">{t("clients.vip_count", { n: vipCount })}</span>
+                {t("clients.total", { n: clients.length })} · <span className="text-[var(--app-ok)] font-semibold">{t("clients.vip_count", { n: vipCount })}</span>
               </span>
             )}
             <button
@@ -241,7 +241,7 @@ function AddClientSheet({ onClose, onAdded }: { onClose: () => void; onAdded: (p
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="add-title">
       <button aria-label={t("common.close")} className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <form onSubmit={save} className="relative w-full max-w-md bg-[#1B1A18] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(20px+env(safe-area-inset-bottom))] space-y-3" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
+      <form onSubmit={save} className="relative w-full max-w-md bg-[var(--app-card)] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(20px+env(safe-area-inset-bottom))] space-y-3" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
         <h2 id="add-title" className={`${SERIF} text-xl font-semibold`}>{t("clients.add_title")}</h2>
         <div>
           <label htmlFor="add-name" className="block text-[12px] text-white/45 mb-1.5">{t("clients.add_name")}</label>
@@ -252,7 +252,7 @@ function AddClientSheet({ onClose, onAdded }: { onClose: () => void; onAdded: (p
           <input id="add-phone" className={field} value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" placeholder="(555) 234-5678" required />
         </div>
         <p className="text-[12px] text-white/40 leading-relaxed">{t("clients.add_note")}</p>
-        {error && <p className="text-[13px] text-[#F08A8A]">{error}</p>}
+        {error && <p className="text-[13px] text-[var(--app-danger)]">{error}</p>}
         <div className="flex gap-2 pt-1">
           <button type="button" onClick={onClose} className="h-12 px-5 rounded-xl border border-white/[0.12] text-white/70">{t("common.cancel")}</button>
           <button type="submit" disabled={saving || !phone.trim()} className="flex-1 h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold disabled:opacity-40">

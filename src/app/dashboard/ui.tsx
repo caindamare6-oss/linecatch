@@ -32,17 +32,17 @@ export function SectionLabel({ children, right }: { children: ReactNode; right?:
 
 export function Card({ children, className = "", as: As = "div" }: { children: ReactNode; className?: string; as?: "div" | "section" | "li" }) {
   return (
-    <As className={`bg-[#1B1A18] border border-white/[0.06] rounded-[14px] ${className}`}>{children}</As>
+    <As className={`bg-[var(--app-card)] border border-white/[0.06] rounded-[14px] ${className}`}>{children}</As>
   );
 }
 
 type BadgeTone = "vip" | "due" | "muted" | "gold" | "danger";
 const BADGE: Record<BadgeTone, string> = {
-  vip: "text-[#A8C49A] bg-[#A8C49A]/[0.12]",
-  due: "text-[#121110] bg-[#E0926A]",
+  vip: "text-[var(--app-ok)] bg-[var(--app-ok)]/[0.12]",
+  due: "text-[var(--accent-fg)] bg-[var(--app-warn)]",
   muted: "text-white/45 bg-white/[0.06]",
   gold: "text-[var(--accent-color)] bg-[var(--accent-color)]/[0.12]",
-  danger: "text-[#F08A8A] bg-[#F08A8A]/[0.1]",
+  danger: "text-[var(--app-danger)] bg-[var(--app-danger)]/[0.1]",
 };
 export function Badge({ tone, children }: { tone: BadgeTone; children: ReactNode }) {
   return (
@@ -58,7 +58,7 @@ export function Avatar({ name, size = 42, bright = false }: { name: string | nul
     <span
       aria-hidden
       className={`${SERIF} shrink-0 rounded-xl flex items-center justify-center font-semibold ${
-        bright ? "bg-gradient-to-br from-[var(--accent-color)] to-[#C29A62] text-[#121110]" : "bg-[var(--accent-color)]/[0.12] text-[var(--accent-color)]/90"
+        bright ? "bg-gradient-to-br from-[var(--accent-color)] to-[color-mix(in_srgb,var(--accent-color)_78%,#000)] text-[var(--accent-fg)]" : "bg-[var(--accent-color)]/[0.12] text-[var(--accent-color)]/90"
       }`}
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >

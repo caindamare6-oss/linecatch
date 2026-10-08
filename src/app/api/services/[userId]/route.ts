@@ -10,7 +10,7 @@ export async function GET(
 
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, price, duration_minutes")
+    .select("id, name, description, price, duration_minutes")
     .eq("user_id", userId)
     .eq("is_active", true)
     .order("sort_order", { ascending: true });

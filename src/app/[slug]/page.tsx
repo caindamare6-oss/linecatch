@@ -1,78 +1,66 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Fraunces } from "next/font/google";
+import { Bebas_Neue } from "next/font/google";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTheme, isAccent, themeVars } from "@/lib/themes";
 import { getT } from "@/lib/i18n-server";
-import { LanguageToggle } from "@/lib/i18n";
 import { money, DEFAULT_TZ } from "@/lib/config";
 import { toLoyalty } from "@/lib/loyalty-rules";
 import { weekdayInTz } from "@/lib/availability";
 import { checkSlug } from "@/lib/slug";
-import PortfolioGallery from "./portfolio-gallery";
+import { nextOpenings } from "@/lib/slots";
+import { barberLocalToUTC } from "@/lib/format";
+import { MAX_PORTFOLIO_PHOTOS } from "@/lib/portfolio";
+import PortfolioView, { type PortfolioData } from "./portfolio-view";
 
-// One serif, one weight (regular + italic).
-const serif = Fraunces({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif", display: "swap" });
+// Tall, bold display face for the page's headings (barbershop-poster feel).
+const display = Bebas_Neue({ subsets: ["latin"], weight: "400", variable: "--font-poster", display: "swap" });
 
 const INBOUND_SOURCES = new Set(["qr", "instagram"]);
+const WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 const loadBarber = cache(async (slug: string) => {
   if (checkSlug(slug)) return null;
   const db = createAdminClient();
   const { data: barber } = await db
     .from("users")
-    .select("user_id, business_name, first_name, avatar_url, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_cents")
+    .select("user_id, business_name, first_name, cover_url, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_cents")
     .eq("slug", slug)
     .maybeSingle();
   if (!barber || barber.is_active === false) return null;
 
-  const [{ data: photos }, { data: cheapest }] = await Promise.all([
-    db.from("portfolio_photos").select("id, url, thumb_url, width, height").eq("user_id", barber.user_id).order("sort_order").limit(8),
-    db.from("services").select("price").eq("user_id", barber.user_id).eq("is_active", true).gt("price", 0).order("price").limit(1).maybeSingle(),
+  const [{ data: photos }, { data: services }] = await Promise.all([
+    db.from("portfolio_photos").select("id, url, thumb_url, width, height, service_id").eq("user_id", barber.user_id).order("sort_order").limit(MAX_PORTFOLIO_PHOTOS),
+    db.from("services").select("id, name, description, price, duration_minutes").eq("user_id", barber.user_id).eq("is_active", true).order("sort_order"),
   ]);
 
   const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "LineCatch";
-  return { barber, shopName, photos: photos || [], lowestPrice: cheapest?.price ?? null };
+  return { db, barber, shopName, photos: photos || [], services: (services || []).map((s) => ({ ...s, price: Number(s.price) })) };
 });
 
 /** "09:30" → "9:30 AM" / "9:30 a. m." in the visitor's language (wall-clock time, no timezone math). */
-function formatHour(hhmm: string, tag: string) {
+function formatHour(hhmm: string, tag: string, short = false) {
   const [h, m] = hhmm.split(":").map(Number);
   return new Date(Date.UTC(2000, 0, 1, h, m || 0)).toLocaleTimeString(tag, {
     hour: "numeric",
-    minute: m ? "2-digit" : undefined,
+    minute: m || !short ? (m ? "2-digit" : undefined) : undefined,
     timeZone: "UTC",
   });
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const data = await loadBarber(slug.toLowerCase());
   if (!data) return { title: "LineCatch" };
   const { t } = await getT();
+  const image = data.barber.cover_url || data.photos[0]?.url;
   return {
     title: t("shop.meta_title", { shop: data.shopName }),
     description: t("shop.meta_desc", { shop: data.shopName }),
-    openGraph: data.photos[0] ? { images: [data.photos[0].url] } : undefined,
+    openGraph: image ? { images: [image] } : undefined,
   };
 }
-
-const PhotoIcon = ({ size = 26 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
-  </svg>
-);
-
-const HERO_CARDS = [
-  { cls: "pf-float-a", pos: "left-[6%] top-[30px] w-[30%] h-[150px]" },
-  { cls: "pf-float-b", pos: "left-[34%] top-[6px] w-[32%] h-[168px] z-10", featured: true },
-  { cls: "pf-float-c", pos: "right-[6%] top-[40px] w-[29%] h-[142px]" },
-];
 
 export default async function PortfolioPage({
   params,
@@ -86,196 +74,81 @@ export default async function PortfolioPage({
   const data = await loadBarber(slug.toLowerCase());
   if (!data) notFound();
 
-  const { barber, shopName, photos, lowestPrice } = data;
-  const loyalty = toLoyalty(barber);
+  const { db, barber, shopName, photos, services } = data;
   const { t, locale, tag } = await getT();
+  const loyalty = toLoyalty(barber);
+  const tz = barber.timezone || DEFAULT_TZ;
+  const hours = barber.business_hours as Record<string, { open: string; close: string } | null> | null;
+
+  // The page's colors: the barber's theme; their accent wins on dark themes (every pick is light).
   const base = getTheme(barber.theme);
-  // The barber's accent wins on dark themes (every accent pick is light, so it reads on dark and takes dark text).
   const theme = base.dark && isAccent(barber.accent_color)
     ? { ...base, accent: barber.accent_color, ctaBg: barber.accent_color, ctaText: "#121110", accentGlow: `color-mix(in srgb, ${barber.accent_color} 30%, transparent)` }
     : base;
-  const tz = barber.timezone || DEFAULT_TZ;
 
-  const today = barber.business_hours?.[weekdayInTz(new Date(), tz)] as { open: string; close: string } | null | undefined;
-  const hoursChip = today ? `${t("shop.open_today")} · ${formatHour(today.open, tag)}–${formatHour(today.close, tag)}` : t("shop.closed_today");
+  const now = new Date();
+  const nowMs = now.getTime();
+  const todayKey = weekdayInTz(now, tz);
+  const today = hours?.[todayKey] ?? null;
+  const localToday = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  const openNow = !!today && nowMs >= barberLocalToUTC(localToday, today.open, tz).getTime() && nowMs < barberLocalToUTC(localToday, today.close, tz).getTime();
+  const status = openNow
+    ? t("shop.open_now_until", { time: formatHour(today!.close, tag) })
+    : today && nowMs < barberLocalToUTC(localToday, today.open, tz).getTime()
+      ? t("shop.opens_at", { time: formatHour(today.open, tag) })
+      : t("shop.closed_now");
+
+  // "Next opening" for their first service (the one "Grab it" books).
+  const first = services[0];
+  const openings = first ? await nextOpenings(db, { userId: barber.user_id, totalMinutes: first.duration_minutes, hours, tz }) : [];
+  const next = openings[0]
+    ? {
+        day:
+          openings[0].dayOffset === 0
+            ? t("shop.today")
+            : openings[0].dayOffset === 1
+              ? t("shop.tomorrow")
+              : new Date(openings[0].date + "T12:00:00Z").toLocaleDateString(tag, { weekday: "long", timeZone: "UTC" }),
+        time: formatHour(openings[0].time, tag),
+        then: openings.slice(1).map((o) => formatHour(o.time, tag)),
+      }
+    : null;
+
+  const week = WEEK.map((key) => {
+    const h = hours?.[key] ?? null;
+    return {
+      key,
+      label: new Date(Date.UTC(2024, 0, 1 + WEEK.indexOf(key))).toLocaleDateString(tag, { weekday: "narrow", timeZone: "UTC" }),
+      name: new Date(Date.UTC(2024, 0, 1 + WEEK.indexOf(key))).toLocaleDateString(tag, { weekday: "long", timeZone: "UTC" }),
+      hours: h ? `${formatHour(h.open, tag, true)}–${formatHour(h.close, tag, true)}` : null,
+      today: key === todayKey,
+    };
+  });
 
   const src = typeof sp.src === "string" && INBOUND_SOURCES.has(sp.src) ? sp.src : "portfolio";
-  const bookHref = `/book/${barber.user_id}?src=${src}`;
-  const initial = shopName.trim().charAt(0).toUpperCase() || "B";
-  const glass = "bg-[var(--t-surface)] border border-[var(--t-border)]";
+  const view: PortfolioData = {
+    barberId: barber.user_id,
+    shopName,
+    firstName: barber.business_name && barber.first_name ? barber.first_name.trim() : null,
+    coverUrl: barber.cover_url,
+    status,
+    openNow,
+    lowestPrice: services.some((s) => s.price > 0) ? money(Math.round(Math.min(...services.filter((s) => s.price > 0).map((s) => s.price)) * 100), locale) : null,
+    services: services.map((s) => ({ id: s.id, name: s.name, description: s.description, price: s.price, minutes: s.duration_minutes, priceLabel: s.price > 0 ? money(Math.round(s.price * 100), locale) : null })),
+    photos: photos.map((p) => ({ id: p.id, url: p.url, thumb: p.thumb_url ?? p.url, width: p.width, height: p.height, serviceId: p.service_id })),
+    next,
+    week,
+    loyalty: loyalty.enabled ? { amount: money(loyalty.cents, locale) } : null,
+    src,
+  };
 
   return (
     <main
       lang={locale}
-      className={`${serif.variable} relative min-h-screen overflow-x-clip bg-[var(--t-bg)] text-[var(--t-text)] font-[family-name:var(--font-dm-sans)]`}
+      className={`${display.variable} relative min-h-screen overflow-x-clip bg-[var(--t-bg)] text-[var(--t-text)] font-sans`}
       style={themeVars(theme) as React.CSSProperties}
     >
-      {/* Accent glow behind the hero (a plain radial fill: no blur filter to paint). */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 -top-40 h-[420px] w-[560px] -translate-x-1/2"
-        style={{ background: "radial-gradient(closest-side, var(--t-glow), transparent)" }}
-      />
-
-      <div className="relative mx-auto max-w-[520px] px-5 pt-6 pb-44">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3.5 min-w-0">
-            {/* The barber's own photo leads the page, ringed in the theme accent. */}
-            <div className="shrink-0 rounded-full p-[3px] bg-[var(--t-accent)] shadow-[0_0_24px_var(--t-glow)]">
-              {barber.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={barber.avatar_url}
-                  alt={barber.first_name || shopName}
-                  width={68}
-                  height={68}
-                  fetchPriority="high"
-                  className="block w-[68px] h-[68px] rounded-full object-cover border-[3px] border-[var(--t-bg)]"
-                />
-              ) : (
-                <div className="w-[68px] h-[68px] rounded-full flex items-center justify-center text-[30px] font-[family-name:var(--font-serif)] bg-[var(--t-bg)] text-[var(--t-accent)] border-[3px] border-[var(--t-bg)]">
-                  {initial}
-                </div>
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="text-base font-semibold truncate">{shopName}</div>
-              {barber.first_name && barber.business_name && (
-                <div className="text-xs text-[var(--t-muted)] truncate">
-                  {t("shop.with", { name: barber.first_name })}
-                </div>
-              )}
-            </div>
-          </div>
-          {/* Shared EN/ES pill, recolored to the barber's theme (works on the light Cream theme too). */}
-          <div
-            className="shrink-0 rounded-full bg-[var(--t-surface)] [&>div]:border-[var(--t-border)] [&_button[aria-pressed=false]]:text-[var(--t-muted)] [&_button[aria-pressed=false]:hover]:text-[var(--t-text)]"
-            style={{ "--accent-color": "var(--t-cta-bg)", "--accent-fg": "var(--t-cta-text)" } as React.CSSProperties}
-          >
-            <LanguageToggle />
-          </div>
-        </div>
-
-        {/* Hero */}
-        <h1 className="mt-8 text-[52px] leading-[0.98] tracking-[-1px] font-[family-name:var(--font-serif)]">
-          {t("shop.head1")}
-          <br />
-          <span className="italic text-[var(--t-accent)]">{t("shop.head2")}</span>
-        </h1>
-        <p className="mt-4 text-[15px] leading-relaxed text-[var(--t-muted)] max-w-[340px]">{t("shop.intro")}</p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <span className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium ${glass}`}>
-            <span
-              className="w-[7px] h-[7px] rounded-full"
-              style={today ? { background: "var(--t-accent)", boxShadow: "0 0 8px var(--t-accent)" } : { background: "var(--t-muted)" }}
-            />
-            {hoursChip}
-          </span>
-          {lowestPrice !== null && (
-            <span className={`inline-flex items-center px-3 py-2 rounded-full text-xs font-medium ${glass}`}>
-              {t("shop.from", { price: money(Math.round(Number(lowestPrice) * 100), locale) })}
-            </span>
-          )}
-          {loyalty.enabled && (
-            <span className="inline-flex items-center px-3 py-2 rounded-full text-xs font-semibold bg-[var(--t-cta-bg)] text-[var(--t-cta-text)]">
-              {t("shop.loyalty_chip", { amount: money(loyalty.cents, locale) })}
-            </span>
-          )}
-        </div>
-
-        {/* Floating photo cards: the hero is the only place with ambient motion and backdrop blur. */}
-        <div className="relative mt-6 h-[210px]" aria-hidden="true">
-          {HERO_CARDS.map((card, i) => {
-            const photo = photos[i];
-            return (
-              <div
-                key={i}
-                className={`${card.cls} ${card.pos} absolute overflow-hidden rounded-[18px] border backdrop-blur-md flex items-center justify-center text-[var(--t-tile-icon)] ${
-                  card.featured ? "border-[var(--t-accent)]/40 shadow-[0_0_30px_var(--t-glow),0_16px_34px_rgba(0,0,0,0.45)]" : "border-[var(--t-border)] shadow-[0_14px_30px_rgba(0,0,0,0.4)]"
-                }`}
-                style={{ background: "var(--t-surface)" }}
-              >
-                {photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photo.thumb_url ?? photo.url}
-                    alt=""
-                    width={photo.width ?? undefined}
-                    height={photo.height ?? undefined}
-                    loading="eager"
-                    fetchPriority={card.featured ? "high" : "auto"}
-                    decoding="async"
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <PhotoIcon />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* The work */}
-        <section className="mt-10">
-          <div className="flex items-end justify-between mb-4">
-            <h2 className="text-[36px] leading-none font-[family-name:var(--font-serif)]">{t("shop.the_work")}</h2>
-            {photos.length > 0 && <span className="text-[13px] text-[var(--t-muted)]">{t("shop.tap_to_open")}</span>}
-          </div>
-          <PortfolioGallery photos={photos} shopName={shopName} bookHref={bookHref} />
-        </section>
-
-        {/* How booking works */}
-        <section className="mt-14">
-          <h2 className="text-[36px] leading-none font-[family-name:var(--font-serif)] mb-4">{t("shop.how_title")}</h2>
-          <ol className="flex flex-col gap-2.5">
-            {[1, 2, 3].map((n) => ({ title: t(`shop.step${n}_title`), body: t(`shop.step${n}_body`) })).map((step, i) => (
-              <li key={i} className={`flex gap-3.5 items-start p-4 rounded-2xl ${glass}`}>
-                <span
-                  className="w-[38px] h-[38px] shrink-0 rounded-full flex items-center justify-center text-[20px] font-[family-name:var(--font-serif)] border"
-                  style={{
-                    background: "color-mix(in srgb, var(--t-accent) 12%, transparent)",
-                    borderColor: "color-mix(in srgb, var(--t-accent) 35%, transparent)",
-                    color: "var(--t-accent)",
-                  }}
-                >
-                  {i + 1}
-                </span>
-                <div>
-                  <div className="text-[15px] font-semibold">{step.title}</div>
-                  <div className="text-[13px] leading-snug text-[var(--t-muted)] mt-0.5">{step.body}</div>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        <p
-          className="mt-16 text-center text-[44px] leading-none italic font-[family-name:var(--font-serif)] text-[var(--t-accent)]"
-          style={{ textShadow: "0 0 28px var(--t-glow)" }}
-        >
-          {t("shop.closing")}
-        </p>
-      </div>
-
-      {/* Pinned CTA */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--t-border)]"
-        style={{ background: "var(--t-bg)" }}
-      >
-        <div className="mx-auto max-w-[520px] px-5 pt-3.5 pb-7">
-          <a
-            href={bookHref}
-            className="flex items-center justify-center gap-2.5 h-[58px] rounded-2xl text-base font-bold bg-[var(--t-cta-bg)] text-[var(--t-cta-text)] shadow-[0_0_28px_var(--t-glow)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_40px_var(--t-glow)] active:translate-y-0"
-          >
-            {t("shop.cta")}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </a>
-          <div className="mt-2 text-center text-xs text-[var(--t-muted)]">{t("shop.cta_note")}</div>
-        </div>
-      </div>
+      <PortfolioView data={view} />
     </main>
   );
 }

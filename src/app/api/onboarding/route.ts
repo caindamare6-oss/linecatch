@@ -7,6 +7,7 @@ import { cleanAddress, requestSticker } from "@/lib/sticker-request";
 import { claimSticker, pendingSticker, STICKER_COOKIE } from "@/lib/sticker-claim";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
 import { assignNumberSoon } from "@/lib/phone-numbers";
+import { THEME_IDS } from "@/lib/themes";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -30,8 +31,12 @@ export async function POST(request: Request) {
     if (["en", "es"].includes(data.language)) update.barber_language = data.language;
     if (data.firstName !== undefined) update.first_name = cleanText(data.firstName, 40);
     // Only the offered accents are saved; a stale pick is ignored rather than failing the step.
+    // null means "use my theme's own color".
     const accent = cleanAccent(data.accentColor);
     if (accent) update.accent_color = accent;
+    else if (data.accentColor === null) update.accent_color = null;
+    // Their colors: the portfolio, booking pages and their own app all use this theme.
+    if (THEME_IDS.includes(data.theme)) update.theme = data.theme;
 
     const { error } = await admin
       .from("users")
@@ -87,7 +92,7 @@ export async function POST(request: Request) {
         // Scoped to this barber: a service id from someone else's shop matches nothing.
         const { error } = await admin
           .from("services")
-          .update({ name: clean.name, price: clean.price, duration_minutes: clean.duration, is_active: enabled, sort_order: sortOrder })
+          .update({ name: clean.name, description: clean.description, price: clean.price, duration_minutes: clean.duration, is_active: enabled, sort_order: sortOrder })
           .eq("id", svc.id)
           .eq("user_id", user.id);
         if (error) {
@@ -98,7 +103,7 @@ export async function POST(request: Request) {
       } else {
         const { data: row, error } = await admin
           .from("services")
-          .insert({ user_id: user.id, name: clean.name, price: clean.price, duration_minutes: clean.duration, is_active: true, sort_order: sortOrder })
+          .insert({ user_id: user.id, name: clean.name, description: clean.description, price: clean.price, duration_minutes: clean.duration, is_active: true, sort_order: sortOrder })
           .select("id")
           .single();
         if (error || !row) {
@@ -207,14 +212,14 @@ export async function GET() {
   const { data: profile } = await admin
     .from("users")
     .select(
-      "first_name, email, business_name, forwarding_number, accent_color, business_hours, barber_language, timezone, avatar_url, feature_autotext, feature_wednesday, feature_reviews, feature_marketing, shipping_address, google_review_url, referral_source, referred_by"
+      "first_name, email, business_name, forwarding_number, theme, accent_color, business_hours, barber_language, timezone, cover_url, feature_autotext, feature_wednesday, feature_reviews, feature_marketing, shipping_address, google_review_url, referral_source, referred_by"
     )
     .eq("user_id", user.id)
     .single();
 
   const { data: services } = await admin
     .from("services")
-    .select("id, name, price, duration_minutes, is_active, sort_order")
+    .select("id, name, description, price, duration_minutes, is_active, sort_order")
     .eq("user_id", user.id)
     .order("sort_order", { ascending: true });
 

@@ -10,6 +10,15 @@ LineCatch is multi-tenant: every barber has their own account, clients, schedule
 
 Barbers lose bookings every day because they can't answer the phone with clippers in their hand. A caller who gets voicemail usually calls the next shop. LineCatch turns each missed call into a booking link, then handles the follow-up a barber never has time for: confirmations, reminders, "you're due for a cut", review requests and win-backs.
 
+## Pricing
+
+| Plan | Price | What's in it |
+|---|---|---|
+| **Barber** | $49 a month | Everything LineCatch does, for one chair. |
+| **Shop** | $199 a month | Everything in Barber for every barber in the shop, plus an owner dashboard across every chair and priority support. *(Shop features not built yet.)* |
+
+Both start with 30 days free, no card. Billing (Stripe) isn't built yet.
+
 ## Who uses it
 
 | Who | What they do |
@@ -58,8 +67,7 @@ Every client text ends with *"Reply STOP to opt out"* in the client's language. 
 
 ### 5. Loyalty
 A stamp card with $5 off on reward cuts.
-- **Basic plan:** every 3rd cut.
-- **Full plan:** the 1st cut, then every 3rd after that (4, 7, 10…).
+- The 2nd cut, then every 3rd after that (5, 8, 11…). Same for every barber and client.
 
 One reward per visit, applied automatically.
 

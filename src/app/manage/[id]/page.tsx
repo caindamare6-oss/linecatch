@@ -8,6 +8,7 @@ import { money } from "@/lib/config";
 import { REWARD_CENTS } from "@/lib/loyalty-rules";
 import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { applyAppTheme } from "@/lib/themes";
 
 const CUTOFF_HOURS = 3;
 
@@ -53,7 +54,7 @@ export default function ManageBookingPage() {
           setError(data.error);
         } else {
           setBooking(data);
-          if (data.accentColor) document.documentElement.style.setProperty("--accent-color", data.accentColor);
+          applyAppTheme(data.theme, data.accentColor);
         }
         setLoading(false);
       })
@@ -207,7 +208,7 @@ export default function ManageBookingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center">
         <PageSkeleton />
       </div>
     );
@@ -215,7 +216,7 @@ export default function ManageBookingPage() {
 
   if (error && !booking) {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-red-400 mb-2">{error}</p>
           <p className="text-white/30 text-sm">{t("manage.maybe_expired")}</p>
@@ -235,8 +236,8 @@ export default function ManageBookingPage() {
 
   if (view === "done") {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[var(--app-card)] rounded-2xl p-8 border border-[var(--app-card-2)] text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-color) 10%, transparent)' }}>
             <svg className="w-8 h-8 text-[var(--accent-color)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -245,7 +246,7 @@ export default function ManageBookingPage() {
           <h2 className="text-xl font-bold text-white mb-2">
             {actionResult === "cancelled" ? t("manage.cancelled_title") : t("manage.rescheduled_title")}
           </h2>
-          <p className="text-stone-400 text-sm">
+          <p className="text-white/50 text-sm">
             {actionResult === "cancelled"
               ? t("manage.cancelled_body", { name: displayName })
               : t("manage.rescheduled_body")}
@@ -257,10 +258,10 @@ export default function ManageBookingPage() {
 
   if (view === "confirm-cancel") {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-6 border border-[#2C2A27]">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-[var(--app-card)] rounded-2xl p-6 border border-[var(--app-card-2)]">
           <h2 className="text-lg font-bold text-white mb-2">{t("manage.cancel_q")}</h2>
-          <p className="text-stone-400 text-sm mb-6">
+          <p className="text-white/50 text-sm mb-6">
             {t("manage.cancel_summary", { service: booking.service?.name || "", name: displayName, date: dateLabel, time: timeLabel })}
           </p>
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
@@ -286,7 +287,7 @@ export default function ManageBookingPage() {
 
   if (view === "reschedule") {
     return (
-      <div className="min-h-screen bg-[#121110] px-4 py-8">
+      <div className="min-h-screen bg-[var(--app-bg)] px-4 py-8">
         <div className="max-w-md mx-auto">
           <button
             onClick={() => { setView("details"); setSelectedDate(""); setSelectedTime(""); setError(""); }}
@@ -346,12 +347,12 @@ export default function ManageBookingPage() {
     );
   }
 
-  const statusTone = booking.status === "confirmed" ? "var(--accent-color)" : booking.status === "completed" ? "#A8C49A" : "#F08A8A";
+  const statusTone = booking.status === "confirmed" ? "var(--accent-color)" : booking.status === "completed" ? "var(--app-ok)" : "var(--app-danger)";
   const priceCents = booking.service ? Math.max(Math.round(booking.service.price * 100) * (booking.partySize || 1) - (booking.rewardDue ? booking.rewardCents ?? REWARD_CENTS : 0), 0) : 0;
   const statusLabel = ["confirmed", "completed", "cancelled", "no_show"].includes(booking.status) ? t(`manage.status_${booking.status}`) : booking.status;
 
   return (
-    <div className="min-h-screen bg-[#121110] text-white flex flex-col">
+    <div className="min-h-screen bg-[var(--app-bg)] text-white flex flex-col">
       <div className="w-full max-w-md mx-auto flex-1 flex flex-col px-6">
         <header className="pt-6" style={{ animation: "ob-fade-up 450ms ease-out both" }}>
           <div className="flex items-center gap-2.5 mb-5">
@@ -377,7 +378,7 @@ export default function ManageBookingPage() {
               <Detail tone="var(--accent-color)" label={t("manage.service")} title={`${booking.service.name}${booking.partySize > 1 ? t("manage.party_suffix", { n: booking.partySize }) : ""}`} sub={`${t("manage.minutes", { n: booking.service.duration_minutes * (booking.partySize || 1) })}${priceCents > 0 ? ` · ${money(priceCents, locale)}` : ""}${booking.rewardDue ? t("manage.reward_applied", { amount: money(booking.rewardCents ?? REWARD_CENTS, locale) }) : ""}`} icon={<><path d="M6 3a3 3 0 100 6 3 3 0 000-6zM6 15a3 3 0 100 6 3 3 0 000-6z" /><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" /></>} />
             )}
             <Detail tone="#8FB8DE" label={t("manage.date")} title={dateLabel} icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
-            <Detail tone="#E0926A" label={t("manage.time")} title={timeLabel} icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} last />
+            <Detail tone="var(--app-warn)" label={t("manage.time")} title={timeLabel} icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} last />
           </div>
 
           {canModify && (
@@ -390,7 +391,7 @@ export default function ManageBookingPage() {
               </button>
               <button
                 onClick={() => setView("confirm-cancel")}
-                className="h-[52px] rounded-[14px] border-2 border-[#EF4444]/30 text-[#F08A8A] font-bold hover:border-[#EF4444]/50 transition-colors"
+                className="h-[52px] rounded-[14px] border-2 border-[var(--app-danger)]/30 text-[var(--app-danger)] font-bold hover:border-[var(--app-danger)]/50 transition-colors"
               >
                 {t("manage.cancel_booking")}
               </button>
@@ -398,7 +399,7 @@ export default function ManageBookingPage() {
           )}
 
           {booking.status === "confirmed" && (
-            <p className={`mt-4 rounded-[10px] px-3.5 py-3 text-[12px] leading-relaxed border ${tooLate ? "bg-[#E0926A]/10 border-[#E0926A]/25 text-[#E0926A]" : "bg-[#E0926A]/[0.04] border-[#E0926A]/10 text-white/40"}`}>
+            <p className={`mt-4 rounded-[10px] px-3.5 py-3 text-[12px] leading-relaxed border ${tooLate ? "bg-[var(--app-warn)]/10 border-[var(--app-warn)]/25 text-[var(--app-warn)]" : "bg-[var(--app-warn)]/[0.04] border-[var(--app-warn)]/10 text-white/40"}`}>
               {tooLate
                 ? t("manage.too_late", { hours: CUTOFF_HOURS })
                 : t("manage.window_note", { hours: CUTOFF_HOURS })}

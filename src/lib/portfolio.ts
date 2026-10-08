@@ -3,7 +3,7 @@ import { RESERVED_SLUGS, slugify } from "@/lib/slug";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
-export const MAX_PORTFOLIO_PHOTOS = 8;
+export const MAX_PORTFOLIO_PHOTOS = 50;
 
 /** Gives a barber a unique slug from their shop name if they don't have one yet. */
 export async function ensureSlug(db: Admin, userId: string): Promise<string | null> {

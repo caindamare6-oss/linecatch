@@ -85,7 +85,7 @@ export default function TwilioAdminPage() {
           <button
             onClick={fix}
             disabled={busy || !status.account.ok}
-            className="w-full rounded-xl bg-[var(--accent-color)] py-3 font-semibold text-[#121110] disabled:opacity-40"
+            className="w-full rounded-xl bg-[var(--accent-color)] py-3 font-semibold text-[var(--accent-fg)] disabled:opacity-40"
           >
             {busy ? "Updating…" : "Point every number at this app"}
           </button>

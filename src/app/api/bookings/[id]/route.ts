@@ -40,7 +40,7 @@ export async function GET(
 
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name, timezone, accent_color")
+    .select("business_name, timezone, theme, accent_color")
     .eq("user_id", booking.user_id)
     .single();
 
@@ -58,6 +58,7 @@ export async function GET(
 
   return NextResponse.json({
     accentColor: barber?.accent_color ?? null,
+    theme: barber?.theme ?? null,
     partySize,
     rewardDue: !!loyalty?.due,
     rewardCents: loyalty?.loyalty.cents ?? null,

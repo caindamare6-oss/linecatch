@@ -35,7 +35,7 @@ export default function TextsAdminPage() {
         The default wording every barber&apos;s clients get. Saving changes it for everyone right away, except barbers who wrote their own missed-call text.
         Words in {"{curly brackets}"} are filled in by the app.
       </p>
-      {error && <p className="mb-4 rounded-lg border border-[#F08A8A]/40 p-3 text-[13px] text-[#F08A8A]" role="alert">{error}</p>}
+      {error && <p className="mb-4 rounded-lg border border-[var(--app-danger)]/40 p-3 text-[13px] text-[var(--app-danger)]" role="alert">{error}</p>}
       {!texts && !error && <p className="text-white/50">Loading…</p>}
       {texts &&
         groups.map((g) => (
@@ -114,8 +114,8 @@ function Editor({ item, onClose, onSaved }: { item: Text; onClose: () => void; o
         {item.stop === "always" && " · “Reply STOP to opt out” is added to every one of these."}
         {item.stop === "first" && " · “Reply STOP to opt out” is added on a client's first text."}
       </p>
-      {problems.length > 0 && <p className="text-[12px] text-[#E0926A]">{problems.join(" · ")}</p>}
-      {err && <p className="text-[12px] text-[#F08A8A]" role="alert">{err}</p>}
+      {problems.length > 0 && <p className="text-[12px] text-[var(--app-warn)]">{problems.join(" · ")}</p>}
+      {err && <p className="text-[12px] text-[var(--app-danger)]" role="alert">{err}</p>}
       <button
         onClick={save}
         disabled={!changed || problems.length > 0 || !en.trim() || state === "saving"}
@@ -149,7 +149,7 @@ function Lang({ id, label, value, onChange, item, lang }: { id: string; label: s
             {line(plain)}
             {withStop && ` · with STOP line: ${line(withStop)}`}
           </p>
-          {!plain.gsm && <p className="text-[11px] text-[#E0926A]">{plain.nonGsm.join(" ")} makes this a special-character text: 70 characters per text instead of 160.</p>}
+          {!plain.gsm && <p className="text-[11px] text-[var(--app-warn)]">{plain.nonGsm.join(" ")} makes this a special-character text: 70 characters per text instead of 160.</p>}
         </div>
       )}
     </div>

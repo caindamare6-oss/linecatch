@@ -176,7 +176,7 @@ function Login() {
 
   const up = mode === "up";
   return (
-    <div className="relative min-h-screen bg-[#121110] text-white flex items-center justify-center px-6 py-10 overflow-hidden">
+    <div className="relative min-h-screen bg-[var(--app-bg)] text-white flex items-center justify-center px-6 py-10 overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[520px] h-[520px] rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--accent-color)_8%,transparent)_0%,transparent_70%)]" />
       <LanguageToggle className="absolute top-4 right-4 z-10" />
       <div className="relative w-full max-w-sm">
@@ -193,8 +193,8 @@ function Login() {
         </div>
 
         {sticker && (
-          <div className="mb-4 rounded-2xl border border-[#A8C49A]/30 bg-[#A8C49A]/[0.07] px-4 py-3 text-center" style={{ animation: "ob-fade-up 500ms ease-out 60ms both" }}>
-            <p className="text-[14px] font-semibold text-[#A8C49A]">
+          <div className="mb-4 rounded-2xl border border-[var(--app-ok)]/30 bg-[var(--app-ok)]/[0.07] px-4 py-3 text-center" style={{ animation: "ob-fade-up 500ms ease-out 60ms both" }}>
+            <p className="text-[14px] font-semibold text-[var(--app-ok)]">
               {sticker.shop ? t("login.sticker_banner_shop", { code: sticker.code, shop: sticker.shop }) : t("login.sticker_banner", { code: sticker.code })}
             </p>
             <p className="text-[12px] text-white/45 mt-0.5">{t(up ? "login.sticker_sub" : "login.sticker_sub_in")}</p>
@@ -289,7 +289,7 @@ function Login() {
                       required
                       className="mt-1.5 h-12 rounded-xl bg-white/[0.04] border-white/[0.08] text-white text-[15px] placeholder:text-white/25 focus-visible:border-[var(--accent-color)]/50"
                     />
-                    <p className="text-xs text-stone-500 mt-1.5">
+                    <p className="text-xs text-white/40 mt-1.5">
                       {up ? t("login.email_hint_up") : t("login.email_hint_in")}
                     </p>
                   </div>
@@ -320,7 +320,7 @@ function Login() {
                       required
                       className="mt-1.5 h-12 rounded-xl bg-white/[0.04] border-white/[0.08] text-white text-[15px] placeholder:text-white/25 focus-visible:border-[var(--accent-color)]/50"
                     />
-                    <p className="text-xs text-stone-500 mt-1.5">
+                    <p className="text-xs text-white/40 mt-1.5">
                       {t("login.phone_hint")}
                     </p>
                   </div>
@@ -340,7 +340,7 @@ function Login() {
           ) : (
             <form onSubmit={handleVerifyCode} className="space-y-4">
               <div className="text-center mb-2">
-                <p className="text-sm text-stone-300">
+                <p className="text-sm text-white/80">
                   {t("login.enter_code")}
                 </p>
                 <p className="text-white font-medium">{phone}</p>
@@ -355,7 +355,7 @@ function Login() {
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                   placeholder="000000"
                   required
-                  className="text-center text-2xl tracking-[0.5em] bg-[#121110] border-white/10 text-white placeholder:text-stone-500"
+                  className="text-center text-2xl tracking-[0.5em] bg-[var(--app-bg)] border-white/10 text-white placeholder:text-white/40"
                 />
               </div>
 
@@ -372,7 +372,7 @@ function Login() {
               <button
                 type="button"
                 onClick={resetToInput}
-                className="w-full text-sm text-stone-500 hover:text-stone-300 transition-colors"
+                className="w-full text-sm text-white/40 hover:text-white/80 transition-colors"
               >
                 {t("login.different")}
               </button>
