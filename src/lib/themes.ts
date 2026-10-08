@@ -92,6 +92,16 @@ export function appThemeVars(themeId: unknown, accentHex?: string | null): Recor
   const mix = (a: string, pct: number, b: string) => `color-mix(in srgb, ${a} ${pct}%, ${b})`;
   // A barber's accent pick wins on dark themes; every pick is light, so it takes dark text.
   const picked = t.dark && isAccent(accentHex) ? (accentHex as string) : null;
+  // LineCatch Champagne is the app's own look: exactly the live app's colors (globals.css defaults),
+  // so barbers on the default theme see no change. Only the accent follows their pick.
+  if (t.id === DEFAULT_THEME) {
+    return {
+      ...LIVE_APP_COLORS,
+      "--accent-color": picked ?? t.accent,
+      "--accent-fg": "#121110",
+      "color-scheme": "dark",
+    };
+  }
   const accent = picked ?? (t.dark ? t.accent : mix(t.accent, 78, t.text));
   const accentFg = picked ? "#121110" : t.dark ? t.ctaText : "#FFFFFF";
   return {
@@ -120,6 +130,29 @@ export function appThemeVars(themeId: unknown, accentHex?: string | null): Recor
     "color-scheme": t.dark ? "dark" : "light",
   };
 }
+
+/** The live app's colors (same values as the :root defaults in globals.css). */
+const LIVE_APP_COLORS: Record<string, string> = {
+  "--app-bg": "#121110",
+  "--app-bg-deep": "#0C0B0A",
+  "--app-fg": "#F2EEE6",
+  "--app-muted": "#948C80",
+  "--app-border": "rgba(242, 238, 230, 0.1)",
+  "--app-card": "#1B1A18",
+  "--app-card-2": "#2C2A27",
+  "--app-danger": "#F08A8A",
+  "--app-ok": "#A8C49A",
+  "--app-warn": "#E0926A",
+  "--ob-bg": "#0F0E0D",
+  "--ob-surface": "#1B1A18",
+  "--ob-surface-hover": "#22201E",
+  "--ob-border": "rgba(242, 238, 230, 0.08)",
+  "--ob-text": "#F2EEE6",
+  "--ob-text-secondary": "#A39B8F",
+  "--ob-text-muted": "#6F685F",
+  "--ob-input-bg": "#1A1A1A",
+  "--ob-danger": "#FF4D4D",
+};
 
 /** Applies a barber's colors to the page (client side). */
 export function applyAppTheme(themeId: unknown, accentHex?: string | null) {

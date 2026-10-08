@@ -25,6 +25,20 @@ describe("app colors follow the barber's theme", () => {
     expect(cream["color-scheme"]).toBe("light");
   });
 
+  it("LineCatch Champagne (the default) is exactly the live app's colors", () => {
+    const gold = appThemeVars("gold", "#D4AF7A");
+    expect(gold["--app-bg"]).toBe("#121110");
+    expect(gold["--app-bg-deep"]).toBe("#0C0B0A");
+    expect(gold["--app-fg"]).toBe("#F2EEE6");
+    expect(gold["--app-card"]).toBe("#1B1A18");
+    expect(gold["--app-card-2"]).toBe("#2C2A27");
+    expect(gold["--app-muted"]).toBe("#948C80");
+    expect(gold["--ob-bg"]).toBe("#0F0E0D");
+    expect(gold["--accent-color"]).toBe("#D4AF7A");
+    // Their accent pick still applies on the default theme.
+    expect(appThemeVars("gold", "#A8C49A")["--accent-color"]).toBe("#A8C49A");
+  });
+
   it("an unknown theme or a made-up accent falls back to the LineCatch look", () => {
     const v = appThemeVars("purple-haze", "#123456");
     expect(v["--app-bg"]).toBe("#121110");
