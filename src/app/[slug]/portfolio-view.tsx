@@ -110,7 +110,7 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
               <p className={`${POSTER} mt-1.5 text-[34px]`}>{data.next.day} · {data.next.time}</p>
               {data.next.then.length > 0 && <p className="mt-1 text-[13px] text-[var(--t-muted)]">{t("shop.then_at", { times: data.next.then.join(t("shop.and")) })}</p>}
             </div>
-            <a href={book(pickedService?.id ?? data.services[0].id)} className="shrink-0 h-12 px-[18px] rounded-[14px] inline-flex items-center font-bold text-[15px] bg-[var(--t-cta-bg)] text-[var(--t-cta-text)] active:scale-[0.97] transition-transform" style={{ boxShadow: "0 8px 26px var(--t-glow)" }}>
+            <a href={book(pickedService?.id)}className="shrink-0 h-12 px-[18px] rounded-[14px] inline-flex items-center font-bold text-[15px] bg-[var(--t-cta-bg)] text-[var(--t-cta-text)] active:scale-[0.97] transition-transform" style={{ boxShadow: "0 8px 26px var(--t-glow)" }}>
               {t("shop.grab_it")}
             </a>
           </div>
