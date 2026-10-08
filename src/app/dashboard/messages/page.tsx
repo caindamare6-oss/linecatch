@@ -198,7 +198,7 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="bc-title">
       <button aria-label={t("common.close")} className="absolute inset-0 bg-black/60" onClick={() => state !== "sending" && onClose()} />
-      <div className="relative w-full max-w-md bg-[#1B1A18] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(20px+env(safe-area-inset-bottom))]" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
+      <div className="relative w-full max-w-md bg-[var(--app-card)] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(20px+env(safe-area-inset-bottom))]" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
         <div className="flex items-center justify-between mb-1">
           <h2 id="bc-title" className={`${SERIF} text-xl font-semibold`}>{t("messages.broadcast")}</h2>
           <button onClick={onClose} disabled={state === "sending"} aria-label={t("common.close")} className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white">
@@ -211,14 +211,14 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
 
         {blocked ? (
           <>
-            <p className="text-sm text-[#E0926A] leading-relaxed">{blocked}</p>
+            <p className="text-sm text-[var(--app-warn)] leading-relaxed">{blocked}</p>
             <Link href="/dashboard/settings#marketing" className="mt-4 w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold flex items-center justify-center">
               {t("messages.bc_open_settings")}
             </Link>
           </>
         ) : state === "done" ? (
           <>
-            <p className="text-sm text-[#A8C49A] font-medium">{result}</p>
+            <p className="text-sm text-[var(--app-ok)] font-medium">{result}</p>
             <button onClick={onClose} className="mt-4 w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold">{t("common.done")}</button>
           </>
         ) : (
@@ -239,7 +239,7 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
               <span>{t("messages.bc_stop_note")}</span>
               <span>{text.length}/320</span>
             </div>
-            {error && <p className="mt-3 text-[13px] text-[#F08A8A]">{error}</p>}
+            {error && <p className="mt-3 text-[13px] text-[var(--app-danger)]">{error}</p>}
             <button
               onClick={() => (state === "confirm" ? send() : setState("confirm"))}
               disabled={!text.trim() || !count || state === "sending"}

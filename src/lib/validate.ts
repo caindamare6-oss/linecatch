@@ -57,13 +57,15 @@ export function cleanUrl(raw: unknown): { ok: true; value: string | null } | { o
 
 export const cleanAccent = (raw: unknown) => (isAccent(raw) ? (raw as string) : null);
 
-export function cleanService(raw: unknown): { name: string; price: number; duration: number } | null {
+export function cleanService(raw: unknown): { name: string; price: number; duration: number; description: string | null } | null {
   if (!raw || typeof raw !== "object") return null;
-  const s = raw as { name?: unknown; price?: unknown; duration?: unknown };
+  const s = raw as { name?: unknown; price?: unknown; duration?: unknown; description?: unknown };
   const name = cleanText(s.name, 60);
+  // One short optional line under the name ("Taper with a lineup").
+  const description = cleanText(s.description, 80);
   const price = Number(s.price);
   const duration = Number(s.duration);
   if (!name || !Number.isFinite(price) || price < 0 || price > 10000) return null;
   if (!Number.isInteger(duration) || duration < 5 || duration > 480) return null;
-  return { name, price: Math.round(price * 100) / 100, duration };
+  return { name, price: Math.round(price * 100) / 100, duration, description };
 }

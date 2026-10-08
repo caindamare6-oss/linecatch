@@ -14,7 +14,7 @@ export type ReadyStep = (typeof READY_STEPS)[number];
 
 export async function missingSteps(db: Admin, userId: string): Promise<ReadyStep[]> {
   const [{ data: u }, { count: services }, { count: photos }] = await Promise.all([
-    db.from("users").select("onboarding_completed, forwarding_number, business_hours, avatar_url").eq("user_id", userId).maybeSingle(),
+    db.from("users").select("onboarding_completed, forwarding_number, business_hours, cover_url").eq("user_id", userId).maybeSingle(),
     db.from("services").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("is_active", true),
     db.from("portfolio_photos").select("id", { count: "exact", head: true }).eq("user_id", userId),
   ]);
@@ -25,7 +25,7 @@ export async function missingSteps(db: Admin, userId: string): Promise<ReadyStep
   if (!services) missing.push("services");
   if (!Object.values(hours).some(Boolean)) missing.push("hours");
   if (!photos) missing.push("portfolio");
-  if (!u?.avatar_url) missing.push("photo");
+  if (!u?.cover_url) missing.push("photo");
   return missing;
 }
 

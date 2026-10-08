@@ -199,8 +199,8 @@ function Schedule() {
         )}
         {day.isToday && day.nowMin >= day.lo && day.nowMin <= day.hi && (
           <div className="pointer-events-none absolute left-11 right-0 z-10 flex items-center" style={{ top: (day.nowMin - day.lo) * PX_PER_MIN }} aria-hidden>
-            <span className="w-2 h-2 -ml-1 rounded-full bg-[#E0926A]" />
-            <span className="flex-1 border-t border-[#E0926A]/70" />
+            <span className="w-2 h-2 -ml-1 rounded-full bg-[var(--app-warn)]" />
+            <span className="flex-1 border-t border-[var(--app-warn)]/70" />
           </div>
         )}
         {day.list.map((b) => {
@@ -218,11 +218,11 @@ function Schedule() {
                   ? "bg-[var(--accent-color)]/[0.1] border-[var(--accent-color)]/45"
                   : done || ns
                     ? "bg-white/[0.025] border-white/[0.05] opacity-60"
-                    : "bg-[#1B1A18] border-white/[0.08] hover:border-[var(--accent-color)]/30"
+                    : "bg-[var(--app-card)] border-white/[0.08] hover:border-[var(--accent-color)]/30"
               } ${highlight === b.id ? "ring-2 ring-[var(--accent-color)]" : ""}`}
               style={{ top: (b.start - day.lo) * PX_PER_MIN + 2, height: h }}
             >
-              <span className={`w-[3px] rounded-full shrink-0 ${isNext ? "bg-[var(--accent-color)]" : done ? "bg-[#A8C49A]" : "bg-white/20"}`} />
+              <span className={`w-[3px] rounded-full shrink-0 ${isNext ? "bg-[var(--accent-color)]" : done ? "bg-[var(--app-ok)]" : "bg-white/20"}`} />
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-1.5">
                   <span className={`text-[14px] font-semibold truncate ${ns ? "line-through" : ""}`}>{firstName(b)}</span>
@@ -272,7 +272,7 @@ function Closed({ lo, from, to }: { lo: number; from: number; to: number }) {
   return (
     <div
       aria-hidden
-      className="absolute left-12 right-0 rounded-lg bg-[repeating-linear-gradient(135deg,rgba(242,238,230,0.025)_0_6px,transparent_6px_12px)]"
+      className="absolute left-12 right-0 rounded-lg bg-[repeating-linear-gradient(135deg,color-mix(in_srgb,var(--app-fg)_2.5%,transparent)_0_6px,transparent_6px_12px)]"
       style={{ top: (from - lo) * PX_PER_MIN, height: (to - from) * PX_PER_MIN }}
     />
   );
@@ -306,7 +306,7 @@ function BookingSheet({ booking: b, tz, started, canUndo, onClose, onChanged }: 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="bk-title">
       <button aria-label={t("common.close")} className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-[#1B1A18] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(20px+env(safe-area-inset-bottom))]" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
+      <div className="relative w-full max-w-md bg-[var(--app-card)] border border-white/[0.08] rounded-t-2xl sm:rounded-2xl p-5 pb-[calc(20px+env(safe-area-inset-bottom))]" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 id="bk-title" className={`${SERIF} text-xl font-semibold`}>{b.name || formatPhone(b.phone)}</h2>
@@ -345,7 +345,7 @@ function BookingSheet({ booking: b, tz, started, canUndo, onClose, onChanged }: 
               <button
                 onClick={() => (confirmCancel ? act("cancel") : setConfirmCancel(true))}
                 disabled={!!busy}
-                className={`h-11 rounded-xl border text-[13px] ${confirmCancel ? "border-[#F08A8A] bg-[#F08A8A]/10 text-[#F08A8A] font-semibold" : "border-[#F08A8A]/30 text-[#F08A8A]"}`}
+                className={`h-11 rounded-xl border text-[13px] ${confirmCancel ? "border-[var(--app-danger)] bg-[var(--app-danger)]/10 text-[var(--app-danger)] font-semibold" : "border-[var(--app-danger)]/30 text-[var(--app-danger)]"}`}
               >
                 {busy === "cancel" ? t("schedule.cancelling") : confirmCancel ? t("schedule.confirm_cancel") : t("schedule.cancel")}
               </button>
@@ -368,7 +368,7 @@ function BookingSheet({ booking: b, tz, started, canUndo, onClose, onChanged }: 
             )}
           </div>
         )}
-        {error && <p className="mt-3 text-[13px] text-[#F08A8A]">{error}</p>}
+        {error && <p className="mt-3 text-[13px] text-[var(--app-danger)]">{error}</p>}
       </div>
     </div>
   );

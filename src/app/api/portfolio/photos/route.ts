@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       height: toDim(form?.get("height")),
       sort_order: (existing?.[0]?.sort_order ?? -1) + 1,
     })
-    .select("id, url, thumb_url, width, height, sort_order")
+    .select("id, url, thumb_url, width, height, sort_order, service_id")
     .single();
 
   if (insertError || !photo) {

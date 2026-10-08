@@ -187,7 +187,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
 export default async function PrivacyPolicy() {
   const { t, locale, tag } = await getT();
   return (
-    <div className="min-h-screen bg-[#121110] text-white/80 px-4 py-8">
+    <div className="min-h-screen bg-[var(--app-bg)] text-white/80 px-4 py-8">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between gap-3 mb-8">
           <Link href="/" className="inline-flex items-center gap-2 text-sm text-white/40 hover:text-white/60 transition-colors">

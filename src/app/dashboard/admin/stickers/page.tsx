@@ -516,7 +516,7 @@ function FieldCard({ codes, barbers, onSaved }: { codes: StickerCode[]; barbers:
         <input aria-label={t("admin.field_shop")} placeholder={t("admin.field_shop")} value={shop} onChange={(e) => setShop(e.target.value.slice(0, 60))} className={field} required />
         <button type="submit" disabled={busy} className="col-span-2 h-11 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-sm font-semibold disabled:opacity-50">{t("admin.field_save")}</button>
       </form>
-      {msg && <p className="text-[13px] text-[#A8C49A]">{msg}</p>}
+      {msg && <p className="text-[13px] text-[var(--app-ok)]">{msg}</p>}
       {err && <p className="text-[13px] text-red-400" role="alert">{err}</p>}
       {handed.length === 0 ? (
         <p className="text-sm text-white/40">{t("admin.field_none")}</p>
@@ -527,7 +527,7 @@ function FieldCard({ codes, barbers, onSaved }: { codes: StickerCode[]; barbers:
               <span className="font-mono text-white/70 w-[72px] shrink-0">{c.code}</span>
               <span className="flex-1 min-w-0 truncate text-white/85">{c.status === "active" && c.owner_user_id ? barbers[c.owner_user_id] || c.handed_to : c.handed_to}</span>
               <span className="text-[11px] text-white/35 shrink-0">{f.date(c.handed_out_at!, { month: "short", day: "numeric" })}</span>
-              <span className={`text-[11px] font-semibold shrink-0 ${c.status === "active" ? "text-[#A8C49A]" : "text-[#E0926A]"}`}>{c.status === "active" ? t("admin.field_live") : t("admin.field_waiting")}</span>
+              <span className={`text-[11px] font-semibold shrink-0 ${c.status === "active" ? "text-[var(--app-ok)]" : "text-[var(--app-warn)]"}`}>{c.status === "active" ? t("admin.field_live") : t("admin.field_waiting")}</span>
             </li>
           ))}
         </ul>

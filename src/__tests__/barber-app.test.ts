@@ -172,7 +172,10 @@ describe("validators", () => {
   });
 
   it("services need a name, sane price and minutes", () => {
-    expect(cleanService({ name: " Fade ", price: "35", duration: 30 })).toEqual({ name: "Fade", price: 35, duration: 30 });
+    expect(cleanService({ name: " Fade ", price: "35", duration: 30 })).toEqual({ name: "Fade", price: 35, duration: 30, description: null });
+    // The optional details line is trimmed and capped at 80 characters.
+    expect(cleanService({ name: "Taper", description: "  Taper with a lineup ", price: 35, duration: 45 })?.description).toBe("Taper with a lineup");
+    expect(cleanService({ name: "Taper", description: "x".repeat(120), price: 35, duration: 45 })?.description).toHaveLength(80);
     expect(cleanService({ name: "Fade", price: -1, duration: 30 })).toBeNull();
     expect(cleanService({ name: "Fade", price: 35, duration: 2 })).toBeNull();
     expect(cleanService({ name: "", price: 35, duration: 30 })).toBeNull();

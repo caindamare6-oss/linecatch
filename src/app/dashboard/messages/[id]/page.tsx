@@ -93,7 +93,7 @@ export default function ThreadPage() {
               {label && <span className="text-[10px] uppercase tracking-[0.5px] font-semibold text-white/30 mb-1 px-1">{label}</span>}
               <div
                 className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-[14px] leading-snug whitespace-pre-wrap break-words ${
-                  out ? "bg-[var(--accent-color)]/[0.14] text-white/90 rounded-br-md" : "bg-[#1B1A18] border border-white/[0.07] rounded-bl-md"
+                  out ? "bg-[var(--accent-color)]/[0.14] text-white/90 rounded-br-md" : "bg-[var(--app-card)] border border-white/[0.07] rounded-bl-md"
                 } ${m.status === "failed" ? "opacity-50" : ""}`}
               >
                 {m.body}
@@ -108,7 +108,7 @@ export default function ThreadPage() {
         <div ref={endRef} />
       </div>
 
-      <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] mt-4 pt-3 bg-[#121110]">
+      <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] mt-4 pt-3 bg-[var(--app-bg)]">
         {thread.canText ? (
           <form
             onSubmit={(e) => {
@@ -138,7 +138,7 @@ export default function ThreadPage() {
         ) : (
           <p className="text-[12px] text-white/40 text-center px-4 py-2">{t(thread.cantTextReason === "opted_out" ? "thread.cant_opted_out" : "thread.cant_no_consent")}</p>
         )}
-        {sendError && <p className="text-[12px] text-[#F08A8A] mt-2">{sendError}</p>}
+        {sendError && <p className="text-[12px] text-[var(--app-danger)] mt-2">{sendError}</p>}
       </div>
     </div>
   );

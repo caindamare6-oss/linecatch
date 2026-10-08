@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const supabase = createAdminClient();
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name, first_name, is_locked_out, accent_color, timezone, business_hours, loyalty_enabled, loyalty_reward_cents")
+    .select("business_name, first_name, is_locked_out, theme, accent_color, timezone, business_hours, loyalty_enabled, loyalty_reward_cents")
     .eq("user_id", barberId)
     .single();
   const loyalty = toLoyalty(barber);
@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     openDays,
     isLockedOut: barber?.is_locked_out || false,
     accentColor: barber?.accent_color || null,
+    theme: barber?.theme ?? null,
     timezone: barber?.timezone || DEFAULT_TZ,
     loyalty,
   });

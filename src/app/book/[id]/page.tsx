@@ -12,10 +12,12 @@ import { REWARD_CENTS, type Loyalty } from "@/lib/loyalty-rules";
 import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { saveToken, useClientSession } from "./use-client-session";
+import { applyAppTheme } from "@/lib/themes";
 
 type Service = {
   id: string;
   name: string;
+  description?: string | null;
   price: number;
   duration_minutes: number;
 };
@@ -64,7 +66,7 @@ export default function BookingPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0C0B0A] flex items-center justify-center px-4">
+        <div className="min-h-screen bg-[var(--app-bg-deep,#0C0B0A)] flex items-center justify-center px-4">
           <PageSkeleton />
         </div>
       }
@@ -127,7 +129,14 @@ function BookingContent() {
       ]);
       if (servicesRes.ok) {
         const data = await servicesRes.json();
-        setServices(data.services || []);
+        const list: Service[] = data.services || [];
+        setServices(list);
+        // A cut picked on the portfolio ("Book this cut", "Pick your cut"): skip straight to the time.
+        const chosen = list.find((s) => s.id === searchParams.get("service"));
+        if (chosen) {
+          setService(chosen);
+          setStep("time");
+        }
       }
       if (barberRes.ok) {
         const data = await barberRes.json();
@@ -135,7 +144,7 @@ function BookingContent() {
         if (data.timezone) setTimezone(data.timezone);
         if (data.loyalty) setLoyalty(data.loyalty);
         if (Array.isArray(data.openDays) && data.openDays.length) setOpenDays(data.openDays);
-        document.documentElement.style.setProperty("--accent-color", data.accentColor || "#D4AF7A");
+        applyAppTheme(data.theme, data.accentColor);
       }
       setLoading(false);
     }
@@ -237,7 +246,7 @@ function BookingContent() {
 
   if (loading || session.status === "checking") {
     return (
-      <div className="min-h-screen bg-[#0C0B0A] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[var(--app-bg-deep,#0C0B0A)] flex items-center justify-center px-4">
         <PageSkeleton />
       </div>
     );
@@ -245,7 +254,7 @@ function BookingContent() {
 
   if (step === "done") {
     return (
-      <div className={`${BODY} min-h-screen bg-[#0C0B0A] text-white flex flex-col items-center justify-center text-center px-6 py-10`}>
+      <div className={`${BODY} min-h-screen bg-[var(--app-bg-deep,#0C0B0A)] text-white flex flex-col items-center justify-center text-center px-6 py-10`}>
         <div
           className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
           style={{ background: "color-mix(in srgb, var(--accent-color) 10%, transparent)", animation: "ob-scale-in 600ms cubic-bezier(0.34,1.56,0.64,1) both" }}
@@ -305,7 +314,7 @@ function BookingContent() {
   const progress = step === "service" ? 1 : step === "time" ? 2 : 3;
 
   return (
-    <div className={`${BODY} min-h-screen bg-[#0C0B0A] text-white flex flex-col`}>
+    <div className={`${BODY} min-h-screen bg-[var(--app-bg-deep,#0C0B0A)] text-white flex flex-col`}>
       <div className="w-full max-w-[440px] mx-auto flex-1 flex flex-col">
         {/* Header */}
         <div className="px-6 pt-5" style={fadeUp()}>
@@ -335,7 +344,7 @@ function BookingContent() {
               <div
                 key={i}
                 className="flex-1 h-[3px] rounded-full transition-colors duration-300"
-                style={{ background: i <= progress ? "var(--accent-color)" : "rgba(242,238,230,0.1)" }}
+                style={{ background: i <= progress ? "var(--accent-color)" : "color-mix(in srgb, var(--app-fg) 10%, transparent)" }}
               />
             ))}
           </div>
@@ -356,8 +365,12 @@ function BookingContent() {
             </p>
           )}
           {step === "time" && service && (
-            <p className="text-[13px] text-white/40 mt-1.5">
+            <p className="text-[13px] text-white/50 mt-1.5">
               {service.name} · {partyLabel.toLowerCase()} · {t("book.minutes", { n: totalMinutes })}{total > 0 && ` · ${usd(total, locale)}`}
+              {" · "}
+              <button type="button" onClick={() => { setError(""); setStep("service"); }} className="font-semibold text-[var(--accent-color)] hover:underline underline-offset-2 min-h-[44px] -my-3 px-1">
+                {t("book.change")}
+              </button>
             </p>
           )}
         </div>
@@ -417,11 +430,12 @@ function BookingContent() {
                             picked ? "border-[var(--accent-color)] bg-[var(--accent-color)]" : "border-white/15"
                           }`}
                         >
-                          <span className={`w-2 h-2 rounded-full bg-[#0C0B0A] transition-opacity ${picked ? "opacity-100" : "opacity-0"}`} />
+                          <span className={`w-2 h-2 rounded-full bg-[var(--app-bg-deep,#0C0B0A)] transition-opacity ${picked ? "opacity-100" : "opacity-0"}`} />
                         </span>
                         <span className="flex-1">
                           <span className="block text-[15px] font-semibold">{s.name}</span>
-                          <span className="block text-xs text-white/25 mt-0.5">{t("book.minutes", { n: s.duration_minutes })}</span>
+                          {s.description && <span className="block text-[13px] text-white/55 mt-0.5">{s.description}</span>}
+                          <span className="block text-xs text-white/40 mt-0.5">{t("book.minutes", { n: s.duration_minutes })}</span>
                         </span>
                         {s.price > 0 && (
                           <span className={`${HEADING} text-base font-bold text-[var(--accent-color)]`}>
@@ -590,7 +604,7 @@ function BookingContent() {
                       consentChecked ? "bg-[var(--accent-color)] border-[var(--accent-color)]" : "border-white/15"
                     }`}
                   >
-                    {consentChecked && <Check className="w-3 h-3 text-[#0C0B0A]" strokeWidth={3} />}
+                    {consentChecked && <Check className="w-3 h-3 text-[var(--app-bg-deep,#0C0B0A)]" strokeWidth={3} />}
                   </span>
                   <span className="text-xs text-white/30 leading-relaxed">
                     {shownConsent}{" "}
@@ -639,7 +653,7 @@ function PayInPerson() {
   const t = useT();
   return (
     <div className="rounded-xl px-4 py-3 flex items-center gap-3 text-left bg-emerald-500/15 border-[1.5px] border-emerald-400/60 shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-      <div className="w-9 h-9 rounded-lg bg-emerald-400 text-[#0C0B0A] flex items-center justify-center shrink-0">
+      <div className="w-9 h-9 rounded-lg bg-emerald-400 text-[var(--app-bg-deep,#0C0B0A)] flex items-center justify-center shrink-0">
         <Wallet className="w-5 h-5" strokeWidth={2.25} />
       </div>
       <div>
@@ -685,7 +699,7 @@ function DetailRow({ icon, title, sub }: { icon: React.ReactNode; title: string;
 
 function BottomCta({ disabled, onClick, children, note }: { disabled?: boolean; onClick: () => void; children: React.ReactNode; note?: string }) {
   return (
-    <div className="px-6 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] sticky bottom-0 border-t border-white/[0.08] bg-[#121110]">
+    <div className="px-6 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] sticky bottom-0 border-t border-white/[0.08] bg-[var(--app-bg)]">
       <button
         onClick={onClick}
         disabled={disabled}
@@ -772,7 +786,7 @@ function CalendarGrid({
               onClick={() => onPick(dateStr)}
               className={`${HEADING} aspect-square rounded-[10px] text-sm font-semibold flex items-center justify-center transition-all duration-200 ${
                 isPicked
-                  ? "bg-[var(--accent-color)] text-[#0C0B0A] shadow-[0_4px_16px_color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
+                  ? "bg-[var(--accent-color)] text-[var(--app-bg-deep,#0C0B0A)] shadow-[0_4px_16px_color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
                   : disabled
                     ? isClosed && !isPast ? "text-white/[0.12] line-through cursor-not-allowed" : "text-white/10 cursor-not-allowed"
                     : isToday

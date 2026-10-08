@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLocale, useSetLocale } from "@/lib/i18n";
+import { applyAppTheme } from "@/lib/themes";
 
 const tabs = [
   {
@@ -41,10 +42,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-      const { data } = await supabase.from("users").select("accent_color, barber_language").eq("user_id", user.id).single();
-      if (!cancelled && data?.accent_color) {
-        document.documentElement.style.setProperty("--accent-color", data.accent_color);
-      }
+      const { data } = await supabase.from("users").select("theme, accent_color, barber_language").eq("user_id", user.id).single();
+      // The barber's portfolio colors are their app's colors too.
+      if (!cancelled && data) applyAppTheme(data.theme, data.accent_color);
       // The language saved on the account follows the barber to any device.
       if (!cancelled && (data?.barber_language === "en" || data?.barber_language === "es") && data.barber_language !== locale) {
         setLocale(data.barber_language);
@@ -59,12 +59,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const activeTab = tabs.find((x) => (x.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(x.href)));
 
   return (
-    <div className="min-h-screen bg-[#121110] text-white">
+    <div className="min-h-screen bg-[var(--app-bg)] text-white">
       <main className="relative max-w-md mx-auto px-5 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))]">{children}</main>
 
       <nav
         aria-label={t("nav.main")}
-        className="fixed bottom-0 inset-x-0 z-30 border-t border-white/[0.06] bg-[#121110]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
+        className="fixed bottom-0 inset-x-0 z-30 border-t border-white/[0.06] bg-[var(--app-bg)]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
       >
         <ul className="max-w-md mx-auto grid grid-cols-4">
           {tabs.map((tab) => {

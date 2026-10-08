@@ -16,8 +16,8 @@ type Detail = { client: ClientSummary; barberId: string; notes: string; source: 
 const STATUS: Record<string, { label: string; tone: string }> = {
   completed: { label: "", tone: "var(--accent-color)" },
   confirmed: { label: "client.upcoming", tone: "#8FB8DE" },
-  cancelled: { label: "client.cancelled", tone: "rgba(242,238,230,0.35)" },
-  no_show: { label: "client.no_show", tone: "#F08A8A" },
+  cancelled: { label: "client.cancelled", tone: "color-mix(in srgb, var(--app-fg) 35%, transparent)" },
+  no_show: { label: "client.no_show", tone: "var(--app-danger)" },
 };
 
 export default function ClientDetailPage() {
@@ -58,7 +58,7 @@ export default function ClientDetailPage() {
       <PageHeader title={t("client.title")} back="/dashboard/clients" />
 
       <section className="text-center mb-5" style={{ animation: "ob-fade-up 350ms ease-out both" }}>
-        <div className={`${SERIF} mx-auto mb-3 w-16 h-16 rounded-[20px] bg-gradient-to-br from-[var(--accent-color)] to-[#C29A62] text-[#121110] flex items-center justify-center text-2xl font-bold`} aria-hidden>
+        <div className={`${SERIF} mx-auto mb-3 w-16 h-16 rounded-[20px] bg-gradient-to-br from-[var(--accent-color)] to-[color-mix(in_srgb,var(--accent-color)_78%,#000)] text-[var(--accent-fg)] flex items-center justify-center text-2xl font-bold`} aria-hidden>
           {(c.name?.[0] || "#").toUpperCase()}
         </div>
         <NameEditor phone={c.phone} initial={c.name} />
@@ -93,7 +93,7 @@ export default function ClientDetailPage() {
                 <span
                   key={i}
                   className={`flex-1 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold ${
-                    filled ? "bg-[var(--accent-color)] text-[var(--accent-fg)]" : isReward ? "border border-dashed border-[#E0926A]/60 text-[#E0926A]" : "bg-white/[0.05] text-white/25"
+                    filled ? "bg-[var(--accent-color)] text-[var(--accent-fg)]" : isReward ? "border border-dashed border-[var(--app-warn)]/60 text-[var(--app-warn)]" : "bg-white/[0.05] text-white/25"
                   }`}
                 >
                   {isReward && !filled ? reward : i + 1}

@@ -10,6 +10,7 @@ import { REWARD_CENTS } from "@/lib/loyalty-rules";
 import { useT, useLocale, LanguageToggle } from "@/lib/i18n";
 import { normalizePhone } from "@/lib/phone";
 import { PageSkeleton } from "@/components/ui/skeleton";
+import { applyAppTheme } from "@/lib/themes";
 
 export default function VIPOptIn() {
   const params = useParams();
@@ -39,7 +40,7 @@ export default function VIPOptIn() {
           if (data.businessName) setBusinessName(data.businessName);
           if (data.loyalty?.cents) setRewardCents(data.loyalty.cents);
           if (data.isLockedOut) setIsLockedOut(true);
-          if (data.accentColor) document.documentElement.style.setProperty("--accent-color", data.accentColor);
+          applyAppTheme(data.theme, data.accentColor);
         }
       } catch {}
       setPageLoading(false);
@@ -103,7 +104,7 @@ export default function VIPOptIn() {
 
   if (pageLoading) {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center">
         <PageSkeleton />
       </div>
     );
@@ -111,16 +112,16 @@ export default function VIPOptIn() {
 
   if (isLockedOut) {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4">
         <LanguageToggle className="fixed top-4 right-4 z-40" />
-        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
+        <div className="w-full max-w-md bg-[var(--app-card)] rounded-2xl p-8 border border-[var(--app-card-2)] text-center">
           <div className="text-3xl font-bold mb-4 text-white">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
-          <p className="text-stone-400 mb-2">
+          <p className="text-white/50 mb-2">
             {t("vip.offline_title", { name: displayName })}
           </p>
-          <p className="text-stone-500 text-sm">
+          <p className="text-white/40 text-sm">
             {t("vip.offline_body")}
           </p>
         </div>
@@ -129,8 +130,8 @@ export default function VIPOptIn() {
   }
 
   return (
-    <div className="min-h-screen bg-[#121110] text-white flex items-center justify-center px-6 pt-16 pb-8">
-      <LanguageToggle className="fixed top-4 right-4 z-40 bg-[#121110]" />
+    <div className="min-h-screen bg-[var(--app-bg)] text-white flex items-center justify-center px-6 pt-16 pb-8">
+      <LanguageToggle className="fixed top-4 right-4 z-40 bg-[var(--app-bg)]" />
       <div className="w-full max-w-md">
         {!submitted ? (
           <div style={{ animation: "ob-fade-up 450ms ease-out both" }}>
@@ -154,7 +155,7 @@ export default function VIPOptIn() {
             <ul className="space-y-2 mb-6">
               {[
                 { tone: "var(--accent-color)", title: t("vip.perk_reminders"), sub: t("vip.perk_reminders_sub"), d: <><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></> },
-                { tone: "#E0926A", title: t("vip.perk_loyalty"), sub: t("vip.perk_loyalty_sub", { amount: reward }), d: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /> },
+                { tone: "var(--app-warn)", title: t("vip.perk_loyalty"), sub: t("vip.perk_loyalty_sub", { amount: reward }), d: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /> },
                 { tone: "#8FB8DE", title: t("vip.perk_booking"), sub: t("vip.perk_booking_sub"), d: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /> },
               ].map((b) => (
                 <li key={b.title} className="flex items-center gap-3.5 px-4 py-3 rounded-[14px] bg-white/[0.025] border border-white/[0.06]">
@@ -253,18 +254,18 @@ export default function VIPOptIn() {
             </p>
           </div>
         ) : (
-          <div className="bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
+          <div className="bg-[var(--app-card)] rounded-2xl p-8 border border-[var(--app-card-2)] text-center">
             <CheckCircle2 className="w-16 h-16 text-[var(--accent-color)] mx-auto mb-4" />
             {consented ? (
               <>
                 <h2 className="text-2xl font-bold text-white mb-2">
                   {t("vip.done_title")}
                 </h2>
-                <p className="text-stone-400 mb-6">
+                <p className="text-white/50 mb-6">
                   {t("vip.done_body", { name: displayName })}
                 </p>
-                <p className="text-sm text-stone-500">
-                  {t("vip.stop_pre")} <strong className="text-stone-300">STOP</strong> {t("vip.stop_post")}
+                <p className="text-sm text-white/40">
+                  {t("vip.stop_pre")} <strong className="text-white/80">STOP</strong> {t("vip.stop_post")}
                 </p>
               </>
             ) : (
@@ -272,7 +273,7 @@ export default function VIPOptIn() {
                 <h2 className="text-2xl font-bold text-white mb-2">
                   {t("vip.nocon_title")}
                 </h2>
-                <p className="text-stone-400 mb-6">
+                <p className="text-white/50 mb-6">
                   {t("vip.nocon_body", { amount: reward })}
                 </p>
               </>
@@ -283,7 +284,7 @@ export default function VIPOptIn() {
         {/* Modal 1: Nudge to check the box */}
         {modal === 1 && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-            <div className="bg-[#1B1A18] rounded-2xl border border-[#2C2A27] p-6 max-w-sm w-full space-y-4 text-center">
+            <div className="bg-[var(--app-card)] rounded-2xl border border-[var(--app-card-2)] p-6 max-w-sm w-full space-y-4 text-center">
               <p className="text-white text-base font-medium leading-relaxed">
                 {t("vip.modal1", { amount: reward })}
               </p>
@@ -308,7 +309,7 @@ export default function VIPOptIn() {
         {/* Modal 2: Final confirmation */}
         {modal === 2 && (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center px-4">
-            <div className="bg-[#1B1A18] rounded-2xl border border-[#2C2A27] p-6 max-w-sm w-full space-y-4 text-center">
+            <div className="bg-[var(--app-card)] rounded-2xl border border-[var(--app-card-2)] p-6 max-w-sm w-full space-y-4 text-center">
               <p className="text-white text-base font-medium leading-relaxed">
                 {t("vip.modal2", { amount: reward })}
               </p>

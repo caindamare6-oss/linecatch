@@ -81,3 +81,52 @@ export function themeVars(t: Theme): Record<string, string> {
     "--t-tile-icon": t.tileIcon,
   };
 }
+
+/**
+ * The whole app in a barber's colors: dashboard, onboarding, booking, manage and VIP pages.
+ * Every screen styles itself from these variables (Tailwind's `white` is the theme's text color),
+ * so one pick in Settings or onboarding recolors everything. The five themes keep their own colors.
+ */
+export function appThemeVars(themeId: unknown, accentHex?: string | null): Record<string, string> {
+  const t = getTheme(themeId);
+  const mix = (a: string, pct: number, b: string) => `color-mix(in srgb, ${a} ${pct}%, ${b})`;
+  // A barber's accent pick wins on dark themes; every pick is light, so it takes dark text.
+  const picked = t.dark && isAccent(accentHex) ? (accentHex as string) : null;
+  const accent = picked ?? (t.dark ? t.accent : mix(t.accent, 78, t.text));
+  const accentFg = picked ? "#121110" : t.dark ? t.ctaText : "#FFFFFF";
+  return {
+    "--app-bg": t.bg,
+    "--app-bg-deep": t.bg,
+    "--app-fg": t.text,
+    "--app-muted": t.muted,
+    "--app-border": t.border,
+    "--app-card": t.dark ? mix(t.text, 6, t.bg) : "#FFFFFF",
+    "--app-card-2": t.dark ? mix(t.text, 11, t.bg) : mix(t.text, 6, t.bg),
+    "--app-danger": t.dark ? "#F08A8A" : "#B42318",
+    "--app-ok": t.dark ? "#A8C49A" : "#3F6B34",
+    "--app-warn": t.dark ? "#E0926A" : "#A4511F",
+    "--accent-color": accent,
+    "--accent-fg": accentFg,
+    // Onboarding's own tokens (their defaults in globals.css stay the Champagne look).
+    "--ob-bg": t.bg,
+    "--ob-surface": t.dark ? mix(t.text, 6, t.bg) : "#FFFFFF",
+    "--ob-surface-hover": t.dark ? mix(t.text, 10, t.bg) : mix(t.text, 5, t.bg),
+    "--ob-border": t.border,
+    "--ob-text": t.text,
+    "--ob-text-secondary": t.muted,
+    "--ob-text-muted": mix(t.muted, 85, t.bg),
+    "--ob-input-bg": t.dark ? mix(t.text, 5, t.bg) : "#FFFFFF",
+    "--ob-danger": t.dark ? "#FF4D4D" : "#B42318",
+    "color-scheme": t.dark ? "dark" : "light",
+  };
+}
+
+/** Applies a barber's colors to the page (client side). */
+export function applyAppTheme(themeId: unknown, accentHex?: string | null) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  for (const [k, v] of Object.entries(appThemeVars(themeId, accentHex))) {
+    if (k === "color-scheme") root.style.colorScheme = v;
+    else root.style.setProperty(k, v);
+  }
+}

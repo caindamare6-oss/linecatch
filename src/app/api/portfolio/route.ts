@@ -18,11 +18,19 @@ export async function GET() {
 
   const db = createAdminClient();
   const slug = await ensureSlug(db, userId);
-  const [{ data: user }, { data: photos }] = await Promise.all([
-    db.from("users").select("theme, avatar_url, accent_color").eq("user_id", userId).single(),
-    db.from("portfolio_photos").select("id, url, thumb_url, width, height, sort_order").eq("user_id", userId).order("sort_order"),
+  const [{ data: user }, { data: photos }, { data: services }] = await Promise.all([
+    db.from("users").select("theme, cover_url, accent_color").eq("user_id", userId).single(),
+    db.from("portfolio_photos").select("id, url, thumb_url, width, height, sort_order, service_id").eq("user_id", userId).order("sort_order"),
+    db.from("services").select("id, name, description, price, duration_minutes").eq("user_id", userId).eq("is_active", true).order("sort_order"),
   ]);
-  return NextResponse.json({ slug, theme: user?.theme ?? DEFAULT_THEME, avatarUrl: user?.avatar_url ?? null, accentColor: user?.accent_color ?? null, photos: photos || [] });
+  return NextResponse.json({
+    slug,
+    theme: user?.theme ?? DEFAULT_THEME,
+    coverUrl: user?.cover_url ?? null,
+    accentColor: user?.accent_color ?? null,
+    photos: photos || [],
+    services: services || [],
+  });
 }
 
 export async function PATCH(request: Request) {
@@ -56,7 +64,8 @@ export async function PATCH(request: Request) {
   }
 
   if (body.accentColor !== undefined) {
-    if (!isAccent(body.accentColor)) return NextResponse.json({ error: t("portfolio.err_color") }, { status: 400 });
+    // null = the theme's own color.
+    if (body.accentColor !== null && !isAccent(body.accentColor)) return NextResponse.json({ error: t("portfolio.err_color") }, { status: 400 });
     const { error } = await db.from("users").update({ accent_color: body.accentColor }).eq("user_id", userId);
     if (error) return NextResponse.json({ error: t("portfolio.err_save_color") }, { status: 500 });
   }

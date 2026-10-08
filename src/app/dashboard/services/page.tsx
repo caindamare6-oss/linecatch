@@ -10,6 +10,7 @@ import { useT } from "@/lib/i18n";
 type Service = {
   id: string;
   name: string;
+  description: string | null;
   price: string;
   duration_minutes: number;
   is_active: boolean;
@@ -20,7 +21,7 @@ type Service = {
 const PRESETS = [
   { key: "services.preset_lineup", duration: 20 },
   { key: "services.preset_taper", duration: 30 },
-  { key: "services.preset_lineup_taper", duration: 45 },
+  { key: "services.preset_full", duration: 60 },
   { key: "services.preset_beard", duration: 15 },
   { key: "services.preset_kids", duration: 25 },
 ];
@@ -32,6 +33,7 @@ function ServicesEditor() {
   const [saving, setSaving] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [newPrice, setNewPrice] = useState("");
   const [newDuration, setNewDuration] = useState("30");
   const [userId, setUserId] = useState("");
@@ -66,6 +68,7 @@ function ServicesEditor() {
     const inserts = PRESETS.map((p, i) => ({
       user_id: userId,
       name: t(p.key),
+      description: t(`${p.key}_desc`),
       price: 0,
       duration_minutes: p.duration,
       is_active: true,
@@ -111,6 +114,7 @@ function ServicesEditor() {
       .insert({
         user_id: userId,
         name: newName.trim(),
+        description: newDescription.trim().slice(0, 80) || null,
         price: parseFloat(newPrice) || 0,
         duration_minutes: parseInt(newDuration) || 30,
         is_active: true,
@@ -123,6 +127,7 @@ function ServicesEditor() {
       setServices((prev) => [...prev, { ...data, price: String(data.price) }]);
     }
     setNewName("");
+    setNewDescription("");
     setNewPrice("");
     setNewDuration("30");
     setShowAdd(false);
@@ -192,6 +197,15 @@ function ServicesEditor() {
             placeholder={t("services.name_placeholder")}
             className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/15 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
           />
+          <input
+            type="text"
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
+            maxLength={80}
+            aria-label={t("services.details_label")}
+            placeholder={t("services.details_placeholder")}
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/30 focus:outline-none focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
+          />
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-[10px] text-white/25 block mb-1">{t("services.price_label")}</label>
@@ -254,11 +268,20 @@ function ServicesEditor() {
                 <button
                   onClick={() => deleteService(service.id)}
                   aria-label={t("services.delete", { name: service.name })}
-                  className="text-white/10 hover:text-red-400 transition shrink-0"
+                  className="text-white/30 hover:text-[var(--app-danger)] transition shrink-0"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
+              <input
+                type="text"
+                value={service.description ?? ""}
+                maxLength={80}
+                aria-label={t("services.details_aria", { name: service.name })}
+                placeholder={t("services.details_placeholder")}
+                onChange={(e) => updateService(service.id, "description", e.target.value.slice(0, 80))}
+                className="w-full bg-transparent text-xs text-white/50 placeholder:text-white/25 focus:outline-none border-b border-transparent focus:border-[color-mix(in_srgb,var(--accent-color)_30%,transparent)]"
+              />
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1">
                   <span className="text-white/20 text-xs">$</span>

@@ -107,7 +107,7 @@ export default function SettingsPage() {
       <section>
         <SectionLabel>{t("settings.profile")}</SectionLabel>
         <Card className="p-4 flex items-center gap-3.5">
-          <span className={`${SERIF} w-12 h-12 rounded-[14px] bg-gradient-to-br from-[var(--accent-color)] to-[#C29A62] text-[#121110] flex items-center justify-center text-xl font-bold`} aria-hidden>
+          <span className={`${SERIF} w-12 h-12 rounded-[14px] bg-gradient-to-br from-[var(--accent-color)] to-[color-mix(in_srgb,var(--accent-color)_78%,#000)] text-[var(--accent-fg)] flex items-center justify-center text-xl font-bold`} aria-hidden>
             {(s.first_name?.[0] || "L").toUpperCase()}
           </span>
           <div className="min-w-0 flex-1">
@@ -284,7 +284,7 @@ export default function SettingsPage() {
               await createClient().auth.signOut();
               router.push("/login");
             }}
-            className="w-full h-12 rounded-[14px] border border-[#F08A8A]/25 text-[#F08A8A] text-sm font-semibold hover:bg-[#F08A8A]/5"
+            className="w-full h-12 rounded-[14px] border border-[var(--app-danger)]/25 text-[var(--app-danger)] text-sm font-semibold hover:bg-[var(--app-danger)]/5"
           >
             {t("settings.sign_out")}
           </button>
@@ -376,7 +376,7 @@ function ForwardingCard({ s, onMode, onCarrier }: { s: Settings; onMode: (m: "fo
       ) : (
         <p className="text-[13px] text-white/60 leading-relaxed">{t("forward.direct_how")}</p>
       )}
-      {err && <p className="text-[12px] text-[#F08A8A]" role="alert">{err}</p>}
+      {err && <p className="text-[12px] text-[var(--app-danger)]" role="alert">{err}</p>}
     </Card>
   );
 }
@@ -413,7 +413,7 @@ function InstallCard() {
       <Card className="p-4 space-y-3">
         <p className="text-[14px] text-white/85">{t("install.title")}</p>
         {done ? (
-          <p className="text-[13px] text-[#7FC79A]">✓ {t("install.done")}</p>
+          <p className="text-[13px] text-[var(--app-ok)]">✓ {t("install.done")}</p>
         ) : prompt ? (
           <button
             onClick={async () => {
@@ -550,7 +550,7 @@ function EditRow({ label, value, placeholder, onSave, hint, type = "text" }: { l
           placeholder={placeholder}
           className="mt-2 w-full h-11 rounded-xl bg-white/[0.04] border border-white/[0.12] px-3.5 text-[15px] placeholder-white/25 outline-none focus:border-[var(--accent-color)]/50"
         />
-        {err && <p className="text-[12px] text-[#F08A8A] mt-1.5" role="alert">{t(err)}</p>}
+        {err && <p className="text-[12px] text-[var(--app-danger)] mt-1.5" role="alert">{t(err)}</p>}
         <div className="flex gap-2 mt-3">
           <button type="button" onClick={() => setEditing(false)} className="h-10 px-4 rounded-xl border border-white/[0.12] text-[13px] text-white/70">{t("common.cancel")}</button>
           <button type="submit" disabled={saving} className="flex-1 h-10 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[13px] font-semibold disabled:opacity-50">
@@ -587,10 +587,10 @@ function Toggle({ label, hint, on, onChange, disabled }: { label: string; hint: 
           }}
           className={`relative w-[46px] h-[26px] rounded-full shrink-0 transition-colors disabled:opacity-40 ${on ? "bg-[var(--accent-color)]" : "bg-white/[0.14]"}`}
         >
-          <span className={`absolute top-[3px] w-5 h-5 rounded-full bg-[#FAF7F2] shadow transition-[left] duration-200 ${on ? "left-[23px]" : "left-[3px]"}`} />
+          <span className={`absolute top-[3px] w-5 h-5 rounded-full bg-[var(--app-fg)] shadow transition-[left] duration-200 ${on ? "left-[23px]" : "left-[3px]"}`} />
         </button>
       </div>
-      {err && <p className="text-[12px] text-[#F08A8A] mt-1.5" role="alert">{t(err)}</p>}
+      {err && <p className="text-[12px] text-[var(--app-danger)] mt-1.5" role="alert">{t(err)}</p>}
     </Card>
   );
 }
@@ -639,7 +639,7 @@ function MissedCallText({ s, onSaved }: { s: Settings; onSaved: (v: Pick<Setting
             rows={3}
             className="w-full rounded-xl bg-white/[0.04] border border-white/[0.1] px-3.5 py-3 text-[14px] outline-none focus:border-[var(--accent-color)]/50 resize-none"
           />
-          {missingLink && <p className="text-[12px] text-[#E0926A]">{t("settings.keep_link")}</p>}
+          {missingLink && <p className="text-[12px] text-[var(--app-warn)]">{t("settings.keep_link")}</p>}
         </>
       )}
       <div className="rounded-xl bg-white/[0.03] px-3.5 py-3">
@@ -651,7 +651,7 @@ function MissedCallText({ s, onSaved }: { s: Settings; onSaved: (v: Pick<Setting
       {!s.business_name?.trim() && (
         <a href="#business" className="block text-[12px] text-[var(--accent-color)]">{t("settings.add_shop_name")}</a>
       )}
-      {err && <p className="text-[12px] text-[#F08A8A]" role="alert">{t(err)}</p>}
+      {err && <p className="text-[12px] text-[var(--app-danger)]" role="alert">{t(err)}</p>}
       <button
         disabled={unchanged || missingLink || state === "saving"}
         onClick={async () => {
@@ -701,7 +701,7 @@ function HoursEditor({ initial, timezone, onSaved }: { initial: Hours | null; ti
                 onClick={() => update(day, v ? null : { open: "10:00", close: "19:00" })}
                 className={`relative w-[38px] h-[22px] rounded-full shrink-0 transition-colors ${v ? "bg-[var(--accent-color)]" : "bg-white/[0.14]"}`}
               >
-                <span className={`absolute top-[3px] w-4 h-4 rounded-full bg-[#FAF7F2] transition-[left] ${v ? "left-[19px]" : "left-[3px]"}`} />
+                <span className={`absolute top-[3px] w-4 h-4 rounded-full bg-[var(--app-fg)] transition-[left] ${v ? "left-[19px]" : "left-[3px]"}`} />
               </button>
               <span className="w-9 text-[13px] font-semibold capitalize">{t(`days.${day}`)}</span>
               {v ? (
@@ -718,7 +718,7 @@ function HoursEditor({ initial, timezone, onSaved }: { initial: Hours | null; ti
         })}
       </ul>
       <p className="text-[11px] text-white/30 mt-3">{t("settings.tz_note", { tz: timezone.replace(/_/g, " ") })}</p>
-      {err && <p className="text-[12px] text-[#F08A8A] mt-2" role="alert">{t(err)}</p>}
+      {err && <p className="text-[12px] text-[var(--app-danger)] mt-2" role="alert">{t(err)}</p>}
       <button
         disabled={!dirty || state === "saving"}
         onClick={async () => {
@@ -754,7 +754,7 @@ function MarketingCard({ s, onChange }: { s: Settings; onChange: () => Promise<v
         <div className="flex-1 min-w-0">
           <p className="text-[14px] text-white/85">{t("settings.marketing")}</p>
           <p className="text-[12px] text-white/40 mt-0.5 leading-snug">{t("settings.marketing_desc")}</p>
-          <p className="text-[12px] mt-1.5 leading-snug" style={{ color: on ? "#A8C49A" : "rgba(242,238,230,0.4)" }}>{on ? t("settings.marketing_on") : t("settings.marketing_off")}</p>
+          <p className="text-[12px] mt-1.5 leading-snug" style={{ color: on ? "var(--app-ok)" : "color-mix(in srgb, var(--app-fg) 40%, transparent)" }}>{on ? t("settings.marketing_on") : t("settings.marketing_off")}</p>
         </div>
         <button
           role="switch"
@@ -771,10 +771,10 @@ function MarketingCard({ s, onChange }: { s: Settings; onChange: () => Promise<v
           }}
           className={`relative w-[46px] h-[26px] rounded-full shrink-0 transition-colors disabled:opacity-40 ${on ? "bg-[var(--accent-color)]" : "bg-white/[0.14]"}`}
         >
-          <span className={`absolute top-[3px] w-5 h-5 rounded-full bg-[#FAF7F2] shadow transition-[left] duration-200 ${on ? "left-[23px]" : "left-[3px]"}`} />
+          <span className={`absolute top-[3px] w-5 h-5 rounded-full bg-[var(--app-fg)] shadow transition-[left] duration-200 ${on ? "left-[23px]" : "left-[3px]"}`} />
         </button>
       </div>
-      {err && <p className="text-[12px] text-[#F08A8A] mt-2" role="alert">{t(err)}</p>}
+      {err && <p className="text-[12px] text-[var(--app-danger)] mt-2" role="alert">{t(err)}</p>}
     </Card>
   );
 }
@@ -826,7 +826,7 @@ function StickerSection({ s, onChange }: { s: Settings; onChange: () => Promise<
         {active.map((c) => (
           <div key={c.code} className="flex items-center justify-between mt-3">
             <span className="font-mono tracking-[2px] text-[15px]">{c.code}</span>
-            <span className="text-[11px] font-semibold text-[#A8C49A]">{t("settings.sticker_active")}</span>
+            <span className="text-[11px] font-semibold text-[var(--app-ok)]">{t("settings.sticker_active")}</span>
           </div>
         ))}
 
@@ -845,7 +845,7 @@ function StickerSection({ s, onChange }: { s: Settings; onChange: () => Promise<
             {moreSent ? t("settings.sticker_more_sent") : busy ? t("settings.sticker_sending") : t("settings.sticker_more", { price })}
           </button>
         ) : s.sticker_requested_at ? (
-          <p className="mt-3 text-[12px] text-[#E0926A] leading-relaxed">
+          <p className="mt-3 text-[12px] text-[var(--app-warn)] leading-relaxed">
             {t("settings.sticker_ordered", { city: s.shipping_address?.city || "", state: s.shipping_address?.state || "" })}
           </p>
         ) : !ordering ? (
@@ -884,7 +884,7 @@ function StickerSection({ s, onChange }: { s: Settings; onChange: () => Promise<
             </div>
           </form>
         )}
-        {err && <p className="text-[12px] text-[#F08A8A] mt-2" role="alert">{t(err)}</p>}
+        {err && <p className="text-[12px] text-[var(--app-danger)] mt-2" role="alert">{t(err)}</p>}
       </Card>
     </section>
   );
@@ -949,7 +949,7 @@ function ReferCard() {
             </div>
           ))}
         </div>
-        {r.discountPercent ? <p className="text-[12px] text-[#A8C49A] mt-3">{t("settings.refer_discount", { percent: r.discountPercent })}</p> : null}
+        {r.discountPercent ? <p className="text-[12px] text-[var(--app-ok)] mt-3">{t("settings.refer_discount", { percent: r.discountPercent })}</p> : null}
       </Card>
     </section>
   );

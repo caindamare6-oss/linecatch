@@ -10,7 +10,8 @@
   --font-sans: var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-heading: var(--font-display);
-  --color-white: #F2EEE6;
+  /* "white" is the theme's text color, so text-white/40, bg-white/[0.04] etc. follow the barber's theme. */
+  --color-white: var(--app-fg);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,31 +50,42 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --color-mint: var(--accent-color, #D4AF7A);
   --color-mint-dim: #C29A62;
-  --color-obsidian: #121110;
-  --color-obsidian-light: #1B1A18;
-  --color-obsidian-card: #1F1D1B;
+  --color-obsidian: var(--app-bg);
+  --color-obsidian-light: var(--app-card);
+  --color-obsidian-card: var(--app-card-2);
 }
 
+/* App colors. Defaults are the LineCatch Champagne look; a barber's theme replaces them
+   (applyAppTheme in src/lib/themes.ts) on their dashboard, onboarding and client pages. */
 :root {
+  --app-bg: #121110;
+  --app-fg: #F2EEE6;
+  --app-muted: #948C80;
+  --app-border: rgba(242, 238, 230, 0.1);
+  --app-card: #1B1A18;
+  --app-card-2: #2C2A27;
+  --app-danger: #F08A8A;
+  --app-ok: #A8C49A;
+  --app-warn: #E0926A;
   --accent-color: #D4AF7A;
   --accent-fg: #121110;
-  --background: #121110;
-  --foreground: #F2EEE6;
-  --card: #1B1A18;
-  --card-foreground: #F2EEE6;
-  --popover: #1B1A18;
-  --popover-foreground: #F2EEE6;
+  --background: var(--app-bg);
+  --foreground: var(--app-fg);
+  --card: var(--app-card);
+  --card-foreground: var(--app-fg);
+  --popover: var(--app-card);
+  --popover-foreground: var(--app-fg);
   --primary: var(--accent-color, #D4AF7A);
-  --primary-foreground: #121110;
-  --secondary: #1B1A18;
-  --secondary-foreground: #F2EEE6;
-  --muted: #2C2A27;
-  --muted-foreground: #948C80;
-  --accent: #1B1A18;
-  --accent-foreground: #F2EEE6;
+  --primary-foreground: var(--accent-fg);
+  --secondary: var(--app-card);
+  --secondary-foreground: var(--app-fg);
+  --muted: var(--app-card-2);
+  --muted-foreground: var(--app-muted);
+  --accent: var(--app-card);
+  --accent-foreground: var(--app-fg);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: rgba(242, 238, 230, 0.1);
-  --input: rgba(242, 238, 230, 0.1);
+  --border: var(--app-border);
+  --input: var(--app-border);
   --ring: var(--accent-color, #D4AF7A);
   --chart-1: var(--accent-color, #D4AF7A);
   --chart-2: #C29A62;
@@ -81,13 +93,13 @@
   --chart-4: #948C80;
   --chart-5: #5E5850;
   --radius: 0.375rem;
-  --sidebar: #1B1A18;
-  --sidebar-foreground: #F2EEE6;
+  --sidebar: var(--app-card);
+  --sidebar-foreground: var(--app-fg);
   --sidebar-primary: var(--accent-color, #D4AF7A);
-  --sidebar-primary-foreground: #121110;
-  --sidebar-accent: #2C2A27;
-  --sidebar-accent-foreground: #F2EEE6;
-  --sidebar-border: rgba(242, 238, 230, 0.1);
+  --sidebar-primary-foreground: var(--accent-fg);
+  --sidebar-accent: var(--app-card-2);
+  --sidebar-accent-foreground: var(--app-fg);
+  --sidebar-border: var(--app-border);
   --sidebar-ring: var(--accent-color, #D4AF7A);
 }
 
@@ -145,23 +157,23 @@
 
 /* ── Portfolio + booking motion: CSS only ─────────────────────────────── */
 
-@keyframes pf-float-a { 0%, 100% { transform: rotate(-8deg) translateY(0); } 50% { transform: rotate(-6deg) translateY(-9px); } }
-@keyframes pf-float-b { 0%, 100% { transform: rotate(-1deg) translateY(0); } 50% { transform: rotate(1.5deg) translateY(-7px); } }
-@keyframes pf-float-c { 0%, 100% { transform: rotate(6deg) translateY(0); } 50% { transform: rotate(8deg) translateY(-11px); } }
-.pf-float-a { animation: pf-float-a 6s ease-in-out infinite; }
-.pf-float-b { animation: pf-float-b 5s ease-in-out infinite; }
-.pf-float-c { animation: pf-float-c 7s ease-in-out infinite; }
-
-/* Photos fade up as they enter and fly off their own side as they leave. No scroll listeners:
-   browsers without scroll-driven animations simply show the photos still. */
-@keyframes pf-reveal { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
-@keyframes pf-fly-left { to { opacity: 0.1; transform: translateX(-120%) rotate(-20deg) scale(0.85); } }
-@keyframes pf-fly-right { to { opacity: 0.1; transform: translateX(120%) rotate(20deg) scale(0.85); } }
-@supports (animation-timeline: view()) {
-  .pf-reveal { animation: pf-reveal linear both; animation-timeline: view(); animation-range: entry 0% entry 70%; }
-  .pf-fly-left { animation: pf-fly-left linear both; animation-timeline: view(); animation-range: exit 10% exit 100%; }
-  .pf-fly-right { animation: pf-fly-right linear both; animation-timeline: view(); animation-range: exit 10% exit 100%; }
-}
+/* Portfolio page: words rise in, sections lift in order, the cover breathes, a light sweeps it. */
+@keyframes pf2-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes pf2-word { from { opacity: 0; transform: translateY(55%) rotate(3deg); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes pf2-zoom { from { transform: scale(1); } to { transform: scale(1.08); } }
+@keyframes pf2-scan { from { transform: translateY(-100%); } to { transform: translateY(560px); } }
+@keyframes pf2-pulse { 0% { box-shadow: 0 0 0 0 var(--pf2-pulse); } 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes pf2-marquee { to { transform: translateX(-50%); } }
+@keyframes pf2-shine { 0% { transform: translateX(-140%) skewX(-20deg); } 55%, 100% { transform: translateX(420%) skewX(-20deg); } }
+@keyframes pf2-pop { 0% { transform: scale(0.3); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+.pf2-rise { animation: pf2-rise 0.75s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.pf2-word { display: inline-block; animation: pf2-word 0.85s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.pf2-zoom { animation: pf2-zoom 14s ease-in-out infinite alternate; }
+.pf2-scan { animation: pf2-scan 5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+.pf2-pulse { animation: pf2-pulse 2s ease-out infinite; }
+.pf2-marquee { animation: pf2-marquee 24s linear infinite; }
+.pf2-shine { animation: pf2-shine 3.2s ease-in-out infinite; }
+.pf2-pop { animation: pf2-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* Spring-style tap: overshooting ease on press and on becoming selected. */
 .tap-spring { transition: transform 0.45s cubic-bezier(0.3, 1.6, 0.5, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease, color 0.2s ease; }
@@ -172,7 +184,7 @@
 .pill-slide { animation: pill-slide 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pf-float-a, .pf-float-b, .pf-float-c, .pf-reveal, .pf-fly-left, .pf-fly-right, .pill-slide { animation: none !important; }
+  .pf2-rise, .pf2-word, .pf2-zoom, .pf2-scan, .pf2-pulse, .pf2-marquee, .pf2-shine, .pf2-pop, .pill-slide { animation: none !important; }
   .tap-spring, .tap-spring:active, .tap-spring[aria-pressed="true"] { transition: none; transform: none; }
 }
 

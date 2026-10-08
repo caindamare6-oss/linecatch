@@ -43,9 +43,9 @@ export function ClaimSticker({
   // Barber already has an active sticker
   if (existingCode) {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4">
         <LanguageToggle className="fixed top-4 right-4 z-40" />
-        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
+        <div className="w-full max-w-md bg-[var(--app-card)] rounded-2xl p-8 border border-[var(--app-card-2)] text-center">
           <div className="text-3xl font-bold mb-6 text-white">
             Line<span className="text-[var(--accent-color)]">Catch</span>
           </div>
@@ -55,10 +55,10 @@ export function ClaimSticker({
             </svg>
           </div>
           <h2 className="text-xl font-bold text-white mb-2">{t("claim.have_title")}</h2>
-          <p className="text-stone-400 text-sm mb-2">
+          <p className="text-white/50 text-sm mb-2">
             {t("claim.have_code")} <span className="font-mono text-white">{existingCode}</span>.
           </p>
-          <p className="text-stone-500 text-sm mb-6">
+          <p className="text-white/40 text-sm mb-6">
             {t("claim.have_body")}
           </p>
           <Link
@@ -75,19 +75,19 @@ export function ClaimSticker({
   // Successfully activated
   if (claimed) {
     return (
-      <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4">
         <LanguageToggle className="fixed top-4 right-4 z-40" />
-        <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
+        <div className="w-full max-w-md bg-[var(--app-card)] rounded-2xl p-8 border border-[var(--app-card-2)] text-center">
           <div className="w-16 h-16 rounded-full bg-[var(--accent-color)]/15 flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">{t("claim.done_title")}</h2>
-          <p className="text-stone-400 mb-1">
+          <p className="text-white/50 mb-1">
             {t("claim.done_code_pre")} <span className="font-mono text-white">{code}</span> {t("claim.done_code_post")}
           </p>
-          <p className="text-stone-400 text-sm mb-6">
+          <p className="text-white/50 text-sm mb-6">
             {t("claim.done_body")}
           </p>
           <Link
@@ -103,9 +103,9 @@ export function ClaimSticker({
 
   // Activate screen
   return (
-    <div className="min-h-screen bg-[#121110] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[var(--app-bg)] flex items-center justify-center px-4">
       <LanguageToggle className="fixed top-4 right-4 z-40" />
-      <div className="w-full max-w-md bg-[#1B1A18] rounded-2xl p-8 border border-[#2C2A27] text-center">
+      <div className="w-full max-w-md bg-[var(--app-card)] rounded-2xl p-8 border border-[var(--app-card-2)] text-center">
         <div className="text-3xl font-bold mb-6 text-white">
           Line<span className="text-[var(--accent-color)]">Catch</span>
         </div>
@@ -116,10 +116,10 @@ export function ClaimSticker({
           </svg>
         </div>
         <h2 className="text-xl font-bold text-white mb-2">{t("claim.activate_title")}</h2>
-        <p className="text-stone-400 mb-3">
+        <p className="text-white/50 mb-3">
           {t("claim.code")} <span className="font-mono text-white text-lg">{code}</span>
         </p>
-        <p className="text-stone-500 text-sm mb-6">
+        <p className="text-white/40 text-sm mb-6">
           {t("claim.activate_body")}
         </p>
 

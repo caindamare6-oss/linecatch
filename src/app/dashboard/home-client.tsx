@@ -31,16 +31,16 @@ const Icon = ({ d, size = 16, className = "" }: { d: React.ReactNode; size?: num
 const EVENTS: Record<string, { icon: React.ReactNode; tone: string; tag?: string }> = {
   booking_created: { icon: I.cal, tone: "var(--accent-color)" },
   booking_completed: { icon: I.check, tone: "var(--accent-color)" },
-  booking_cancelled: { icon: I.x, tone: "#F08A8A", tag: "home.tag_cancelled" },
+  booking_cancelled: { icon: I.x, tone: "var(--app-danger)", tag: "home.tag_cancelled" },
   missed_call_caught: { icon: I.phone, tone: "var(--accent-color)" },
-  cron_reengagement: { icon: I.bolt, tone: "#E0926A", tag: "home.tag_reengage" },
-  loyalty_claimed: { icon: I.gift, tone: "#E0926A", tag: "home.tag_reward" },
-  review_sent: { icon: I.star, tone: "#E0926A", tag: "home.tag_review" },
-  qr_scan: { icon: I.qr, tone: "#A8C49A", tag: "home.tag_vip" },
-  referral_qualified: { icon: I.gift, tone: "#A8C49A", tag: "home.tag_referral" },
+  cron_reengagement: { icon: I.bolt, tone: "var(--app-warn)", tag: "home.tag_reengage" },
+  loyalty_claimed: { icon: I.gift, tone: "var(--app-warn)", tag: "home.tag_reward" },
+  review_sent: { icon: I.star, tone: "var(--app-warn)", tag: "home.tag_review" },
+  qr_scan: { icon: I.qr, tone: "var(--app-ok)", tag: "home.tag_vip" },
+  referral_qualified: { icon: I.gift, tone: "var(--app-ok)", tag: "home.tag_referral" },
   sticker_request: { icon: I.qr, tone: "var(--accent-color)" },
-  sticker_activated: { icon: I.qr, tone: "#A8C49A", tag: "home.tag_vip" },
-  number_assigned: { icon: I.phone, tone: "#A8C49A" },
+  sticker_activated: { icon: I.qr, tone: "var(--app-ok)", tag: "home.tag_vip" },
+  number_assigned: { icon: I.phone, tone: "var(--app-ok)" },
 };
 
 type T = (k: string, v?: Record<string, string | number>) => string;
@@ -142,10 +142,10 @@ export function HomeClient(props: {
         <div className="flex items-center gap-2">
           <span
             className={`inline-flex items-center gap-1.5 h-7 px-3 rounded-full border text-[12px] font-medium ${
-              props.paused ? "border-[#E0926A]/30 text-[#E0926A]" : "border-white/[0.1] text-white/60"
+              props.paused ? "border-[var(--app-warn)]/30 text-[var(--app-warn)]" : "border-white/[0.1] text-white/60"
             }`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${props.paused ? "bg-[#E0926A]" : "bg-[var(--accent-color)]"}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${props.paused ? "bg-[var(--app-warn)]" : "bg-[var(--accent-color)]"}`} />
             {props.paused ? t("home.status_paused") : t("home.status_active")}
           </span>
           <Link
@@ -167,8 +167,8 @@ export function HomeClient(props: {
       </div>
 
       {props.paused && (
-        <Card className="p-4 border-[#E0926A]/25">
-          <p className="text-sm font-semibold text-[#E0926A]">{t("home.paused_title")}</p>
+        <Card className="p-4 border-[var(--app-warn)]/25">
+          <p className="text-sm font-semibold text-[var(--app-warn)]">{t("home.paused_title")}</p>
           <p className="text-xs text-white/45 mt-1 leading-relaxed">{t("home.paused_body")}</p>
         </Card>
       )}
@@ -268,7 +268,7 @@ export function HomeClient(props: {
       {!props.reviewsOn && (
         <Link href="/dashboard/settings#reviews" className="block">
           <Card className="px-4 py-3.5 flex items-center gap-3 hover:border-[var(--accent-color)]/25 transition-colors">
-            <Icon d={I.star} className="text-[#E0926A]" />
+            <Icon d={I.star} className="text-[var(--app-warn)]" />
             <span className="text-[13px] text-white/60 flex-1">{t("home.reviews_prompt")}</span>
             <span className="text-[var(--accent-color)] text-sm">›</span>
           </Card>
@@ -281,7 +281,7 @@ export function HomeClient(props: {
           <Card className="divide-y divide-white/[0.05]">
             {props.suppressed.slice(0, 5).map((c) => (
               <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-                <Icon d={I.phone} size={14} className="text-[#E0926A]/70" />
+                <Icon d={I.phone} size={14} className="text-[var(--app-warn)]/70" />
                 <span className="text-sm text-white/70 flex-1">{formatPhone(c.from_number)}</span>
                 <span className="text-[11px] text-white/35">{t(`home.reason_${["no_consent", "opted_out", "trial_locked", "autotext_disabled"].includes(c.suppressed_reason || "") ? c.suppressed_reason : "other"}`)}</span>
               </div>
@@ -341,7 +341,7 @@ function Tile({ href, label, value, sub, icon, accent, warm }: { href: string; l
   return (
     <Link href={href} className="block group">
       <Card className="p-4 h-full transition-[transform,border-color] duration-150 group-hover:-translate-y-px group-hover:border-[var(--accent-color)]/20">
-        <p className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.6px] ${warm ? "text-[#E0926A]" : "text-white/40"}`}>
+        <p className={`flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.6px] ${warm ? "text-[var(--app-warn)]" : "text-white/40"}`}>
           {icon && <Icon d={icon} size={12} />}
           {label}
         </p>
