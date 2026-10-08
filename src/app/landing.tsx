@@ -7,7 +7,7 @@ import { CalendarCheck, Check, MessageCircle, PhoneMissed, Plus } from "lucide-r
 import { PortfolioPhone, StoryPhone } from "./phones";
 import { SUPPORT_EMAIL } from "@/lib/config";
 
-const TRIAL = "/login";
+const TRIAL = "/login?mode=up";
 
 function Reveal({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
   return (
