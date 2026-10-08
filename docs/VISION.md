@@ -24,7 +24,7 @@ From an interview with the founder, October 3, 2026. Read this before building a
 |---|---|
 | First customers | All barbers: solo barbers, booth renters and shop owners |
 | #1 job | **Bring clients back** |
-| Price | $20–$40 a month |
+| Price | Barber $49 a month · Shop $199 a month |
 
 ## How it should work
 
@@ -77,7 +77,7 @@ From an interview with the founder, October 3, 2026. Read this before building a
 | Order | What | Why |
 |---|---|---|
 | 1 | **Automatic phone numbers** | Every barber gets a LineCatch number at signup, with no manual step. Without one, missed-call texts can't go out. |
-| 2 | **Billing (Stripe)** | Start charging $20–$40 a month, and apply the referral free months and 50% discounts already being recorded. |
+| 2 | **Billing (Stripe)** | Start charging Barber $49 / Shop $199 a month, and apply the referral free months and 50% discounts already being recorded. |
 | 3 | **Portfolio redesign** | Our edge. Make every barber's page the best-looking page in the space. |
 
 Also needed before launch: carrier registration (A2P 10DLC) for marketing texts, and the steps in [`LAUNCH.md`](LAUNCH.md).
