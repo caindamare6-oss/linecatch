@@ -1,0 +1,95 @@
+{
+  "_note": "Copy of the default texts in the message_templates table (rows with user_id null), taken Oct 6, 2026. Refresh it if the copy changes in the database, then run: npm run sms-copy",
+  "auto_reply_inbound": {
+    "en": "Thanks for texting. To move or cancel, tap here: {link}. Anything else, I'll get back to you.",
+    "es": "Gracias por escribir. Para cambiar o cancelar tu cita: {link}. Para cualquier otra cosa te respondo pronto."
+  },
+  "barber_booking_notify": {
+    "en": "New one today. {customer_name}, {service} at {time}.",
+    "es": "Nueva cita hoy. {customer_name}, {service} a las {time}."
+  },
+  "barber_cancel_notify": {
+    "en": "{customer_name} cancelled {date} at {time}. Slot's open.",
+    "es": "{customer_name} canceló {date} a las {time}. Turno libre."
+  },
+  "barber_reschedule_notify": {
+    "en": "{customer_name} moved from {old_time} to {time} on {date}.",
+    "es": "{customer_name} cambió de {old_time} a {time} el {date}."
+  },
+  "booking_confirm": {
+    "en": "You're in{party}. {date} at {time}.{reward} If anything comes up, move it here: {link}",
+    "es": "Listo{party_es}. {date} a las {time}.{reward_es} Si necesitas cambiarlo: {link}"
+  },
+  "cadence_nudge": {
+    "en": "{shop_name}. You're about due. Grab your spot: {link}",
+    "es": "{shop_name}. Ya te toca. Aparta tu turno: {link}"
+  },
+  "cancelled": {
+    "en": "You're off the books for {date}. Door's open whenever: {link}",
+    "es": "Cancelado. Cuando quieras volver, aquí estamos: {link}"
+  },
+  "loyalty_earned": {
+    "en": "Your {amount} off was applied today. Your next {amount} off is cut #{next_cut}.",
+    "es": "Hoy se aplicaron tus {amount} de descuento. Tu próximo descuento de {amount} es en el corte #{next_cut}."
+  },
+  "loyalty_progress": {
+    "en": "Cuts so far: {cuts}. Cut #{next_cut} is {amount} off.",
+    "es": "Cortes hasta ahora: {cuts}. El corte #{next_cut} lleva {amount} de descuento."
+  },
+  "morning_late_broadcast": {
+    "en": "Running behind today. You're still on the books, just give me a few.",
+    "es": "Vamos un poco atrasados hoy. Sigues en la lista, dame unos minutos."
+  },
+  "reminder_24h": {
+    "en": "See you tomorrow at {time}. Something come up? Move it here: {link}",
+    "es": "Nos vemos mañana a las {time}. ¿Necesitas cambiarlo? {link}"
+  },
+  "reminder_2h": {
+    "en": "Chair's yours at {time}.{reward} See you in a couple hours.",
+    "es": "Tu turno es a las {time}.{reward_es} Nos vemos en un par de horas."
+  },
+  "rescheduled": {
+    "en": "Moved you to {date} at {time}. See you then.",
+    "es": "Te cambié para el {date} a las {time}. Nos vemos."
+  },
+  "review_request": {
+    "en": "Hope the cut came out right. If you've got ten seconds: {review_url}",
+    "es": "Espero que te haya gustado el corte. Si tienes diez segundos: {review_url}"
+  },
+  "weekly_report": {
+    "en": "Weekly recap for {barber_name}: {cuts} cuts, ${revenue} earned, {new_vips} new VIPs, {missed_caught} missed calls caught, {reviews_sent} review requests sent.",
+    "es": "Resumen semanal de {barber_name}: {cuts} cortes, ${revenue} ganados, {new_vips} nuevos VIPs, {missed_caught} llamadas perdidas recuperadas, {reviews_sent} solicitudes de reseñas enviadas."
+  },
+  "winback_1": {
+    "en": "{shop_name}. Been a minute. Need a cut? {link}",
+    "es": "{shop_name}. Tiempo sin verte. ¿Un corte? {link}"
+  },
+  "winback_2": {
+    "en": "{shop_name} here. Got openings this week if you're due. {link}",
+    "es": "{shop_name}. Tenemos turnos esta semana si ya te toca. {link}"
+  },
+  "winback_3": {
+    "en": "{shop_name}. When you coming back. {link}",
+    "es": "{shop_name}. ¿Cuándo vuelves? {link}"
+  },
+  "winback_4": {
+    "en": "{shop_name}. Need a cut? {link}",
+    "es": "{shop_name}. ¿Necesitas un corte? {link}"
+  },
+  "winback_5": {
+    "en": "{shop_name}. Been a while since the last one. {link}",
+    "es": "{shop_name}. Ha pasado un tiempo desde el último. {link}"
+  },
+  "winback_final_offer": {
+    "en": "{shop_name}. {offer} on your next cut if you want back in: {link}",
+    "es": "{shop_name}. {offer} en tu próximo corte si quieres volver: {link}"
+  },
+  "_unused": {
+    "after_hours": "{shop_name} here. Closed for the night, but you can pick a time: {link}",
+    "rebook_checkout": "Good seeing you. Want to lock in the next one now? {link}",
+    "wednesday_dropin": "{first_name}, it's been a minute! {shop_name} has openings: {link}",
+    "winback_final": "{shop_name}. Door's always open. Grab a spot whenever you're ready: {link}",
+    "completion_nudge": "Did {first_name} make it in? Mark it here: {link}",
+    "missed_call": "It's {shop_name}. Missed your call, I'm with a client. Grab a time here: {link}"
+  }
+}
