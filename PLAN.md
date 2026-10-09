@@ -24,8 +24,8 @@ Barbers can pay for LineCatch by card after their 30-day free trial, and the app
 
 ## Phase 1: Setup
 - [x] Create a new branch: `stripe-billing` (made from `staging`)
-- [ ] Damare: create Stripe account using the EIN, stay in test mode, add test keys to Vercel preview environment variables
-- [ ] Install Stripe in the app and connect it with the test keys
+- [x] Damare: create Stripe account using the EIN, stay in test mode, add test keys to Vercel preview environment variables
+- [x] Install Stripe in the app and connect it with the test keys
 - [ ] Create the product "LineCatch Solo" with a $49/month price in Stripe (test mode)
 - [ ] Add billing fields to each barber in Supabase: Stripe customer ID, subscription ID, billing status (trialing / active / past_due / paused / canceled), trial end date
 
