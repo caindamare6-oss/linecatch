@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { formatCasualTime } from "@/lib/format";
-import { projectVisit, rewardVars, REWARD_CENTS } from "@/lib/loyalty";
+import { projectVisit, rewardVars, DEFAULT_LOYALTY } from "@/lib/loyalty";
 import { DEFAULT_TZ, appUrl } from "@/lib/config";
 
 
@@ -113,7 +113,7 @@ export async function GET(request: Request) {
         shop_name: shopName,
         time: timeStr,
         link: `${appUrl()}/manage/${booking.id}`,
-        ...rewardVars(!!loyalty?.due, loyalty?.loyalty.cents ?? REWARD_CENTS),
+        ...rewardVars(!!loyalty?.due, loyalty?.loyalty ?? DEFAULT_LOYALTY, loyalty?.rewardCents ?? 0),
       },
     });
 

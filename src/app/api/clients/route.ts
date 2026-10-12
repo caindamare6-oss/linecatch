@@ -21,7 +21,7 @@ async function loadAll(supabase: Supa, userId: string, phone?: string) {
     optOutsQ = optOutsQ.eq("caller_phone", phone);
   }
   const [barber, vips, contacts, bookings, services, optOuts] = await Promise.all([
-    supabase.from("users").select("loyalty_enabled, loyalty_reward_cents").eq("user_id", userId).single(),
+    supabase.from("users").select("loyalty_enabled, loyalty_reward_type").eq("user_id", userId).single(),
     vipsQ,
     contactsQ,
     bookingsQ.order("booking_time", { ascending: false }).limit(phone ? 200 : 5000),

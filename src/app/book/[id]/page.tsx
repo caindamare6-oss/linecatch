@@ -8,7 +8,7 @@ import { normalizePhone } from "@/lib/phone";
 import { barberLocalToUTC } from "@/lib/format";
 import { consentText } from "@/lib/consent";
 import { DEFAULT_TZ, money } from "@/lib/config";
-import { REWARD_CENTS, type Loyalty } from "@/lib/loyalty-rules";
+import { rewardLabel, type Loyalty } from "@/lib/loyalty-rules";
 import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { saveToken, useClientSession } from "./use-client-session";
@@ -111,7 +111,7 @@ function BookingContent() {
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
   const [rewardDue, setRewardDue] = useState(false);
-  const [rewardCents, setRewardCents] = useState(REWARD_CENTS);
+  const [rewardCents, setRewardCents] = useState(0);
   const [loyalty, setLoyalty] = useState<Loyalty | null>(null);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
@@ -277,8 +277,8 @@ function BookingContent() {
           <SummaryRow label={t("book.party")} value={partyLabel} />
           <SummaryRow label={t("book.date")} value={dateLabel} />
           <SummaryRow label={t("book.time")} value={formatSlot(selectedTime)} />
-          {total > 0 && <SummaryRow label={t("book.total")} value={rewardDue ? money(Math.max(Math.round(total * 100) - rewardCents, 0), locale) : usd(total, locale)} accent last={!rewardDue} />}
-          {rewardDue && <SummaryRow label={t("book.loyalty_reward")} value={t("book.reward_off", { amount: money(rewardCents, locale) })} accent last />}
+          {total > 0 && <SummaryRow label={t("book.total")} value={rewardDue ? money(Math.max(Math.round(total * 100) - rewardCents, 0), locale) : usd(total, locale)} accent last={!(rewardDue && rewardCents > 0)} />}
+          {rewardDue && rewardCents > 0 && <SummaryRow label={t("book.loyalty_reward")} value={t("book.reward_off", { amount: money(rewardCents, locale) })} accent last />}
         </div>
 
         <div className="mt-4 w-full max-w-[300px]" style={fadeUp(500)}>
@@ -361,7 +361,7 @@ function BookingContent() {
           {/* The loyalty offer, for anyone the page doesn't already know (returning clients see their own badge). */}
           {step === "service" && !known && loyalty?.enabled && (
             <p className="mt-2 inline-flex text-[12px] font-semibold px-2.5 py-1 rounded-full bg-[var(--accent-color)]/15 text-[var(--accent-color)]">
-              {t("book.loyalty_note", { amount: money(loyalty.cents, locale) })}
+              {t("book.loyalty_note", { amount: rewardLabel(loyalty, locale) })}
             </p>
           )}
           {step === "time" && service && (

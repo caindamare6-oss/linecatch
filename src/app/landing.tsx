@@ -284,8 +284,9 @@ function GetPaid() {
   );
 }
 
-const STAMPS = [1, 2, 3, 4, 5, 6, 7, 8];
-const isReward = (n: number) => n === 2 || (n > 2 && (n - 2) % 3 === 0);
+const STAMPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const STAMPED = 7;
+const isReward = (n: number) => n === 10;
 
 function Share() {
   const reduced = useReducedMotion();
@@ -299,7 +300,7 @@ function Share() {
             Put your link in your Instagram and TikTok bio, post it on your story, text it to clients. LineCatch even makes the story image for you.
           </p>
           <ul className="mt-8 space-y-3">
-            {["A short link to your page: linecatch.app/your-shop", "A ready-made Instagram story with your cover photo and link", "Clients join your texts list when they book", "A loyalty card with every plan: the 2nd cut is on you, then every 3rd"].map((t) => (
+            {["A short link to your page: linecatch.app/your-shop", "A ready-made Instagram story with your shop name and link", "Clients join your texts list when they book", "A punch card with every plan: every 10th cut is 50% off or free, your pick"].map((t) => (
               <li key={t} className="flex gap-3"><Check className="mt-0.5 size-5 shrink-0 text-mint" />{t}</li>
             ))}
           </ul>
@@ -326,7 +327,7 @@ function Share() {
               <p className="font-semibold">Loyalty card</p>
               <p className="text-sm text-[var(--app-muted)]">Marcus J.</p>
             </div>
-            <ol className="mt-5 grid grid-cols-4 gap-3">
+            <ol className="mt-5 grid grid-cols-5 gap-2.5">
               {STAMPS.map((n) => (
                 <motion.li
                   key={n}
@@ -335,11 +336,11 @@ function Share() {
                   viewport={{ once: true }}
                   transition={{ type: "spring", stiffness: 300, damping: 15, delay: n * 0.12 }}
                   className={`grid aspect-square place-items-center rounded-full text-xs font-semibold ${
-                    n <= 4 ? "bg-mint text-[var(--accent-fg)]" : isReward(n) ? "border-2 border-dashed border-mint/60 text-mint" : "border border-white/15 text-[var(--app-muted)]"
+                    n <= STAMPED ? "bg-mint text-[var(--accent-fg)]" : isReward(n) ? "border-2 border-dashed border-mint/60 text-mint" : "border border-white/15 text-[var(--app-muted)]"
                   }`}
-                  aria-label={`Cut ${n}${isReward(n) ? ", $5 off" : ""}${n <= 4 ? ", stamped" : ""}`}
+                  aria-label={`Cut ${n}${isReward(n) ? ", 50% off" : ""}${n <= STAMPED ? ", stamped" : ""}`}
                 >
-                  {isReward(n) ? "$5" : n <= 4 ? <Check className="size-4" strokeWidth={3} /> : n}
+                  {isReward(n) ? "50%" : n <= STAMPED ? <Check className="size-4" strokeWidth={3} /> : n}
                 </motion.li>
               ))}
             </ol>
@@ -381,7 +382,7 @@ function Quotes() {
   );
 }
 
-const BARBER = ["Missed-call text back, in English and Spanish", "Your booking link for Instagram, TikTok and Google Maps", "Reminder texts 24 hours and 2 hours before", "Share kit: your link + Instagram story image", "Loyalty card","No-show protection & instant cash-out (coming soon)"];
+const BARBER = ["Missed-call text back, in English and Spanish", "Your booking link for Instagram, TikTok and Google Maps", "Reminder texts 24 hours and 2 hours before", "Share kit: your link + Instagram story image", "Loyalty punch card: every 10th cut 50% off or free", "No-show protection & instant cash-out (coming soon)"];
 const SHOP = ["Everything in Solo Barber", "Every barber in the shop gets their own number & booking link", "Owner dashboard across every chair", "Priority support & help with setup"];
 
 function Pricing() {

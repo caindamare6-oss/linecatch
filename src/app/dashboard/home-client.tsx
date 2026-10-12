@@ -6,7 +6,9 @@ import { Card, SectionLabel, SERIF } from "./ui";
 import ShareCard from "./share-card";
 import { formatPhone } from "@/lib/clients";
 import { useT, useFormat } from "@/lib/i18n";
-import { money as fmtMoney, REWARD_LABEL_CENTS } from "@/lib/config";
+import { money as fmtMoney } from "@/lib/config";
+import { rewardLabel } from "@/lib/loyalty-rules";
+import type { Locale } from "@/lib/i18n";
 
 
 type FeedEvent = { id: string; event_type: string; client_name: string | null; description: string; metadata?: Record<string, unknown> | null; created_at: string };
@@ -57,14 +59,19 @@ function timeAgo(iso: string, t: T, fmt: (d: string, o: Intl.DateTimeFormatOptio
 }
 
 /** Feed rows are rebuilt from their type so they read in the barber's language. */
-function activityText(e: FeedEvent, t: T, reward: string) {
+function activityText(e: FeedEvent, t: T, locale: Locale) {
   const m = (e.metadata || {}) as Record<string, unknown>;
   const name = e.client_name || t(e.event_type === "booking_created" ? "activity.new_client" : "activity.client");
   const service = typeof m.service_name === "string" ? m.service_name : "";
   const known = ["booking_created", "booking_completed", "booking_cancelled", "missed_call_caught", "loyalty_claimed", "review_sent", "cron_reengagement", "qr_scan", "sticker_request", "referral_qualified", "sticker_activated", "number_assigned"];
   if (!known.includes(e.event_type) || ((e.event_type === "booking_created" || e.event_type === "booking_completed") && !service)) return e.description;
-  // The reward the client actually got (barbers can change the amount later).
-  const amount = typeof m.amount_cents === "number" ? fmtMoney(m.amount_cents) : reward;
+  // Rewards from the old dollar-off card keep the sentence they were saved with.
+  if (e.event_type === "loyalty_claimed" && m.reward_type !== "half" && m.reward_type !== "free") return e.description;
+  // The reward the client actually got (barbers can change it later).
+  const amount =
+    m.reward_type === "half" || m.reward_type === "free"
+      ? `${rewardLabel({ reward: m.reward_type }, locale)}${typeof m.amount_cents === "number" && m.amount_cents > 0 ? ` (${fmtMoney(m.amount_cents)})` : ""}`
+      : "";
   return t(`activity.${e.event_type}`, { name, service, reward: amount, code: typeof m.code === "string" ? m.code : "", phone: typeof m.phone === "string" ? formatPhone(m.phone) : "" });
 }
 
@@ -251,7 +258,7 @@ export function HomeClient(props: {
                     <Icon d={cfg.icon} size={15} />
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-white/85 truncate">{activityText(e, t, money(REWARD_LABEL_CENTS / 100))}</p>
+                    <p className="text-[13px] font-medium text-white/85 truncate">{activityText(e, t, f.tag.startsWith("es") ? "es" : "en")}</p>
                     <p className="text-[11px] text-white/30">{timeAgo(e.created_at, t, f.date, props.timezone)}</p>
                   </div>
                   {price !== null ? (

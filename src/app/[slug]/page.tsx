@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getTheme, isAccent, themeVars } from "@/lib/themes";
 import { getT } from "@/lib/i18n-server";
 import { money, DEFAULT_TZ } from "@/lib/config";
-import { toLoyalty } from "@/lib/loyalty-rules";
+import { toLoyalty, rewardLabel } from "@/lib/loyalty-rules";
 import { weekdayInTz } from "@/lib/availability";
 import { checkSlug } from "@/lib/slug";
 import { nextOpenings } from "@/lib/slots";
@@ -24,7 +24,7 @@ const loadBarber = cache(async (slug: string) => {
   const db = createAdminClient();
   const { data: barber } = await db
     .from("users")
-    .select("user_id, business_name, first_name, instagram_handle, tiktok_handle, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_cents")
+    .select("user_id, business_name, first_name, instagram_handle, tiktok_handle, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_type")
     .eq("slug", slug)
     .maybeSingle();
   if (!barber || barber.is_active === false) return null;
@@ -134,7 +134,7 @@ export default async function PortfolioPage({
     services: services.map((s) => ({ id: s.id, name: s.name, description: s.description, price: s.price, minutes: s.duration_minutes, priceLabel: s.price > 0 ? money(Math.round(s.price * 100), locale) : null })),
     next,
     week,
-    loyalty: loyalty.enabled ? { amount: money(loyalty.cents, locale) } : null,
+    loyalty: loyalty.enabled ? { amount: rewardLabel(loyalty, locale) } : null,
     src,
   };
 

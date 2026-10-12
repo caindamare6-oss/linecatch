@@ -14,8 +14,6 @@ export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@l
 export const DEFAULT_TZ = "America/New_York";
 
 
-/** Loyalty reward shown to clients (the loyalty engine uses REWARD_CENTS from loyalty-rules). */
-export { REWARD_CENTS as REWARD_LABEL_CENTS } from "@/lib/loyalty-rules";
 
 /** Referral rewards. */
 export const REFERRER_FREE_MONTHS = 1;

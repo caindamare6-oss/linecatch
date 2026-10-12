@@ -9,8 +9,8 @@ import { PageHeader, SectionLabel, Card, SERIF } from "../ui";
 import { formatPhone } from "@/lib/clients";
 import { DAY_KEYS, type Hours } from "@/lib/validate";
 import { useT, useLocale, LanguageToggle, type Locale } from "@/lib/i18n";
-import { money, SUPPORT_EMAIL } from "@/lib/config";
-import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { SUPPORT_EMAIL } from "@/lib/config";
+import { REWARD_TYPES, rewardLabel, toLoyalty, type RewardType } from "@/lib/loyalty-rules";
 import { type Carrier } from "@/lib/call-mode";
 import ForwardSetup from "./forward-setup";
 import ShareCard from "../share-card";
@@ -34,7 +34,7 @@ type Settings = {
   missed_call_style: string | null;
   carrier: Carrier | null;
   loyalty_enabled: boolean | null;
-  loyalty_reward_cents: number | null;
+  loyalty_reward_type: RewardType | null;
   lastMissedCallAt: string | null;
   missedCallPresets?: Partial<Record<"casual" | "professional", { en: string; es: string }>>;
   business_hours: Hours | null;
@@ -209,20 +209,14 @@ export default function SettingsPage() {
         <div className="space-y-2">
           <Toggle
             label={t("loyalty_settings.toggle")}
-            hint={t("loyalty_settings.hint", { amount: money(s.loyalty_reward_cents ?? REWARD_CENTS, locale) })}
+            hint={t("loyalty_settings.hint", { amount: rewardLabel(toLoyalty(s), locale) })}
             on={s.loyalty_enabled !== false}
             onChange={async (v) => (await patch({ loyalty_enabled: v })) ?? (set({ loyalty_enabled: v }), null)}
           />
           {s.loyalty_enabled !== false && (
-            <EditRow
-              label={t("loyalty_settings.amount")}
-              hint={t("loyalty_settings.amount_hint")}
-              value={money(s.loyalty_reward_cents ?? REWARD_CENTS, locale)}
-              placeholder="$5"
-              onSave={async (v) => {
-                const cents = Math.round(Number(v.replace(/[^\d.,]/g, "").replace(",", ".")) * 100);
-                return (await patch({ loyalty_reward_cents: cents })) ?? (set({ loyalty_reward_cents: cents }), null);
-              }}
+            <RewardPicker
+              value={toLoyalty(s).reward}
+              onChange={async (v) => (await patch({ loyalty_reward_type: v })) ?? (set({ loyalty_reward_type: v }), null)}
             />
           )}
         </div>
@@ -540,6 +534,42 @@ function EditRow({ label, value, placeholder, onSave, hint, type = "text" }: { l
           </button>
         </div>
       </form>
+    </Card>
+  );
+}
+
+/** What every client's 10th cut gets: 50% off or free. */
+function RewardPicker({ value, onChange }: { value: RewardType; onChange: (v: RewardType) => Promise<string | null> }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  return (
+    <Card className="px-4 py-3.5">
+      <p className="text-[14px] text-white/85">{t("loyalty_settings.amount")}</p>
+      <p className="text-[12px] text-white/40 mt-0.5 leading-snug">{t("loyalty_settings.amount_hint")}</p>
+      <div role="radiogroup" aria-label={t("loyalty_settings.amount")} className="mt-3 grid grid-cols-2 gap-2">
+        {REWARD_TYPES.map((r) => (
+          <button
+            key={r}
+            type="button"
+            role="radio"
+            aria-checked={value === r}
+            disabled={busy}
+            onClick={async () => {
+              if (r === value) return;
+              setBusy(true);
+              setErr("");
+              const er = await onChange(r);
+              if (er) setErr(er);
+              setBusy(false);
+            }}
+            className={`min-h-11 rounded-xl text-[14px] font-semibold transition-colors disabled:opacity-60 ${value === r ? "bg-[var(--accent-color)] text-[var(--accent-fg)]" : "bg-white/[0.06] text-white/70"}`}
+          >
+            {t(`loyalty_settings.${r}`)}
+          </button>
+        ))}
+      </div>
+      {err && <p className="text-[12px] text-[var(--app-danger)] mt-1.5" role="alert">{t(err)}</p>}
     </Card>
   );
 }

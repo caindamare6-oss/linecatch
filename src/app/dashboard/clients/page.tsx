@@ -8,7 +8,7 @@ import { PageSkeleton } from "@/components/ui/skeleton";
 import { formatPhone, shortAgo, clientPathId, type ClientSummary } from "@/lib/clients";
 import { useT, useFormat, useLocale } from "@/lib/i18n";
 import { money } from "@/lib/config";
-import { DEFAULT_LOYALTY, type Loyalty } from "@/lib/loyalty-rules";
+import { DEFAULT_LOYALTY, rewardLabel, type Loyalty } from "@/lib/loyalty-rules";
 
 type Filter = "all" | "vip" | "due" | "notexts";
 const FILTERS: { value: Filter; label: string }[] = [
@@ -44,7 +44,7 @@ function Clients() {
   const f = useFormat();
   const locale = useLocale();
   const [loyalty, setLoyalty] = useState<Loyalty>(DEFAULT_LOYALTY);
-  const reward = money(loyalty.cents, locale);
+  const reward = rewardLabel(loyalty, locale);
   const params = useSearchParams();
   const router = useRouter();
   const initial = (FILTERS.find((f) => f.value === params.get("filter"))?.value ?? "all") as Filter;

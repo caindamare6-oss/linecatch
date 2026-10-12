@@ -9,10 +9,10 @@ import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
 import { isCallMode, isCarrier } from "@/lib/call-mode";
 import { detectCarrier } from "@/lib/carrier";
 import { isMissedCallStyle } from "@/lib/missed-call-text";
-import { MIN_REWARD_CENTS, MAX_REWARD_CENTS } from "@/lib/loyalty-rules";
+import { REWARD_TYPES, type RewardType } from "@/lib/loyalty-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, tiktok_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_cents";
+  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, tiktok_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type";
 
 export async function GET() {
   const supabase = await createClient();
@@ -92,10 +92,9 @@ export async function PATCH(request: Request) {
     if (typeof body.loyalty_enabled !== "boolean") return bad("Invalid request");
     update.loyalty_enabled = body.loyalty_enabled;
   }
-  if ("loyalty_reward_cents" in body) {
-    const c = Number(body.loyalty_reward_cents);
-    if (!Number.isInteger(c) || c < MIN_REWARD_CENTS || c > MAX_REWARD_CENTS) return bad("The reward must be between $1 and $50");
-    update.loyalty_reward_cents = c;
+  if ("loyalty_reward_type" in body) {
+    if (!REWARD_TYPES.includes(body.loyalty_reward_type as RewardType)) return bad("Invalid request");
+    update.loyalty_reward_type = body.loyalty_reward_type;
   }
   if ("business_hours" in body) {
     const h = cleanHours(body.business_hours);

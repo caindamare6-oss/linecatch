@@ -22,7 +22,7 @@ export type PortfolioData = {
 const POSTER = "font-[family-name:var(--font-poster)] font-normal tracking-[0.01em] leading-[0.95]";
 // Loyalty: the 2nd cut is off, then every 3rd (2, 5, 8…). The first five visits show the pattern.
 const STAMPS = [1, 2, 3, 4, 5];
-const isReward = (n: number) => n >= 2 && (n - 2) % 3 === 0;
+const isReward = (n: number) => n === 10;
 
 export default function PortfolioView({ data }: { data: PortfolioData }) {
   const t = useT();
@@ -184,7 +184,7 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
                         boxShadow: reward ? "0 0 20px var(--t-glow)" : "none",
                       }}
                     >
-                      {reward ? data.loyalty!.amount : n}
+                      {reward ? "★" : n}
                     </span>
                     <span className="text-[12px] text-[var(--t-muted)]">{t("shop.cut_n", { n })}</span>
                   </li>
