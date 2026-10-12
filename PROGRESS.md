@@ -32,3 +32,9 @@ Notes from each chat, newest at the bottom. The builder writes what it changed a
 - `.env.local` has no Stripe keys, so the app can't talk to Stripe locally yet. That doesn't matter for this task. The next task (creating the product) will need the keys locally or on the Vercel preview.
 
 **Next task:** Create the product "LineCatch Solo" with a $49/month price in Stripe (test mode).
+
+## 2026-10-12 — Caught up with staging, plan rewritten (planner)
+- Merged `staging` into `stripe-billing`: spec phase 1 (14-day trial from sign-up, 60-second sign-up, no QR stickers, no reviews, no portfolio photos) and the 10-cut loyalty card. 224 tests pass, type check clean.
+- PLAN.md rewritten for the new spec: Part A (barbers pay $49/month after 14 days) and Part B (Stripe Connect: clients' saved cards, charge on done, no-show/late-cancel fees, instant cash-out 1.75% min $0.50). The 10th-cut reward comes off the charge automatically.
+- Open questions for Damare are listed under "Still to decide" in PLAN.md.
+- **Next task:** Damare turns on Connect in the Stripe dashboard (test mode) and adds the test keys to `.env.development.local`.
