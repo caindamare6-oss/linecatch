@@ -81,6 +81,7 @@ export function HomeClient(props: {
   greeting: string;
   dateLine: string;
   paused: boolean;
+  billing: { banner: "trial" | "add_card" | "past_due" | "paused" | null; daysLeft: number | null };
   pageUrl: string;
   shopName: string;
   coverUrl: string | null;
@@ -153,12 +154,22 @@ export function HomeClient(props: {
         <p className="text-[13px] text-white/40 mt-0.5">{props.dateLine}</p>
       </div>
 
-      {props.paused && (
+      {props.paused ? (
         <Card className="p-4 border-[var(--app-warn)]/25">
           <p className="text-sm font-semibold text-[var(--app-warn)]">{t("home.paused_title")}</p>
-          <p className="text-xs text-white/45 mt-1 leading-relaxed">{t("home.paused_body")}</p>
+          <p className="text-xs text-white/45 mt-1 leading-relaxed">{t(props.billing.banner === "paused" ? "billing.banner_paused" : "home.paused_body")}</p>
+          {props.billing.banner === "paused" && <BillingLink label={t("billing.add_card")} />}
         </Card>
-      )}
+      ) : props.billing.banner && props.billing.banner !== "paused" ? (
+        <Card className={`p-4 ${props.billing.banner === "trial" ? "" : "border-[var(--app-warn)]/25"}`}>
+          <p className={`text-sm font-semibold ${props.billing.banner === "trial" ? "text-white/85" : "text-[var(--app-warn)]"}`}>
+            {props.billing.banner === "trial"
+              ? t(props.billing.daysLeft === 1 ? "billing.banner_trial_one" : "billing.banner_trial", { n: props.billing.daysLeft ?? 0 })
+              : t(`billing.banner_${props.billing.banner}`)}
+          </p>
+          <BillingLink label={t(props.billing.banner === "past_due" ? "billing.update_card" : "billing.add_card")} />
+        </Card>
+      ) : null}
 
       {/* Revenue */}
       <Card className="p-5">
@@ -338,5 +349,13 @@ function RevenueChart({ points, current, label, weekLabel }: { points: (number |
         ))}
       </div>
     </div>
+  );
+}
+
+function BillingLink({ label }: { label: string }) {
+  return (
+    <a href="/dashboard/settings#billing" className="mt-2.5 inline-flex min-h-10 items-center rounded-full bg-[var(--accent-color)] px-4 text-[13px] font-semibold text-[var(--accent-fg)]">
+      {label}
+    </a>
   );
 }

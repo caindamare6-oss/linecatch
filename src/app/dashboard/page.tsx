@@ -7,6 +7,7 @@ import { appUrl, DEFAULT_TZ } from "@/lib/config";
 import { assignNumberSoon } from "@/lib/phone-numbers";
 import { ensureSlug } from "@/lib/portfolio";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { billingState, type BillingStatus } from "@/lib/billing-rules";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -17,7 +18,7 @@ export default async function DashboardPage() {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("first_name, business_name, timezone, feature_autotext, feature_marketing, is_locked_out, phone_number, cover_url")
+    .select("first_name, business_name, timezone, feature_autotext, feature_marketing, is_locked_out, phone_number, cover_url, billing_status, trial_ends_at, billing_grace_until, stripe_subscription_id")
     .eq("user_id", user.id)
     .single();
   // No LineCatch number yet: assign one as soon as their setup is complete (checked after the page renders).
@@ -69,6 +70,13 @@ export default async function DashboardPage() {
       greeting={`${t(`home.${greetingFor(now, tz)}`)}${firstName ? `, ${firstName}` : ""}`}
       dateLine={dateLine}
       paused={!!barber?.is_locked_out}
+      billing={
+        barber
+          ? (({ banner, daysLeft }) => ({ banner, daysLeft }))(
+              billingState({ billing_status: (barber.billing_status || "trialing") as BillingStatus, trial_ends_at: barber.trial_ends_at, billing_grace_until: barber.billing_grace_until, stripe_subscription_id: barber.stripe_subscription_id })
+            )
+          : { banner: null, daysLeft: null }
+      }
       pageUrl={slug ? `${appUrl()}/${slug}` : `${appUrl()}/book/${user.id}`}
       shopName={barber?.business_name?.trim() || barber?.first_name?.trim() || "LineCatch"}
       coverUrl={barber?.cover_url ?? null}

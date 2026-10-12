@@ -49,32 +49,32 @@ Two jobs, one Stripe account:
 - [x] Bring the branch up to date with staging (14-day trial, no QR, 10-cut loyalty)
 - [ ] Damare: turn on **Connect** in the Stripe dashboard (test mode, Express accounts) and set the platform branding
 - [ ] Damare: add the test keys to `.env.development.local` on this computer too (so it can be tested locally)
-- [ ] Create the product "LineCatch Solo" with a $49/month price (test mode)
-- [ ] Database (staging): barber billing fields (Stripe customer ID, subscription ID, billing status, trial end) and Connect fields (connected account ID, payouts on, protection on)
+- [x] Create the product "LineCatch Solo" with a $49/month price (test mode) — the app makes it in Stripe on first use (lookup key `linecatch_solo_monthly`)
+- [x] Database: barber billing fields (migration `20261012c_stripe.sql` written; **not yet applied to staging — needs Damare's OK**) (Stripe customer ID, subscription ID, billing status, trial end) and Connect fields (connected account ID, payouts on, protection on)
 
 ## Phase 2 (Part A): Barber trial and paying
 - [ ] At sign-up: create the barber's Stripe customer, status "trialing", trial end = sign-up + 14 days
-- [ ] "Add card" flow: Stripe-hosted checkout for the $49/month plan
-- [ ] Webhook: payments succeed / fail, subscription changes → barber status updates automatically
-- [ ] "Manage billing" in Settings → Stripe customer portal (update card, cancel)
+- [x] "Add card" flow: Stripe-hosted checkout for the $49/month plan
+- [x] Webhook: payments succeed / fail, subscription changes → barber status updates automatically
+- [x] "Manage billing" in Settings → Stripe customer portal (update card, cancel)
 - [ ] Turn on Stripe's built-in emails
 
 ## Phase 3 (Part A): Reminders and pausing
-- [ ] Text the pay link on trial day 10, day 13 and day 14
-- [ ] Dashboard banner: "X days left in your free trial — Add card"
-- [ ] Day 14 with no card: texts keep running, "Add your card to keep your clients" banner
-- [ ] Day 21 with no card: pause (no outgoing texts, dashboard shows "Add card to turn LineCatch back on")
-- [ ] Failed payment: 7-day grace with banner, then pause the same way
-- [ ] Paused barber adds a card → everything turns back on automatically
+- [x] Text the pay link on trial day 10, day 13 and day 14
+- [x] Dashboard banner: "X days left in your free trial — Add card"
+- [x] Day 14 with no card: texts keep running, "Add your card to keep your clients" banner
+- [x] Day 21 with no card: pause (no outgoing texts, dashboard shows "Add card to turn LineCatch back on")
+- [x] Failed payment: 7-day grace with banner, then pause the same way
+- [x] Paused barber adds a card → everything turns back on automatically
 
 ## Phase 4 (Part B): Barbers get paid
-- [ ] Settings → "No-show protection": turning it on starts Stripe Connect Express onboarding (identity + bank/debit card, done on Stripe's pages)
-- [ ] Webhook: connected account updates → protection is only "on" once Stripe says the account can take charges
-- [ ] Booking page: when protection is on, the client saves a card (SetupIntent, Stripe's card form) before confirming. Clear note: "You won't be charged until your cut is done."
-- [ ] Mark done → charge the saved card: cut price minus the 10th-cut reward (free → no charge)
-- [ ] No-show / late-cancel → charge the fee (no loyalty discount)
+- [x] Settings → "No-show protection": turning it on starts Stripe Connect Express onboarding (identity + bank/debit card, done on Stripe's pages)
+- [x] Webhook: connected account updates → protection is only "on" once Stripe says the account can take charges
+- [x] Booking page: when protection is on, the client saves a card (SetupIntent, Stripe's card form) before confirming. Clear note: "You won't be charged until your cut is done."
+- [x] Mark done → charge the saved card: cut price minus the 10th-cut reward (free → no charge)
+- [x] No-show / late-cancel → charge the fee (no loyalty discount)
 - [ ] Receipts by text, and payments listed on the barber's dashboard
-- [ ] Payouts: standard (free) by default; "Cash out now" = instant payout, 1.75% (min $0.50)
+- [x] Payouts: standard (free) by default; "Cash out now" = instant payout, 1.75% (min $0.50)
 - [ ] Landing page: take "Coming soon" off "Get paid"
 
 ## Phase 5: Test, then go live

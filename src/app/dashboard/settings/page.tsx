@@ -14,6 +14,7 @@ import { REWARD_TYPES, rewardLabel, toLoyalty, type RewardType } from "@/lib/loy
 import { type Carrier } from "@/lib/call-mode";
 import ForwardSetup from "./forward-setup";
 import ShareCard from "../share-card";
+import { BillingSection, PaymentsSection, useStripeStatus } from "./payments-section";
 import { MISSED_CALL_PRESETS, MISSED_CALL_STYLES, isMissedCallStyle, missedCallTemplate, withShopName, type MissedCallStyle } from "@/lib/missed-call-text";
 
 
@@ -62,6 +63,7 @@ export default function SettingsPage() {
   const locale = useLocale();
   const [s, setS] = useState<Settings | null>(null);
   const [error, setError] = useState("");
+  const { s: pay, reload: reloadPay } = useStripeStatus();
 
   useEffect(() => {
     fetch("/api/settings")
@@ -203,6 +205,10 @@ export default function SettingsPage() {
         <SectionLabel>{t("settings.marketing")}</SectionLabel>
         <MarketingCard s={s} onChange={async () => setS(await fetch("/api/settings").then((r) => r.json()))} />
       </section>
+
+      <BillingSection s={pay} />
+
+      <PaymentsSection s={pay} reload={reloadPay} patch={patch} />
 
       <section id="loyalty">
         <SectionLabel>{t("loyalty_settings.section")}</SectionLabel>

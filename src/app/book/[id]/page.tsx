@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Calendar, Check, ChevronLeft, ChevronRight, MessageSquare, Scissors, User, Users, Wallet } from "lucide-react";
 import { normalizePhone } from "@/lib/phone";
@@ -13,6 +13,7 @@ import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { saveToken, useClientSession } from "./use-client-session";
 import { applyAppTheme } from "@/lib/themes";
+import { CardOnFile, type CardSaver } from "./card-on-file";
 
 type Service = {
   id: string;
@@ -113,6 +114,12 @@ function BookingContent() {
   const [rewardDue, setRewardDue] = useState(false);
   const [rewardCents, setRewardCents] = useState(0);
   const [loyalty, setLoyalty] = useState<Loyalty | null>(null);
+  // No-show protection: a card is saved (not charged) before the booking goes through.
+  const [protection, setProtection] = useState<{ account: string; feePercent: number } | null>(null);
+  const saver = useRef<CardSaver | null>(null);
+  const onSaver = useCallback((fn: CardSaver | null) => {
+    saver.current = fn;
+  }, []);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -143,6 +150,7 @@ function BookingContent() {
         if (data.businessName) setShopName(data.businessName);
         if (data.timezone) setTimezone(data.timezone);
         if (data.loyalty) setLoyalty(data.loyalty);
+        if (data.protection?.account) setProtection(data.protection);
         if (Array.isArray(data.openDays) && data.openDays.length) setOpenDays(data.openDays);
         applyAppTheme(data.theme, data.accentColor);
       }
@@ -203,6 +211,31 @@ function BookingContent() {
     }
     setSubmitting(true);
     try {
+      let setupIntentId: string | undefined;
+      if (protection && !forBarber) {
+        const setup = await fetch("/api/bookings/card-setup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: barberId, customerPhone, sessionToken: known?.token }),
+        });
+        const sd = await setup.json().catch(() => ({}));
+        if (!setup.ok) {
+          setError(sd.error || t("pay.card_unavailable"));
+          return;
+        }
+        if (sd.required) {
+          if (!saver.current) {
+            setError(t("pay.card_unavailable"));
+            return;
+          }
+          const saved = await saver.current(sd.clientSecret);
+          if ("error" in saved) {
+            setError(saved.error);
+            return;
+          }
+          setupIntentId = saved.setupIntentId;
+        }
+      }
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -218,6 +251,7 @@ function BookingContent() {
           // The client's language for later texts. Not when the barber books for them.
           language: forBarber ? undefined : locale,
           source: bookingSource,
+          setupIntentId,
         }),
       });
       const data = await res.json();
@@ -556,7 +590,7 @@ function BookingContent() {
               </div>
 
               <div className="mt-3" style={fadeUp(150)}>
-                <PayInPerson />
+                {protection && !forBarber ? <CardOnFile account={protection.account} feePercent={protection.feePercent} onSaver={onSaver} /> : <PayInPerson />}
               </div>
 
               <div className="mt-6" style={fadeUp(200)}>

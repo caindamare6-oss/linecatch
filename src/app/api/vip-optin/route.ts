@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const supabase = createAdminClient();
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name, first_name, is_locked_out, theme, accent_color, timezone, business_hours, loyalty_enabled, loyalty_reward_type")
+    .select("business_name, first_name, is_locked_out, theme, accent_color, timezone, business_hours, loyalty_enabled, loyalty_reward_type, protection_enabled, stripe_charges_enabled, stripe_account_id, no_show_fee_percent")
     .eq("user_id", barberId)
     .single();
   const loyalty = toLoyalty(barber);
@@ -31,5 +31,10 @@ export async function GET(request: Request) {
     theme: barber?.theme ?? null,
     timezone: barber?.timezone || DEFAULT_TZ,
     loyalty,
+    // No-show protection: the booking page saves a card on the barber's Stripe account.
+    protection:
+      barber?.protection_enabled && barber.stripe_charges_enabled && barber.stripe_account_id
+        ? { account: barber.stripe_account_id, feePercent: barber.no_show_fee_percent ?? 50 }
+        : null,
   });
 }

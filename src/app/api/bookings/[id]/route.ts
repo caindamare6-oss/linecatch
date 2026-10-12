@@ -10,6 +10,8 @@ import { getT } from "@/lib/i18n-server";
 import { DEFAULT_TZ, appUrl } from "@/lib/config";
 import { projectVisit } from "@/lib/loyalty";
 import { completeBooking, markNoShow, closeOutVisit } from "@/lib/complete-booking";
+import { chargeFee } from "@/lib/stripe-connect";
+import { isLateCancel } from "@/lib/billing-rules";
 import { hasTextConsent } from "@/lib/opt-out";
 
 const CLIENT_CUTOFF_HOURS = 3;
@@ -40,9 +42,10 @@ export async function GET(
 
   const { data: barber } = await supabase
     .from("users")
-    .select("business_name, timezone, theme, accent_color")
+    .select("business_name, timezone, theme, accent_color, no_show_fee_percent")
     .eq("user_id", booking.user_id)
     .single();
+  const { data: card } = await supabase.from("booking_payments").select("status").eq("booking_id", booking.id).maybeSingle();
 
   let partySize = 1;
   if (booking.group_id) {
@@ -63,6 +66,8 @@ export async function GET(
     rewardDue: !!loyalty?.due,
     rewardCents: loyalty?.rewardCents ?? null,
     rewardType: loyalty?.loyalty.reward ?? null,
+    // A saved card: they can cancel late, for the barber's late-cancel fee.
+    lateFeePercent: card?.status === "card_saved" ? barber?.no_show_fee_percent ?? 50 : null,
     id: booking.id,
     status: booking.status,
     bookingTime: booking.booking_time,
@@ -121,7 +126,11 @@ export async function PATCH(
       return NextResponse.json({ error: t("manage.err_not_active") }, { status: 400 });
     }
     const hoursUntil = (new Date(members[0].booking_time).getTime() - Date.now()) / (60 * 60 * 1000);
-    if (hoursUntil <= CLIENT_CUTOFF_HOURS) {
+    // With a saved card (no-show protection), a client can still cancel close to the time:
+    // under 2 hours it costs the barber's late-cancel fee.
+    const { count: cards } = await supabase.from("booking_payments").select("booking_id", { count: "exact", head: true }).in("booking_id", memberIds).eq("status", "card_saved");
+    const canCancelLate = action === "cancel" && (cards ?? 0) > 0 && hoursUntil > 0;
+    if (hoursUntil <= CLIENT_CUTOFF_HOURS && !canCancelLate) {
       return NextResponse.json(
         { error: t("manage.err_cutoff", { hours: CLIENT_CUTOFF_HOURS }) },
         { status: 403 }
@@ -230,6 +239,17 @@ export async function PATCH(
           } catch (err) {
             console.error("Barber cancel notify failed:", err);
           }
+        }
+      }
+    }
+
+    // A client cancelling under 2 hours before: the late-cancel fee on their saved card.
+    if (source === "client" && isLateCancel(members[0].booking_time)) {
+      for (const m of memberIds) {
+        try {
+          await chargeFee(supabase, m, "late_cancel");
+        } catch (err) {
+          console.error("[stripe:late-cancel]", err);
         }
       }
     }

@@ -12,6 +12,7 @@ import { formatCasualDate, formatCasualTime } from "@/lib/format";
 import { isSlotFree, withinBusinessHours, MAX_PARTY_SIZE } from "@/lib/availability";
 import { projectVisit, rewardVars, DEFAULT_LOYALTY } from "@/lib/loyalty";
 import { findToken, issueToken, touchToken } from "@/lib/client-session";
+import { attachCardToBookings } from "@/lib/stripe-connect";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
 
   const { data: barberHours } = await supabase
     .from("users")
-    .select("timezone, business_hours")
+    .select("timezone, business_hours, stripe_account_id, protection_enabled, stripe_charges_enabled")
     .eq("user_id", userId)
     .single();
   const tz = barberHours?.timezone || DEFAULT_TZ;
@@ -181,6 +182,13 @@ export async function POST(request: Request) {
   }
   if (!(await isSlotFree(supabase, userId, bTime, totalMinutes))) {
     return NextResponse.json({ error: TAKEN }, { status: 409 });
+  }
+
+  // No-show protection: clients booking themselves save a card first (charged only when the cut is done).
+  const needsCard = source !== "barber" && !!barberHours?.protection_enabled && !!barberHours?.stripe_charges_enabled && !!barberHours?.stripe_account_id;
+  const setupIntentId = typeof body.setupIntentId === "string" ? body.setupIntentId : "";
+  if (needsCard && !setupIntentId) {
+    return NextResponse.json({ error: t("pay.card_required"), cardRequired: true }, { status: 402 });
   }
 
   const groupId = partySize > 1 ? crypto.randomUUID() : null;
@@ -214,6 +222,19 @@ export async function POST(request: Request) {
   if (!(await isSlotFree(supabase, userId, bTime, totalMinutes, createdIds))) {
     await supabase.from("bookings").delete().in("id", createdIds);
     return NextResponse.json({ error: TAKEN }, { status: 409 });
+  }
+
+  if (needsCard) {
+    let saved = false;
+    try {
+      saved = await attachCardToBookings(supabase, { userId, accountId: barberHours!.stripe_account_id!, setupIntentId, phone: normalized, bookingIds: createdIds });
+    } catch (err) {
+      console.error("[stripe:attach-card]", err);
+    }
+    if (!saved) {
+      await supabase.from("bookings").delete().in("id", createdIds);
+      return NextResponse.json({ error: t("pay.card_failed"), cardRequired: true }, { status: 402 });
+    }
   }
 
   const booking = created[0];

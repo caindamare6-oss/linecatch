@@ -10,9 +10,10 @@ import { isCallMode, isCarrier } from "@/lib/call-mode";
 import { detectCarrier } from "@/lib/carrier";
 import { isMissedCallStyle } from "@/lib/missed-call-text";
 import { REWARD_TYPES, type RewardType } from "@/lib/loyalty-rules";
+import { MIN_FEE_PERCENT, MAX_FEE_PERCENT } from "@/lib/billing-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, tiktok_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type";
+  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, tiktok_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
 
 export async function GET() {
   const supabase = await createClient();
@@ -95,6 +96,20 @@ export async function PATCH(request: Request) {
   if ("loyalty_reward_type" in body) {
     if (!REWARD_TYPES.includes(body.loyalty_reward_type as RewardType)) return bad("Invalid request");
     update.loyalty_reward_type = body.loyalty_reward_type;
+  }
+  if ("protection_enabled" in body) {
+    if (typeof body.protection_enabled !== "boolean") return bad("Invalid request");
+    if (body.protection_enabled) {
+      // Only once Stripe has verified them and they can take cards.
+      const { data: acct } = await createAdminClient().from("users").select("stripe_charges_enabled").eq("user_id", user.id).single();
+      if (!acct?.stripe_charges_enabled) return bad("payments.err_finish_setup");
+    }
+    update.protection_enabled = body.protection_enabled;
+  }
+  if ("no_show_fee_percent" in body) {
+    const pct = Number(body.no_show_fee_percent);
+    if (!Number.isInteger(pct) || pct < MIN_FEE_PERCENT || pct > MAX_FEE_PERCENT) return bad("payments.err_fee");
+    update.no_show_fee_percent = pct;
   }
   if ("business_hours" in body) {
     const h = cleanHours(body.business_hours);

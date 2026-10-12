@@ -5,6 +5,7 @@ import { DEFAULT_TZ, appUrl, money } from "@/lib/config";
 import { completeBookingLoyalty, closeVisitIfResolved, localDate, isHeadsUpCut, rewardLabel, rewardText } from "@/lib/loyalty";
 import { hasTextConsent } from "@/lib/opt-out";
 import { AUTO_COMPLETE_AFTER_HOURS, UNDO_WINDOW_HOURS } from "@/lib/complete-booking-rules";
+import { chargeForCut, chargeFee } from "@/lib/stripe-connect";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -58,6 +59,13 @@ export async function completeBooking(db: Admin, bookingId: string, by: "barber"
       description: `${name || "Client"}'s cut #${projection.rewardCut} was ${rewardLabel(projection.loyalty)}${projection.rewardCents ? ` (${money(projection.rewardCents)})` : ""}`,
       metadata: { booking_id: bookingId, visit_key: projection.visitKey, cut_count: projection.rewardCut, amount_cents: projection.rewardCents, reward_type: projection.loyalty.reward },
     });
+  }
+
+  // A saved card (no-show protection): charge the cut now, minus the 10th-cut reward.
+  try {
+    await chargeForCut(db, bookingId, rewardedNow && projection ? projection.rewardCents : 0);
+  } catch (err) {
+    console.error("[stripe:charge-cut]", err);
   }
 
   await closeOutVisit(db, bookingId);
@@ -130,6 +138,7 @@ export async function markNoShow(db: Admin, bookingId: string): Promise<NoShowRe
       return { ok: false, error: "failed" };
     }
     await db.from("booking_reminders").delete().eq("booking_id", bookingId).in("reminder_type", ["24h", "2h"]);
+    await chargeNoShowFee(db, bookingId);
     await closeOutVisit(db, bookingId);
     return { ok: true };
   }
@@ -181,5 +190,16 @@ export async function markNoShow(db: Admin, bookingId: string): Promise<NoShowRe
     await db.from("booking_reminders").delete().in("booking_id", (group || []).map((g) => g.id)).eq("reminder_type", "review");
   }
   await db.from("activity_feed").delete().eq("user_id", booking.user_id).in("event_type", ["booking_completed", "loyalty_claimed"]).eq("metadata->>booking_id", bookingId);
+  // Charged for the cut by mistake: refunded, then the no-show fee instead.
+  await chargeNoShowFee(db, bookingId);
   return { ok: true };
+}
+
+/** No-show protection: the barber's % of the cut on the client's saved card. */
+async function chargeNoShowFee(db: Admin, bookingId: string) {
+  try {
+    await chargeFee(db, bookingId, "no_show");
+  } catch (err) {
+    console.error("[stripe:no-show-fee]", err);
+  }
 }
