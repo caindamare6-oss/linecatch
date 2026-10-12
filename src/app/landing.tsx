@@ -381,7 +381,7 @@ function Quotes() {
   );
 }
 
-const BARBER = ["Missed-call text back, in English and Spanish", "Your booking link for Instagram, TikTok and Google Maps", "Reminder texts 24 hours and 2 hours before", "Share kit: your link + Instagram story image", "Loyalty card", "Live in 60 seconds", "No-show protection & instant cash-out (coming soon)"];
+const BARBER = ["Missed-call text back, in English and Spanish", "Your booking link for Instagram, TikTok and Google Maps", "Reminder texts 24 hours and 2 hours before", "Share kit: your link + Instagram story image", "Loyalty card","No-show protection & instant cash-out (coming soon)"];
 const SHOP = ["Everything in Solo Barber", "Every barber in the shop gets their own number & booking link", "Owner dashboard across every chair", "Priority support & help with setup"];
 
 function Pricing() {
