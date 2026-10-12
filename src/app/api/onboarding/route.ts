@@ -19,6 +19,50 @@ export async function POST(request: Request) {
   const data = body.data && typeof body.data === "object" ? body.data : {};
   const admin = createAdminClient();
 
+  // The 60-second sign-up: shop name and cell. Services and hours start with defaults they can edit
+  // later; setup is finished and their LineCatch number is assigned right away.
+  if (step === "quick") {
+    const businessName = cleanText(data.businessName, 60);
+    if (!businessName) return NextResponse.json({ error: "Add your shop name", field: "businessName" }, { status: 400 });
+    const phone = cleanOptionalPhone(data.phone);
+    if (!phone.ok || !phone.value) return NextResponse.json({ error: phone.ok ? "Add your cell number" : phone.error, field: "phone" }, { status: 400 });
+    if (typeof data.referralCode === "string" && data.referralCode.trim()) {
+      const r = await applyReferral(admin, user.id, data.referralCode);
+      if (!r.ok) return NextResponse.json({ error: r.error, field: "referralCode" }, { status: 400 });
+    }
+    const language = data.language === "es" ? "es" : "en";
+    const update: Record<string, unknown> = {
+      business_name: businessName,
+      forwarding_number: phone.value,
+      email: user.email || null,
+      barber_language: language,
+      onboarding_completed: true,
+    };
+    if (typeof data.timezone === "string" && isTimeZone(data.timezone)) update.timezone = data.timezone;
+
+    const [{ data: profile }, { count: serviceCount }] = await Promise.all([
+      admin.from("users").select("business_hours").eq("user_id", user.id).maybeSingle(),
+      admin.from("services").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    ]);
+    if (!profile?.business_hours) update.business_hours = DEFAULT_HOURS;
+    if (!serviceCount) {
+      const { error: svcError } = await admin.from("services").insert(
+        STARTER_SERVICES[language].map((svc, i) => ({ user_id: user.id, ...svc, is_active: true, sort_order: i }))
+      );
+      if (svcError) console.error("[onboarding quick services]", svcError);
+    }
+
+    const { error } = await admin.from("users").update(update).eq("user_id", user.id);
+    if (error) {
+      console.error("[onboarding]", error);
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    }
+    await ensureReferralCode(admin, user.id);
+    await qualifyReferral(admin, user.id);
+    assignNumberSoon(user.id);
+    return NextResponse.json({ ok: true });
+  }
+
   if (step === "who") {
     const update: Record<string, unknown> = {};
     if (HEARD_FROM.includes(data.heardFrom)) update.referral_source = data.heardFrom;
@@ -179,6 +223,30 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ error: "Invalid step" }, { status: 400 });
 }
+
+const DEFAULT_HOURS = {
+  monday: { open: "10:00", close: "19:00" },
+  tuesday: { open: "10:00", close: "19:00" },
+  wednesday: { open: "10:00", close: "19:00" },
+  thursday: { open: "10:00", close: "19:00" },
+  friday: { open: "10:00", close: "19:00" },
+  saturday: { open: "10:00", close: "19:00" },
+  sunday: null,
+};
+
+// Short names, with what's included as a details line.
+const STARTER_SERVICES = {
+  en: [
+    { name: "Lineup", description: "Sharp edges and shape-up", price: 30, duration_minutes: 30 },
+    { name: "Taper", description: "Taper with a lineup", price: 35, duration_minutes: 45 },
+    { name: "Full Service", description: "Taper, lineup and beard", price: 45, duration_minutes: 60 },
+  ],
+  es: [
+    { name: "Lineup", description: "Contornos definidos y perfilado", price: 30, duration_minutes: 30 },
+    { name: "Taper", description: "Taper con lineup", price: 35, duration_minutes: 45 },
+    { name: "Servicio completo", description: "Taper, lineup y barba", price: 45, duration_minutes: 60 },
+  ],
+} as const;
 
 export async function GET() {
   const supabase = await createClient();

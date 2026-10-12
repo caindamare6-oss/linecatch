@@ -8,7 +8,7 @@ const poster = Bebas_Neue({ subsets: ["latin"], weight: "400", variable: "--font
 
 export const metadata: Metadata = {
   title: "LineCatch: You're cutting. LineCatch is booking.",
-  description: "When you miss a call, LineCatch texts the caller a link to book with you. Built for barbers. 30 days free, no card needed.",
+  description: "When you miss a call, LineCatch texts the caller a link to book with you. Built for barbers. 14 days free, no card needed.",
 };
 
 export default async function Home() {

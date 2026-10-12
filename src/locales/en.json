@@ -2,7 +2,7 @@
   "welcome": {
     "title_pre": "Welcome to ",
     "title_brand": "LineCatch",
-    "subtitle": "30 days free. No card needed.\nCancel anytime.",
+    "subtitle": "14 days free. No card needed.\nCancel anytime.",
     "bullet_1": "Missed calls get auto-texted",
     "bullet_2": "Clients book instantly",
     "bullet_3": "You never lose a cut",
@@ -236,7 +236,7 @@
     "off": "Off",
     "bookings": "Bookings",
     "bookings_sub": "completed this month",
-    "portfolio": "Portfolio",
+    "portfolio": "Your page",
     "broadcast": "Broadcast",
     "reviews_prompt": "Add your Google review link to ask happy clients for reviews.",
     "not_texted": "Calls not texted back",
@@ -498,7 +498,7 @@
     "save_hours": "Save hours",
     "shop": "Shop",
     "services": "Services & prices",
-    "portfolio": "Portfolio, accent color & background",
+    "portfolio": "Your page link & colors",
     "sticker": "QR sticker",
     "sticker_addon": "Add-on · {price}",
     "sticker_pitch": "Stick it on your mirror or chair. Walk-ins scan it to join your text list and book. Everything works without it.",
@@ -532,7 +532,10 @@
     "style_custom": "Write my own",
     "stop_first_only": "“Reply STOP to opt out” is added to a caller’s first text only.",
     "add_shop_name": "Add your shop name so callers know who’s texting →",
-    "admin_texts": "Admin: Texts"
+    "admin_texts": "Admin: Texts",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "social_hint": "Buttons on your booking page. Your photos live there."
   },
   "login": {
     "tagline": "Never lose a customer to a missed call",
@@ -541,7 +544,7 @@
     "sign_up": "Sign up",
     "create": "Create your account",
     "welcome": "Welcome back",
-    "trial": "30-day free trial · no card needed",
+    "trial": "14-day free trial · no card needed",
     "sign_in_shop": "Sign in to your shop",
     "redirecting": "Redirecting…",
     "google_up": "Sign up with Google",
@@ -762,8 +765,8 @@
     "details_aria": "Details for {name}"
   },
   "portfolio": {
-    "title": "Your portfolio",
-    "sub": "What clients see from your link and QR.",
+    "title": "Your page",
+    "sub": "Your booking link and your colors.",
     "section_title": "Portfolio page",
     "section_sub": "Share this link on Instagram. Clients see your cuts, then tap Continue to Booking.",
     "change_photo_aria": "Change your photo",
@@ -1071,7 +1074,7 @@
     "next_photo": "Next photo",
     "open_photo": "Open photo {n}",
     "meta_title": "{shop} · Book a cut",
-    "meta_desc": "See recent cuts from {shop} and book in about a minute.",
+    "meta_desc": "Book a cut with {shop} in seconds.",
     "loyalty_chip": "2nd cut {amount} off",
     "open_now_until": "Open now · until {time}",
     "opens_at": "Opens today at {time}",
@@ -1107,7 +1110,10 @@
     "powered_by": "Powered by",
     "book_cut": "Book {name} · {price}",
     "book_this_cut": "Book this cut · {price}",
-    "swipe_close": "Swipe down to close"
+    "swipe_close": "Swipe down to close",
+    "intro_fast": "Pick a cut and a time. You're booked in seconds, no app or account needed.",
+    "see_instagram": "See @{handle} on Instagram",
+    "see_tiktok": "See @{handle} on TikTok"
   },
   "legal": {
     "privacy_title": "Privacy Policy",
@@ -1205,5 +1211,22 @@
     "tip_story": "Post the story image and add a Link sticker with your page.",
     "tip_text_title": "Texts:",
     "tip_text": "Send it to regulars so they can book without calling."
+  },
+  "quick": {
+    "eyebrow": "Live in 60 seconds",
+    "title": "Your shop name and cell. That's it.",
+    "subtitle": "LineCatch gives you a texting number right away. Then one tap sends your missed calls to it, and every caller gets your booking link.",
+    "shop_label": "Shop name",
+    "shop_placeholder": "e.g. Kings Cuts",
+    "phone_label": "Your cell number",
+    "phone_hint": "We text you here when clients book. Your clients keep calling the number they already have.",
+    "have_code": "Have an invite code?",
+    "code_label": "Invite code",
+    "cta": "Get my LineCatch number",
+    "saving": "Setting up…",
+    "fine_print": "14 days free. No card, no SSN or EIN. You can change your services and hours anytime in Settings.",
+    "err_shop": "Add your shop name.",
+    "err_phone": "Add your cell number.",
+    "err_generic": "Something went wrong. Please try again."
   }
 }

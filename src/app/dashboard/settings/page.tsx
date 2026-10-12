@@ -27,7 +27,8 @@ type Settings = {
   call_mode: "forwarded" | "direct";
   numberMissing: string[];
   forwarding_number: string | null;
-  google_review_url: string | null;
+  instagram_handle: string | null;
+  tiktok_handle: string | null;
   booking_link: string | null;
   custom_message: string | null;
   missed_call_style: string | null;
@@ -39,7 +40,6 @@ type Settings = {
   business_hours: Hours | null;
   timezone: string;
   feature_autotext: boolean | null;
-  feature_reviews: boolean | null;
   barber_language: string;
   slug: string | null;
   cover_url: string | null;
@@ -131,20 +131,27 @@ export default function SettingsPage() {
               return err;
             }}
           />
-          <div id="reviews">
-            <EditRow
-              label={t("settings.review_link")}
-              value={s.google_review_url || ""}
-              placeholder="g.page/r/your-shop/review"
-              type="url"
-              onSave={async (v) => {
-                const err = await patch({ google_review_url: v });
-                if (!err) set({ google_review_url: v || null, ...(v ? {} : { feature_reviews: false }) });
-                if (!err && !v && s.feature_reviews) await patch({ feature_reviews: false });
-                return err;
-              }}
-            />
-          </div>
+          <EditRow
+            label={t("settings.instagram")}
+            hint={t("settings.social_hint")}
+            value={s.instagram_handle ? `@${s.instagram_handle}` : ""}
+            placeholder="@yourshop"
+            onSave={async (v) => {
+              const err = await patch({ instagram_handle: v });
+              if (!err) set({ instagram_handle: (await fetch("/api/settings").then((r) => r.json())).instagram_handle });
+              return err;
+            }}
+          />
+          <EditRow
+            label={t("settings.tiktok")}
+            value={s.tiktok_handle ? `@${s.tiktok_handle}` : ""}
+            placeholder="@yourshop"
+            onSave={async (v) => {
+              const err = await patch({ tiktok_handle: v });
+              if (!err) set({ tiktok_handle: (await fetch("/api/settings").then((r) => r.json())).tiktok_handle });
+              return err;
+            }}
+          />
           <CopyRow label={t("settings.booking_link")} url={bookingUrl} />
           <EditRow
             label={t("settings.outside")}
@@ -195,17 +202,6 @@ export default function SettingsPage() {
       <section id="marketing">
         <SectionLabel>{t("settings.marketing")}</SectionLabel>
         <MarketingCard s={s} onChange={async () => setS(await fetch("/api/settings").then((r) => r.json()))} />
-        {s.feature_marketing && (
-          <div className="space-y-2 mt-2">
-            <Toggle
-              label={t("settings.reviews")}
-              hint={s.google_review_url ? t("settings.reviews_hint") : t("settings.reviews_need_link")}
-              on={!!s.feature_reviews}
-              disabled={!s.google_review_url}
-              onChange={async (v) => (await patch({ feature_reviews: v })) ?? (set({ feature_reviews: v }), null)}
-            />
-          </div>
-        )}
       </section>
 
       <section id="loyalty">

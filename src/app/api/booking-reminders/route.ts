@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getMarketingState } from "@/lib/marketing";
 import { cronNow } from "@/lib/cron";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
@@ -8,7 +7,6 @@ import { formatCasualTime } from "@/lib/format";
 import { projectVisit, rewardVars, REWARD_CENTS } from "@/lib/loyalty";
 import { DEFAULT_TZ, appUrl } from "@/lib/config";
 
-const REVIEW_DELAY_HOURS = 2;
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -29,7 +27,6 @@ export async function GET(request: Request) {
     .gte("booking_time", now.toISOString())
     .lte("booking_time", horizon.toISOString());
 
-  // No early return when nothing is coming up: review requests below still need to go out.
   for (const booking of upcomingBookings || []) {
     // One reminder per group, keyed to the first person's slot.
     if (booking.group_id) {
@@ -145,88 +142,5 @@ export async function GET(request: Request) {
     }
   }
 
-  // Delayed review requests: 2 hours after the visit is marked done (cron runs every 15 min, so 2–2¼h).
-  const { data: pendingReviews } = await supabase
-    .from("booking_reminders")
-    .select("booking_id")
-    .eq("reminder_type", "review");
-
-  let reviewsSent = 0;
-
-  if (pendingReviews && pendingReviews.length > 0) {
-    const reviewAfter = new Date(now.getTime() - REVIEW_DELAY_HOURS * 60 * 60 * 1000);
-
-    for (const pr of pendingReviews) {
-      const { data: completionEvent } = await supabase
-        .from("activity_feed")
-        .select("created_at, user_id, client_phone, client_name")
-        .eq("event_type", "booking_completed")
-        .eq("metadata->>booking_id", pr.booking_id)
-        .single();
-
-      if (!completionEvent || new Date(completionEvent.created_at) > reviewAfter) continue;
-
-      const { data: barber } = await supabase
-        .from("users")
-        .select("phone_number, business_name, first_name, google_review_url, feature_reviews")
-        .eq("user_id", completionEvent.user_id)
-        .single();
-
-      if (!barber?.google_review_url || barber.feature_reviews === false || (await getMarketingState(supabase, completionEvent.user_id)) !== "on") {
-        await supabase.from("booking_reminders").delete()
-          .eq("booking_id", pr.booking_id).eq("reminder_type", "review");
-        continue;
-      }
-
-      const { data: vipClient } = await supabase
-        .from("vip_clients")
-        .select("id, is_opted_in, opted_out_at")
-        .eq("user_id", completionEvent.user_id)
-        .eq("phone_number", completionEvent.client_phone)
-        .single();
-
-      if (!vipClient || !vipClient.is_opted_in || vipClient.opted_out_at) {
-        await supabase.from("booking_reminders").delete()
-          .eq("booking_id", pr.booking_id).eq("reminder_type", "review");
-        continue;
-      }
-
-      const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "your barber";
-
-      const reviewSms = await buildSMS({
-        userId: completionEvent.user_id,
-        templateKey: "review_request",
-        clientPhone: completionEvent.client_phone,
-        // {link} too, so a custom template written with {link} still carries the review link.
-        vars: { shop_name: shopName, review_url: barber.google_review_url, link: barber.google_review_url },
-      });
-
-      if (reviewSms) {
-        try {
-          await sendSMS({ to: completionEvent.client_phone, from: barber.phone_number, body: reviewSms.body, userId: completionEvent.user_id, templateKey: "review_request", language: reviewSms.language });
-          await markFirstMessageSent(completionEvent.user_id, completionEvent.client_phone);
-          await supabase
-            .from("vip_clients")
-            .update({ last_review_request_at: now.toISOString() })
-            .eq("id", vipClient.id);
-          await supabase.from("activity_feed").insert({
-            user_id: completionEvent.user_id,
-            event_type: "review_sent",
-            client_name: completionEvent.client_name,
-            client_phone: completionEvent.client_phone,
-            description: `Google review request sent to ${completionEvent.client_name || "client"}`,
-            metadata: {},
-          });
-          reviewsSent++;
-        } catch (err) {
-          console.error(`Review SMS failed for booking ${pr.booking_id}:`, err);
-        }
-      }
-
-      await supabase.from("booking_reminders").delete()
-        .eq("booking_id", pr.booking_id).eq("reminder_type", "review");
-    }
-  }
-
-  return NextResponse.json({ sent, reviewsSent, checked: upcomingBookings?.length ?? 0 });
+  return NextResponse.json({ sent, checked: upcomingBookings?.length ?? 0 });
 }

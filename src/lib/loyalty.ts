@@ -1,5 +1,4 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMarketingState } from "@/lib/marketing";
 import { toLoyalty, visitReward, nextRewardCut, type Loyalty } from "@/lib/loyalty-rules";
 import { money } from "@/lib/config";
 
@@ -134,13 +133,10 @@ export async function completeBookingLoyalty(db: Admin, bookingId: string, tz: s
   return { projection, newCutCount, rewardedNow };
 }
 
-const REVIEW_COOLDOWN_DAYS = 30;
-const REVIEW_MIN_CUTS = 2;
-
 /**
  * Closes out a visit once every person in it is completed or cancelled and at least one
  * was completed. Returns null until then, and null on every later call (visit_closeouts is
- * keyed by visit, so the loyalty text and review request can only happen once).
+ * keyed by visit, so the loyalty text can only happen once).
  * Only completed people added stamps, so cut_count here is already correct.
  */
 export async function closeVisitIfResolved(db: Admin, bookingId: string) {
@@ -171,10 +167,10 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
   if (claimError) return null;
 
   const [{ data: barber }, { data: vip }, { data: reward }] = await Promise.all([
-    db.from("users").select("google_review_url, feature_reviews, loyalty_enabled, loyalty_reward_cents").eq("user_id", row.user_id).single(),
+    db.from("users").select("loyalty_enabled, loyalty_reward_cents").eq("user_id", row.user_id).single(),
     db
       .from("vip_clients")
-      .select("cut_count, is_opted_in, opted_out_at, last_review_request_at")
+      .select("cut_count")
       .eq("user_id", row.user_id)
       .eq("phone_number", row.customer_phone)
       .maybeSingle(),
@@ -184,31 +180,12 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
   const loyalty = toLoyalty(barber);
   const cutCount = vip?.cut_count ?? null;
 
-  // The review cron keys off the last completed person's booking_completed event.
-  const lastCompleted = completed[completed.length - 1];
-  const cooldownStart = new Date(Date.now() - REVIEW_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  // Review requests are marketing: they need SMS marketing on.
-  const marketingOn = (await getMarketingState(db, row.user_id)) === "on";
-  const reviewDue =
-    marketingOn &&
-    !!barber?.google_review_url &&
-    barber.feature_reviews !== false &&
-    !!vip?.is_opted_in &&
-    !vip.opted_out_at &&
-    (cutCount ?? 0) >= REVIEW_MIN_CUTS &&
-    (!vip.last_review_request_at || vip.last_review_request_at < cooldownStart);
-
-  if (reviewDue) {
-    await db.from("booking_reminders").insert({ booking_id: lastCompleted.id, reminder_type: "review" });
-  }
-
   return {
     visitKey,
     cutCount,
     nextCut: cutCount !== null ? nextRewardCut(cutCount) : null,
     visitRewarded: !!reward,
     loyalty,
-    reviewScheduled: reviewDue,
     completedCount: completed.length,
   };
 }

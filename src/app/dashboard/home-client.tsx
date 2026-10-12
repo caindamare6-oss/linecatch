@@ -82,7 +82,6 @@ export function HomeClient(props: {
   callsCaught: number;
   autotextOn: boolean;
   marketing: "off" | "on";
-  reviewsOn: boolean;
   feed: FeedEvent[];
   suppressed: Suppressed[];
   timezone: string;
@@ -215,16 +214,6 @@ export function HomeClient(props: {
           {t("home.broadcast")}
         </Link>
       </div>
-
-      {!props.reviewsOn && (
-        <Link href="/dashboard/settings#reviews" className="block">
-          <Card className="px-4 py-3.5 flex items-center gap-3 hover:border-[var(--accent-color)]/25 transition-colors">
-            <Icon d={I.star} className="text-[var(--app-warn)]" />
-            <span className="text-[13px] text-white/60 flex-1">{t("home.reviews_prompt")}</span>
-            <span className="text-[var(--accent-color)] text-sm">›</span>
-          </Card>
-        </Link>
-      )}
 
       {props.suppressed.length > 0 && (
         <section>

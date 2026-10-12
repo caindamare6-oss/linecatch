@@ -68,13 +68,6 @@ export async function GET(request: Request) {
       .gte("timestamp", weekStart.toISOString())
       .lt("timestamp", weekEnd.toISOString());
 
-    const { count: reviewsSent } = await supabase
-      .from("vip_clients")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", barber.user_id)
-      .gte("last_review_request_at", weekStart.toISOString())
-      .lt("last_review_request_at", weekEnd.toISOString());
-
     const { data: barberProfile } = await supabase
       .from("users")
       .select("first_name")
@@ -91,9 +84,8 @@ export async function GET(request: Request) {
           revenue,
           new_vips: String(newVips || 0),
           missed_caught: String(missedCaught || 0),
-          reviews_sent: String(reviewsSent || 0),
         })
-      : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, ${newVips || 0} new VIPs, ${missedCaught || 0} missed calls caught, ${reviewsSent || 0} review requests sent.`;
+      : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, ${newVips || 0} new VIPs, and ${missedCaught || 0} missed calls caught.`;
 
     try {
       if (!barber.forwarding_number) continue;

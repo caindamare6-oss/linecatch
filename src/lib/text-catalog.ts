@@ -25,19 +25,17 @@ export const TEXT_CATALOG: CatalogText[] = [
   { key: "loyalty_progress", title: "Loyalty: progress", to: "client", when: "After a visit that wasn't a reward visit.", stop: "first", needs: ["next_cut"], can: ["cuts", "next_cut", "cuts_left", "amount", "shop_name", "link"] },
   { key: "loyalty_earned", title: "Loyalty: reward used", to: "client", when: "After the visit where the reward was applied.", stop: "first", needs: [], can: ["next_cut", "amount", "shop_name", "link"] },
   { key: "auto_reply_inbound", title: "Auto-reply when a client texts in", to: "client", when: "When a client texts something that isn't a keyword (once per 12 hours).", stop: "first", needs: ["link"], can: ["link"] },
-  { key: "review_request", title: "Google review request", to: "client", when: "2 hours after a visit (marketing).", stop: "always", needs: ["review_url"], can: ["review_url", "shop_name"] },
   { key: "morning_late_broadcast", title: "Running late", to: "client", when: "When the barber texts LATE: to everyone booked for the rest of today.", stop: "first", needs: [], can: ["shop_name"] },
   { key: "barber_booking_notify", title: "Barber: new booking today", to: "barber", when: "Same-day booking, after 9am. A link to the booking is added on its own line.", stop: "never", needs: ["customer_name", "time"], can: ["customer_name", "service", "time"] },
   { key: "barber_cancel_notify", title: "Barber: client cancelled", to: "barber", when: "Client cancels from their link. A link to that day is added.", stop: "never", needs: ["customer_name"], can: ["customer_name", "date", "time"] },
   { key: "barber_reschedule_notify", title: "Barber: client rescheduled", to: "barber", when: "Client moves their appointment. A link to the new day is added.", stop: "never", needs: ["customer_name", "time"], can: ["customer_name", "old_date", "old_time", "time", "date"] },
-  { key: "weekly_report", title: "Barber: weekly recap", to: "barber", when: "Sundays 9am.", stop: "never", needs: [], can: ["barber_name", "cuts", "revenue", "new_vips", "missed_caught", "reviews_sent"] },
+  { key: "weekly_report", title: "Barber: weekly recap", to: "barber", when: "Sundays 9am.", stop: "never", needs: [], can: ["barber_name", "cuts", "revenue", "new_vips", "missed_caught"] },
 ];
 
 /** Example values for the preview and the character count. */
 export const EXAMPLES: Record<string, string> = {
   shop_name: "Fresh Cuts",
   link: "www.linecatch.app/c/K7mP2xQa",
-  review_url: "https://g.page/r/CbX9fK2mQ/review",
   customer_name: "Jordan",
   first_name: "Jordan",
   barber_name: "Marcus",
@@ -54,7 +52,6 @@ export const EXAMPLES: Record<string, string> = {
   revenue: "1,240",
   new_vips: "6",
   missed_caught: "11",
-  reviews_sent: "3",
   party: "",
   reward: "",
 };

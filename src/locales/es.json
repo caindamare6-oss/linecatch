@@ -2,7 +2,7 @@
   "welcome": {
     "title_pre": "Bienvenido a ",
     "title_brand": "LineCatch",
-    "subtitle": "30 días gratis. Sin tarjeta.\nCancela cuando quieras.",
+    "subtitle": "14 días gratis. Sin tarjeta.\nCancela cuando quieras.",
     "bullet_1": "Las llamadas perdidas se responden por texto",
     "bullet_2": "Tus clientes reservan al instante",
     "bullet_3": "No pierdes ni un corte",
@@ -236,7 +236,7 @@
     "off": "Apagado",
     "bookings": "Reservas",
     "bookings_sub": "completadas este mes",
-    "portfolio": "Portafolio",
+    "portfolio": "Tu página",
     "broadcast": "Envío masivo",
     "reviews_prompt": "Agrega tu enlace de reseñas de Google para pedir reseñas a clientes contentos.",
     "not_texted": "Llamadas sin respuesta por mensaje",
@@ -498,7 +498,7 @@
     "save_hours": "Guardar horario",
     "shop": "Barbería",
     "services": "Servicios y precios",
-    "portfolio": "Portafolio, color y fondo",
+    "portfolio": "Enlace y colores de tu página",
     "sticker": "Sticker QR",
     "sticker_addon": "Extra · {price}",
     "sticker_pitch": "Pégalo en tu espejo o silla. Los clientes sin cita lo escanean para unirse a tu lista y reservar. Todo funciona sin él.",
@@ -532,7 +532,10 @@
     "style_custom": "Escribir el mío",
     "stop_first_only": "“Responde STOP…” se agrega solo al primer mensaje de cada persona.",
     "add_shop_name": "Agrega el nombre de tu barbería para que sepan quién les escribe →",
-    "admin_texts": "Admin: Mensajes"
+    "admin_texts": "Admin: Mensajes",
+    "instagram": "Instagram",
+    "tiktok": "TikTok",
+    "social_hint": "Botones en tu página de reservas. Tus fotos viven allí."
   },
   "login": {
     "tagline": "No pierdas otro cliente por una llamada perdida",
@@ -541,7 +544,7 @@
     "sign_up": "Registrarse",
     "create": "Crea tu cuenta",
     "welcome": "Bienvenido de nuevo",
-    "trial": "Prueba gratis de 30 días · sin tarjeta",
+    "trial": "Prueba gratis de 14 días · sin tarjeta",
     "sign_in_shop": "Entra a tu barbería",
     "redirecting": "Redirigiendo…",
     "google_up": "Registrarse con Google",
@@ -762,8 +765,8 @@
     "details_aria": "Detalles de {name}"
   },
   "portfolio": {
-    "title": "Tu portafolio",
-    "sub": "Lo que ven tus clientes desde tu enlace y tu QR.",
+    "title": "Tu página",
+    "sub": "Tu enlace para reservar y tus colores.",
     "section_title": "Página de portafolio",
     "section_sub": "Comparte este enlace en Instagram. Tus clientes ven tus cortes y luego tocan Continuar a la reserva.",
     "change_photo_aria": "Cambiar tu foto",
@@ -1130,7 +1133,7 @@
     "next_photo": "Foto siguiente",
     "open_photo": "Abrir foto {n}",
     "meta_title": "{shop} · Reserva tu corte",
-    "meta_desc": "Mira los cortes recientes de {shop} y reserva en un minuto.",
+    "meta_desc": "Reserva un corte con {shop} en segundos.",
     "loyalty_chip": "2.º corte {amount} menos",
     "open_now_until": "Abierto ahora · hasta {time}",
     "opens_at": "Abre hoy a las {time}",
@@ -1166,7 +1169,10 @@
     "powered_by": "Con la tecnología de",
     "book_cut": "Reservar {name} · {price}",
     "book_this_cut": "Reservar este corte · {price}",
-    "swipe_close": "Desliza hacia abajo para cerrar"
+    "swipe_close": "Desliza hacia abajo para cerrar",
+    "intro_fast": "Elige un corte y una hora. Reservas en segundos, sin app ni cuenta.",
+    "see_instagram": "Ver @{handle} en Instagram",
+    "see_tiktok": "Ver @{handle} en TikTok"
   },
   "legal": {
     "privacy_title": "Política de privacidad",
@@ -1264,5 +1270,22 @@
     "tip_story": "Publica la imagen y añade un sticker de enlace con tu página.",
     "tip_text_title": "Mensajes:",
     "tip_text": "Mándalo a tus clientes fijos para que reserven sin llamar."
+  },
+  "quick": {
+    "eyebrow": "Listo en 60 segundos",
+    "title": "El nombre de tu barbería y tu celular. Nada más.",
+    "subtitle": "LineCatch te da un número para textos al instante. Luego, con un toque, tus llamadas perdidas van a ese número y cada cliente recibe tu enlace para reservar.",
+    "shop_label": "Nombre de la barbería",
+    "shop_placeholder": "p. ej. Kings Cuts",
+    "phone_label": "Tu número de celular",
+    "phone_hint": "Te escribimos aquí cuando un cliente reserva. Tus clientes siguen llamando al número que ya tienen.",
+    "have_code": "¿Tienes un código de invitación?",
+    "code_label": "Código de invitación",
+    "cta": "Obtener mi número de LineCatch",
+    "saving": "Configurando…",
+    "fine_print": "14 días gratis. Sin tarjeta, sin SSN ni EIN. Puedes cambiar tus servicios y horario cuando quieras en Ajustes.",
+    "err_shop": "Añade el nombre de tu barbería.",
+    "err_phone": "Añade tu número de celular.",
+    "err_generic": "Algo salió mal. Inténtalo de nuevo."
   }
 }

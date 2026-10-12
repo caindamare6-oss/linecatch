@@ -17,7 +17,7 @@ export default async function DashboardPage() {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("first_name, business_name, timezone, google_review_url, feature_autotext, feature_marketing, is_locked_out, phone_number, cover_url")
+    .select("first_name, business_name, timezone, feature_autotext, feature_marketing, is_locked_out, phone_number, cover_url")
     .eq("user_id", user.id)
     .single();
   // No LineCatch number yet: assign one as soon as their setup is complete (checked after the page renders).
@@ -77,7 +77,6 @@ export default async function DashboardPage() {
       callsCaught={caughtThisWeek.count || 0}
       autotextOn={barber?.feature_autotext !== false}
       marketing={marketingState(barber?.feature_marketing)}
-      reviewsOn={!!barber?.google_review_url}
       feed={feed.data || []}
       suppressed={suppressed.data || []}
       timezone={tz}

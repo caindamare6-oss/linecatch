@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/admin";
-import { cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
+import { cleanHandle, cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
 import { marketingState } from "@/lib/marketing";
 import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
 import { isCallMode, isCarrier } from "@/lib/call-mode";
@@ -12,7 +12,7 @@ import { isMissedCallStyle } from "@/lib/missed-call-text";
 import { MIN_REWARD_CENTS, MAX_REWARD_CENTS } from "@/lib/loyalty-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_reviews, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_cents";
+  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, tiktok_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_cents";
 
 export async function GET() {
   const supabase = await createClient();
@@ -65,10 +65,13 @@ export async function PATCH(request: Request) {
     if (body.carrier !== null && !isCarrier(body.carrier)) return bad("Invalid carrier");
     update.carrier = body.carrier;
   }
-  if ("google_review_url" in body) {
-    const u = cleanUrl(body.google_review_url);
-    if (!u.ok) return bad(u.error);
-    update.google_review_url = u.value;
+  // Their Instagram and TikTok: the buttons on their booking page.
+  for (const [key, site] of [["instagram_handle", "instagram"], ["tiktok_handle", "tiktok"]] as const) {
+    if (key in body) {
+      const h = cleanHandle(body[key], site);
+      if (!h.ok) return bad(h.error);
+      update[key] = h.value;
+    }
   }
   if ("booking_link" in body) {
     const u = cleanUrl(body.booking_link);
@@ -99,7 +102,7 @@ export async function PATCH(request: Request) {
     if (!h.ok) return bad(h.error);
     update.business_hours = h.value;
   }
-  for (const key of ["feature_autotext", "feature_reviews"] as const) {
+  for (const key of ["feature_autotext"] as const) {
     if (key in body) {
       if (typeof body[key] !== "boolean") return bad("Invalid toggle");
       update[key] = body[key];
@@ -113,16 +116,10 @@ export async function PATCH(request: Request) {
     if (!["en", "es"].includes(body.barber_language)) return bad("Unsupported language");
     update.barber_language = body.barber_language;
   }
-  if (update.feature_reviews === true && !("google_review_url" in update)) {
-    const { data } = await supabase.from("users").select("google_review_url").eq("user_id", user.id).single();
-    if (!data?.google_review_url) return bad("Add your Google review link first");
-  }
   // SMS marketing is the barber's call; texts still only reach clients who opted in.
   if ("feature_marketing" in body) {
     if (typeof body.feature_marketing !== "boolean") return bad("Invalid toggle");
     update.feature_marketing = body.feature_marketing;
-    // Marketing off also stops review requests.
-    if (!body.feature_marketing) update.feature_reviews = false;
   }
   if (Object.keys(update).length === 0) return bad("Nothing to save");
 
