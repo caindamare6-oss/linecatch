@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { DEFAULT_TZ, appUrl, money } from "@/lib/config";
-import { completeBookingLoyalty, closeVisitIfResolved, localDate } from "@/lib/loyalty";
+import { completeBookingLoyalty, closeVisitIfResolved, localDate, isHeadsUpCut, rewardLabel, rewardText } from "@/lib/loyalty";
 import { hasTextConsent } from "@/lib/opt-out";
 import { AUTO_COMPLETE_AFTER_HOURS, UNDO_WINDOW_HOURS } from "@/lib/complete-booking-rules";
 
@@ -14,8 +14,8 @@ export type CompleteResult = { ok: true } | { ok: false; error: "not_found" | "n
 
 /**
  * Marks one booking done, by the barber's tap or automatically: a loyalty stamp, the reward
- * when it's due, the activity feed, and once the whole visit is settled, one loyalty text and
- * (if it's due) a review request.
+ * when it's due, the activity feed, and once the whole visit is settled, the loyalty heads-up
+ * text if their next cut is the reward one.
  */
 export async function completeBooking(db: Admin, bookingId: string, by: "barber" | "auto"): Promise<CompleteResult> {
   const { data: booking } = await db.from("bookings").select("id, user_id, customer_phone, service_id, status").eq("id", bookingId).maybeSingle();
@@ -55,8 +55,8 @@ export async function completeBooking(db: Admin, bookingId: string, by: "barber"
       event_type: "loyalty_claimed",
       client_name: name,
       client_phone: booking.customer_phone,
-      description: `${name || "Client"} got ${money(projection.loyalty.cents)} off (cut #${projection.rewardCut})`,
-      metadata: { booking_id: bookingId, visit_key: projection.visitKey, cut_count: projection.rewardCut, amount_cents: projection.loyalty.cents },
+      description: `${name || "Client"}'s cut #${projection.rewardCut} was ${rewardLabel(projection.loyalty)}${projection.rewardCents ? ` (${money(projection.rewardCents)})` : ""}`,
+      metadata: { booking_id: bookingId, visit_key: projection.visitKey, cut_count: projection.rewardCut, amount_cents: projection.rewardCents, reward_type: projection.loyalty.reward },
     });
   }
 
@@ -65,13 +65,14 @@ export async function completeBooking(db: Admin, bookingId: string, by: "barber"
 }
 
 /**
- * Once every person in the visit is done, cancelled or a no-show: one loyalty text (to a client
- * who agreed to texts) and the review request, if one is due. Happens once per visit.
+ * Once every person in the visit is done, cancelled or a no-show. Clients aren't texted every
+ * cut: only after the 9th (19th…), to say the next one is 50% off or free. Happens once per visit,
+ * and only to a client who agreed to texts.
  */
 export async function closeOutVisit(db: Admin, bookingId: string) {
   const closeout = await closeVisitIfResolved(db, bookingId);
-  // Loyalty off: no loyalty text (the review request was already decided above).
   if (!closeout || !closeout.loyalty.enabled || closeout.cutCount === null || closeout.nextCut === null) return;
+  if (!isHeadsUpCut(closeout.cutCount)) return;
   const { data: booking } = await db.from("bookings").select("user_id, customer_phone").eq("id", bookingId).maybeSingle();
   if (!booking) return;
   const { data: barber } = await db
@@ -82,7 +83,7 @@ export async function closeOutVisit(db: Admin, bookingId: string) {
   if (!barber?.phone_number) return;
   if (!(await hasTextConsent(db as unknown as Parameters<typeof hasTextConsent>[0], booking.user_id, booking.customer_phone))) return;
 
-  const templateKey = closeout.visitRewarded ? "loyalty_earned" : "loyalty_progress";
+  const templateKey = "loyalty_progress";
   const sms = await buildSMS({
     userId: booking.user_id,
     templateKey,
@@ -93,7 +94,7 @@ export async function closeOutVisit(db: Admin, bookingId: string) {
       cuts: String(closeout.cutCount),
       next_cut: String(closeout.nextCut),
       cuts_left: String(closeout.nextCut - closeout.cutCount),
-      amount: money(closeout.loyalty.cents),
+      ...rewardText(closeout.loyalty),
     },
   });
   if (!sms) return;
@@ -109,8 +110,8 @@ export type NoShowResult = { ok: true } | { ok: false; error: "not_found" | "too
 
 /**
  * The client never came. Works on a booking still waiting, and on one already marked done
- * (by the barber or automatically) up to 24 hours after the appointment: the stamp, the $5
- * reward and the pending review request are taken back.
+ * (by the barber or automatically) up to 24 hours after the appointment: the stamp and the
+ * reward are taken back.
  */
 export async function markNoShow(db: Admin, bookingId: string): Promise<NoShowResult> {
   const { data: booking } = await db

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { appThemeVars } from "@/lib/themes";
-import { facePhoto, frontIndex, ringGeometry, stepAngle, RING_MIN_SLOTS } from "@/lib/ring";
 import { daySlots, localDate, nextOpenings } from "@/lib/slots";
 
 describe("app colors follow the barber's theme", () => {
@@ -43,46 +42,6 @@ describe("app colors follow the barber's theme", () => {
     const v = appThemeVars("purple-haze", "#123456");
     expect(v["--app-bg"]).toBe("#121110");
     expect(v["--accent-color"]).toBe("#D4AF7A");
-  });
-});
-
-describe("3D ring", () => {
-  it("only places real photos and grows with the count", () => {
-    expect(ringGeometry(3).slots).toBe(RING_MIN_SLOTS);
-    expect(ringGeometry(25).slots).toBe(25);
-    expect(ringGeometry(50).radius).toBeGreaterThan(ringGeometry(25).radius);
-  });
-
-  it("always comes to rest facing a real photo, never an empty place", () => {
-    const n = 3; // 3 photos on an 8-place ring: places 3–7 are empty
-    const { step } = ringGeometry(n);
-    for (let a = -720; a <= 720; a += 7) {
-      const face = facePhoto(a, n);
-      const idx = (((Math.round(-face / step) % 8) + 8) % 8);
-      expect(idx).toBeLessThan(n);
-      expect(frontIndex(face, n)).toBe(idx);
-    }
-  });
-
-  it("Next from the last photo wraps to the first, Prev from the first goes to the last", () => {
-    const n = 3;
-    const { step } = ringGeometry(n);
-    const atLast = -2 * step;
-    expect(frontIndex(stepAngle(atLast, 1, n), n)).toBe(0);
-    expect(frontIndex(stepAngle(0, -1, n), n)).toBe(2);
-    expect(frontIndex(stepAngle(0, 1, n), n)).toBe(1);
-  });
-
-  it("steps through every photo on a full 25-photo ring", () => {
-    const n = 25;
-    let angle = 0;
-    const seen: number[] = [];
-    for (let i = 0; i < n; i++) {
-      seen.push(frontIndex(angle, n));
-      angle = stepAngle(angle, 1, n);
-    }
-    expect(seen).toEqual(Array.from({ length: n }, (_, i) => i));
-    expect(frontIndex(angle, n)).toBe(0);
   });
 });
 
@@ -129,5 +88,22 @@ describe("Next opening", () => {
     const late = new Date("2026-10-07T23:30:00Z").getTime(); // 7:30 PM, closed
     const open = await nextOpenings(fakeDb({}), { userId: "u", totalMinutes: 45, hours, tz, now: late });
     expect(open[0]).toMatchObject({ date: "2026-10-08", time: "10:00", dayOffset: 1 });
+  });
+});
+
+describe("Instagram and TikTok usernames", () => {
+  it("accepts @name, name or a profile link, and stores just the username", async () => {
+    const { cleanHandle } = await import("@/lib/validate");
+    expect(cleanHandle("@Fresh.Fades", "instagram")).toEqual({ ok: true, value: "fresh.fades" });
+    expect(cleanHandle("https://www.instagram.com/freshfades/?hl=en", "instagram")).toEqual({ ok: true, value: "freshfades" });
+    expect(cleanHandle("tiktok.com/@kings_cuts", "tiktok")).toEqual({ ok: true, value: "kings_cuts" });
+    expect(cleanHandle("", "tiktok")).toEqual({ ok: true, value: null });
+  });
+
+  it("rejects things that aren't usernames", async () => {
+    const { cleanHandle } = await import("@/lib/validate");
+    expect(cleanHandle("fresh fades", "instagram").ok).toBe(false);
+    expect(cleanHandle("x".repeat(31), "instagram").ok).toBe(false);
+    expect(cleanHandle("x".repeat(25), "tiktok").ok).toBe(false);
   });
 });

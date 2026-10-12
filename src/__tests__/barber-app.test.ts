@@ -22,7 +22,7 @@ describe("summarizeClients", () => {
     ],
     prices: { a: 35, b: 50 },
     optOuts: [],
-    loyalty: { enabled: true, cents: 500 },
+    loyalty: { enabled: true, reward: "half" as const },
     now: NOW,
   };
 
@@ -46,13 +46,14 @@ describe("summarizeClients", () => {
     expect(viaTable.isVip).toBe(false);
   });
 
-  it("loyalty: after 4 cuts the 5th is the reward; after 2, the 5th is 3 away; off means never due", () => {
-    const alex = summarizeClients(base).find((c) => c.phone === "+16175550001")!;
+  it("loyalty: after 9 cuts the 10th is the reward; after 7, it's 3 away; off means never due", () => {
+    const nine = { ...base, vips: [{ ...base.vips[0], cut_count: 9 }] };
+    const alex = summarizeClients(nine).find((c) => c.phone === "+16175550001")!;
     expect(alex.rewardDue).toBe(true);
-    const two = summarizeClients({ ...base, vips: [{ ...base.vips[0], cut_count: 2 }] }).find((c) => c.phone === "+16175550001")!;
-    expect(two.rewardDue).toBe(false);
-    expect(two.cutsToReward).toBe(3);
-    const off = summarizeClients({ ...base, loyalty: { enabled: false, cents: 500 } }).find((c) => c.phone === "+16175550001")!;
+    const seven = summarizeClients({ ...base, vips: [{ ...base.vips[0], cut_count: 7 }] }).find((c) => c.phone === "+16175550001")!;
+    expect(seven.rewardDue).toBe(false);
+    expect(seven.cutsToReward).toBe(3);
+    const off = summarizeClients({ ...nine, loyalty: { enabled: false, reward: "half" as const } }).find((c) => c.phone === "+16175550001")!;
     expect(off.rewardDue).toBe(false);
   });
 

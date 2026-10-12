@@ -18,19 +18,8 @@ export async function GET() {
 
   const db = createAdminClient();
   const slug = await ensureSlug(db, userId);
-  const [{ data: user }, { data: photos }, { data: services }] = await Promise.all([
-    db.from("users").select("theme, cover_url, accent_color").eq("user_id", userId).single(),
-    db.from("portfolio_photos").select("id, url, thumb_url, width, height, sort_order, service_id").eq("user_id", userId).order("sort_order"),
-    db.from("services").select("id, name, description, price, duration_minutes").eq("user_id", userId).eq("is_active", true).order("sort_order"),
-  ]);
-  return NextResponse.json({
-    slug,
-    theme: user?.theme ?? DEFAULT_THEME,
-    coverUrl: user?.cover_url ?? null,
-    accentColor: user?.accent_color ?? null,
-    photos: photos || [],
-    services: services || [],
-  });
+  const { data: user } = await db.from("users").select("theme, accent_color").eq("user_id", userId).single();
+  return NextResponse.json({ slug, theme: user?.theme ?? DEFAULT_THEME, accentColor: user?.accent_color ?? null });
 }
 
 export async function PATCH(request: Request) {
@@ -68,18 +57,6 @@ export async function PATCH(request: Request) {
     if (body.accentColor !== null && !isAccent(body.accentColor)) return NextResponse.json({ error: t("portfolio.err_color") }, { status: 400 });
     const { error } = await db.from("users").update({ accent_color: body.accentColor }).eq("user_id", userId);
     if (error) return NextResponse.json({ error: t("portfolio.err_save_color") }, { status: 500 });
-  }
-
-  if (Array.isArray(body.order)) {
-    const ids = body.order.map(String);
-    const { data: owned } = await db.from("portfolio_photos").select("id").eq("user_id", userId);
-    const ownedIds = new Set((owned || []).map((p) => p.id));
-    if (ids.length !== ownedIds.size || ids.some((id: string) => !ownedIds.has(id))) {
-      return NextResponse.json({ error: t("portfolio.err_order") }, { status: 409 });
-    }
-    for (const [i, id] of ids.entries()) {
-      await db.from("portfolio_photos").update({ sort_order: i }).eq("id", id).eq("user_id", userId);
-    }
   }
 
   return NextResponse.json({ success: true });

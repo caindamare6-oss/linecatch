@@ -6,7 +6,6 @@ import { resolveTemplate } from "@/lib/messages";
 import { cookies } from "next/headers";
 import { LANG_COOKIE } from "@/lib/i18n-shared";
 import { ensureReferralCode, normalizeCode, REF_COOKIE } from "@/lib/referrals";
-import { claimOnSignIn, normalizeSticker, STICKER_COOKIE } from "@/lib/sticker-claim";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -55,24 +54,17 @@ export async function GET(request: Request) {
         }
       }
 
-      // Signing in from a sticker with an existing account: connect it now (setup won't run again).
-      const pendingSticker = searchParams.get("sticker") || (await cookies()).get(STICKER_COOKIE)?.value;
-      const claimed = await claimOnSignIn(createAdminClient(), data.user.id, pendingSticker);
-      const res = carryCodes(NextResponse.redirect(`${origin}${safeNext(searchParams.get("next"))}`), searchParams);
-      if (claimed) res.cookies.delete(STICKER_COOKIE);
-      return res;
+      return carryCodes(NextResponse.redirect(`${origin}${safeNext(searchParams.get("next"))}`), searchParams);
     }
   }
 
   return carryCodes(NextResponse.redirect(`${origin}/login?error=auth`), searchParams);
 }
 
-/** Codes passed through the sign-in link become cookies again (see /join/CODE and /s/CODE/start). */
+/** A referral code passed through the sign-in link becomes a cookie again (see /join/CODE). */
 function carryCodes(res: NextResponse, params: URLSearchParams) {
   const ref = normalizeCode(params.get("ref"));
-  const sticker = normalizeSticker(params.get("sticker"));
   const opts = { path: "/", maxAge: 60 * 60 * 24 * 30, sameSite: "lax" as const };
   if (ref) res.cookies.set(REF_COOKIE, ref, opts);
-  if (sticker) res.cookies.set(STICKER_COOKIE, sticker, opts);
   return res;
 }

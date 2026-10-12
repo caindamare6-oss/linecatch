@@ -24,7 +24,7 @@ export function keyword(text: string): string {
     .trim();
 }
 
-/** A client who ticked the consent box (booking, VIP page or sticker) and hasn't opted out since. */
+/** A client who ticked the consent box (when booking, or earlier via the retired VIP page and stickers) and hasn't opted out since. */
 export async function hasTextConsent(db: Db, userId: string, phone: string): Promise<boolean> {
   const [{ data: vip }, { data: optOut }] = await Promise.all([
     db.from("vip_clients").select("is_opted_in, opted_out_at").eq("user_id", userId).eq("phone_number", phone).maybeSingle(),

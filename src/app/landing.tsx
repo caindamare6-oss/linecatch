@@ -3,8 +3,8 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { MotionConfig, motion, useReducedMotion } from "motion/react";
-import { CalendarCheck, Check, MessageCircle, PhoneMissed, Plus } from "lucide-react";
-import { PortfolioPhone, StoryPhone } from "./phones";
+import { CalendarCheck, Check, MessageCircle, PhoneMissed, Plus, ShieldCheck, Zap } from "lucide-react";
+import { LinkPhone, StoryPhone } from "./phones";
 import { SUPPORT_EMAIL } from "@/lib/config";
 
 const TRIAL = "/login?mode=up";
@@ -23,7 +23,7 @@ function Reveal({ children, delay = 0, className }: { children: ReactNode; delay
   );
 }
 
-function Cta({ children = "Start your 30-day free trial", className = "" }: { children?: ReactNode; className?: string }) {
+function Cta({ children = "Start your 14-day free trial", className = "" }: { children?: ReactNode; className?: string }) {
   return (
     <Link
       href={TRIAL}
@@ -38,16 +38,18 @@ function Cta({ children = "Start your 30-day free trial", className = "" }: { ch
 const H2 = "font-heading text-[clamp(2rem,5vw,3.25rem)] font-semibold leading-[1.05] tracking-tight";
 const EYEBROW = "text-[13px] font-semibold uppercase tracking-[0.18em] text-mint";
 
-export default function Landing({ qr }: { qr: string }) {
+export default function Landing() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="overflow-x-clip bg-[var(--app-bg)] text-[var(--app-fg)]">
         <Nav />
         <Hero />
+        <Speed />
         <HowItWorks />
         <Calculator />
-        <Portfolio />
-        <Vip qr={qr} />
+        <BookingLink />
+        <Share />
+        <GetPaid />
         <Quotes />
         <Pricing />
         <Faq />
@@ -73,7 +75,8 @@ function Nav() {
         <Link href="/" aria-label="LineCatch home"><Logo /></Link>
         <div className="hidden items-center gap-7 text-sm text-[var(--app-muted)] md:flex">
           <a href="#how" className="hover:text-white">How it works</a>
-          <a href="#portfolio" className="hover:text-white">Portfolio</a>
+          <a href="#link" className="hover:text-white">Booking link</a>
+          <a href="#paid" className="hover:text-white">Get paid</a>
           <a href="#pricing" className="hover:text-white">Pricing</a>
           <a href="#faq" className="hover:text-white">FAQ</a>
         </div>
@@ -99,22 +102,49 @@ function Hero() {
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-24 h-[520px] w-[820px] max-w-full -translate-x-1/2 rounded-full bg-mint/10 blur-[120px]" />
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pb-24 pt-14 sm:px-6 md:grid-cols-[1.1fr_1fr] md:pt-24">
         <div>
-          <p className={`pf2-rise ${EYEBROW}`}>Missed-call text back for barbers</p>
+          <p className={`pf2-rise ${EYEBROW}`}>Booking and payments for barbers</p>
           <h1 className="mt-5 font-heading text-[clamp(2.75rem,7vw,5rem)] font-semibold leading-[0.98] tracking-tight">
             {words("You're cutting.", 0.1)}
             <br />
             {words("LineCatch is booking.", 0.35, true)}
           </h1>
           <p className="pf2-rise mt-6 max-w-lg text-lg leading-relaxed text-[var(--app-muted)]" style={{ animationDelay: "0.7s" }}>
-            When you can&apos;t pick up, LineCatch texts the caller a link to book with you. They pick a time. You keep cutting.
+            Every missed call gets your booking link by text before they call another shop. Clients book from your Instagram bio in under 10 seconds.
           </p>
           <div className="pf2-rise mt-9 flex flex-wrap items-center gap-4" style={{ animationDelay: "0.85s" }}>
             <Cta />
             <a href="#how" className="inline-flex min-h-[52px] items-center px-2 font-medium text-[var(--app-muted)] hover:text-white">See how it works ↓</a>
           </div>
-          <p className="pf2-rise mt-4 text-sm text-[var(--app-muted)]" style={{ animationDelay: "1s" }}>30 days free · No card needed · Keep your number</p>
+          <p className="pf2-rise mt-4 text-sm text-[var(--app-muted)]" style={{ animationDelay: "1s" }}>14 days free · No card · Live in 60 seconds</p>
         </div>
         <StoryPhone />
+      </div>
+    </section>
+  );
+}
+
+const SPEED = [
+  { n: "10 sec", title: "to book", body: "From your Instagram bio to a confirmed appointment. No app, no account." },
+  { n: "60 sec", title: "to set up", body: "Just your cell number and shop name. Your texting number is ready right away." },
+  { n: "30 sec", title: "to get paid", body: "Cash out to your debit card in about 30 seconds.", soon: true },
+];
+
+function Speed() {
+  return (
+    <section aria-label="How fast LineCatch is" className="border-t border-white/[0.06] py-16">
+      <div className="mx-auto grid max-w-6xl gap-5 px-4 sm:px-6 md:grid-cols-3">
+        {SPEED.map((s, i) => (
+          <Reveal key={s.n} delay={i * 0.1}>
+            <div className="h-full rounded-3xl border border-white/[0.08] bg-obsidian-light p-7">
+              <p className="font-heading text-5xl font-semibold text-mint">{s.n}</p>
+              <p className="mt-1 text-lg font-semibold">
+                {s.title}
+                {s.soon && <span className="ml-2 align-middle rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--app-muted)]">Coming soon</span>}
+              </p>
+              <p className="mt-2 leading-relaxed text-[var(--app-muted)]">{s.body}</p>
+            </div>
+          </Reveal>
+        ))}
       </div>
     </section>
   );
@@ -198,46 +228,79 @@ function Calculator() {
   );
 }
 
-function Portfolio() {
+function BookingLink() {
   return (
-    <section id="portfolio" className="relative scroll-mt-20 border-t border-white/[0.06] py-24">
-      <div aria-hidden className="pointer-events-none absolute right-0 top-1/3 h-[480px] w-[480px] rounded-full bg-mint/10 blur-[120px]" />
+    <section id="link" className="scroll-mt-20 relative border-t border-white/[0.06] py-24">
       <div className="relative mx-auto grid max-w-6xl items-center gap-16 px-4 sm:px-6 md:grid-cols-2">
-        <div className="order-2 md:order-1"><PortfolioPhone /></div>
+        <div className="order-2 md:order-1"><LinkPhone /></div>
         <Reveal className="order-1 md:order-2">
-          <p className={EYEBROW}>Your portfolio</p>
-          <h2 className={`mt-3 ${H2}`}>Your best cuts, right on their phone.</h2>
+          <p className={EYEBROW}>Your booking link</p>
+          <h2 className={`mt-3 ${H2}`}>One link for everywhere clients find you.</h2>
           <p className="mt-5 text-lg leading-relaxed text-[var(--app-muted)]">
-            Every barber gets a page clients can open from a text or a QR scan. It shows your work on a 3D ring they can spin with a thumb. They see a cut they like, tap it, and book it.
+            Put it in your Instagram bio, on TikTok and Google Maps, and in every text. Clients pick a cut and a time in under 10 seconds. Your work stays on your Instagram and TikTok, one tap away.
           </p>
           <ul className="mt-8 space-y-3">
-            {["Your cover photo, shop name, and when you're open", "Up to 50 photos, each one tagged with the cut", "“Book this cut” takes them straight to a time", "Your next opening, one tap away", "In English and Spanish"].map((t) => (
+            {["linecatch.app/your-shop", "No app download, no account to make", "Your next opening, one tap away", "Buttons to your Instagram and TikTok", "In English and Spanish"].map((t) => (
               <li key={t} className="flex gap-3"><Check className="mt-0.5 size-5 shrink-0 text-mint" />{t}</li>
             ))}
           </ul>
-          <p className="mt-8 text-sm text-[var(--app-muted)]">Go ahead and try it. Drag the ring, or tap a photo.</p>
+          <p className="mt-8 text-sm text-[var(--app-muted)]">Go ahead and try it. Tap a cut.</p>
         </Reveal>
       </div>
     </section>
   );
 }
 
-const STAMPS = [1, 2, 3, 4, 5, 6, 7, 8];
-const isReward = (n: number) => n === 2 || (n > 2 && (n - 2) % 3 === 0);
+const PAID = [
+  { icon: ShieldCheck, title: "No-show protection", body: "Clients save a card when they book. Nothing is charged until the cut is done, or a no-show or late-cancel fee applies. Flakes pay." },
+  { icon: Zap, title: "Cash out in 30 seconds", body: "Tap Cash Out Now and the money is on your debit card in about 30 seconds. Standard payouts in 1–2 business days are free." },
+];
 
-function Vip({ qr }: { qr: string }) {
+function GetPaid() {
+  return (
+    <section id="paid" className="scroll-mt-20 border-t border-white/[0.06] py-24">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <Reveal>
+          <p className={EYEBROW}>Get paid <span className="ml-2 rounded-full border border-white/15 px-2 py-0.5 align-middle text-[11px] tracking-wide text-[var(--app-muted)]">Coming soon</span></p>
+          <h2 className={`mt-3 max-w-2xl ${H2}`}>Flakes pay. You get paid fast.</h2>
+          <p className="mt-5 max-w-2xl text-lg leading-relaxed text-[var(--app-muted)]">
+            Turn it on when you&apos;re ready. You verify your identity once, with Stripe, and LineCatch never stores card numbers.
+          </p>
+        </Reveal>
+        <div className="mt-12 grid gap-5 md:grid-cols-2">
+          {PAID.map((p, i) => (
+            <Reveal key={p.title} delay={i * 0.12}>
+              <div className="h-full rounded-3xl border border-white/[0.08] bg-obsidian-light p-7">
+                <p.icon className="size-7 text-mint" />
+                <p className="mt-5 text-xl font-semibold">{p.title}</p>
+                <p className="mt-2 leading-relaxed text-[var(--app-muted)]">{p.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <p className="mt-6 text-sm text-[var(--app-muted)]">Instant cash-out fee: 1.75% (minimum $0.50). Standard payouts are free.</p>
+      </div>
+    </section>
+  );
+}
+
+const STAMPS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const STAMPED = 7;
+const isReward = (n: number) => n === 10;
+
+function Share() {
   const reduced = useReducedMotion();
   return (
     <section className="border-t border-white/[0.06] py-24">
       <div className="mx-auto grid max-w-6xl items-center gap-16 px-4 sm:px-6 md:grid-cols-2">
         <Reveal>
-          <p className={EYEBROW}>QR sticker & VIP list</p>
-          <h2 className={`mt-3 ${H2}`}>Get clients back in your chair.</h2>
+          <p className={EYEBROW}>Share your page</p>
+          <h2 className={`mt-3 ${H2}`}>One link. Everywhere your clients scroll.</h2>
           <p className="mt-5 text-lg leading-relaxed text-[var(--app-muted)]">
-            Put the LineCatch sticker on your mirror. Clients scan it from the chair to join your VIP list. LineCatch follows up with them for you.
+            Put your link in your Instagram and TikTok bio, post it on your story, text it to clients. LineCatch even makes the story image for you.
           </p>
           <ul className="mt-8 space-y-3">
-            {["Clients join your VIP list with one scan", "Win-back texts go to clients who haven't been back in a while", "Google review requests after a great cut", "A loyalty card with every plan: the 2nd cut is on you, then every 3rd"].map((t) => (
+            {["A short link to your page: linecatch.app/your-shop", "A ready-made Instagram story with your shop name and link", "Clients join your texts list when they book", "A punch card with every plan: every 10th cut is 50% off or free, your pick"].map((t) => (
               <li key={t} className="flex gap-3"><Check className="mt-0.5 size-5 shrink-0 text-mint" />{t}</li>
             ))}
           </ul>
@@ -251,9 +314,12 @@ function Vip({ qr }: { qr: string }) {
             className="relative w-[240px] overflow-hidden rounded-[32px] bg-mint p-6 text-center text-[var(--accent-fg)] shadow-[0_30px_80px_rgba(212,175,122,0.25)]"
           >
             <span aria-hidden className="pf2-shine absolute inset-y-0 left-0 w-1/3 bg-white/30" />
-            <p className="font-[family-name:var(--font-poster)] text-3xl tracking-wide">SCAN FOR VIP</p>
-            <div className="mx-auto mt-4 w-40 rounded-2xl bg-[#F2EEE6] p-3 [&_svg]:h-auto [&_svg]:w-full" role="img" aria-label="Sample LineCatch QR sticker" dangerouslySetInnerHTML={{ __html: qr }} />
-            <p className="mt-4 text-sm font-semibold">Fresh Fades · LineCatch</p>
+            <div role="img" aria-label="Sample Instagram story made by LineCatch" className="mx-auto aspect-[9/16] w-full rounded-2xl bg-obsidian p-4 flex flex-col justify-end text-left text-[var(--app-fg)]" style={{ background: "linear-gradient(to bottom, color-mix(in srgb, var(--accent-color) 30%, #121110), #121110 62%)" }}>
+              <p className="font-[family-name:var(--font-poster)] text-4xl leading-none">FRESH FADES</p>
+              <p className="mt-1 font-[family-name:var(--font-poster)] text-xl text-mint">BOOK YOUR NEXT CUT</p>
+              <p className="mt-3 rounded-full bg-mint px-3 py-1.5 text-center text-[11px] font-semibold text-[var(--accent-fg)]">linecatch.app/freshfades</p>
+              <p className="mt-2 text-center text-[10px] text-[var(--app-muted)]">Tap the link to book</p>
+            </div>
           </motion.div>
 
           <Reveal className="w-full max-w-sm rounded-3xl border border-white/[0.08] bg-obsidian-light p-6">
@@ -261,7 +327,7 @@ function Vip({ qr }: { qr: string }) {
               <p className="font-semibold">Loyalty card</p>
               <p className="text-sm text-[var(--app-muted)]">Marcus J.</p>
             </div>
-            <ol className="mt-5 grid grid-cols-4 gap-3">
+            <ol className="mt-5 grid grid-cols-5 gap-2.5">
               {STAMPS.map((n) => (
                 <motion.li
                   key={n}
@@ -270,11 +336,11 @@ function Vip({ qr }: { qr: string }) {
                   viewport={{ once: true }}
                   transition={{ type: "spring", stiffness: 300, damping: 15, delay: n * 0.12 }}
                   className={`grid aspect-square place-items-center rounded-full text-xs font-semibold ${
-                    n <= 4 ? "bg-mint text-[var(--accent-fg)]" : isReward(n) ? "border-2 border-dashed border-mint/60 text-mint" : "border border-white/15 text-[var(--app-muted)]"
+                    n <= STAMPED ? "bg-mint text-[var(--accent-fg)]" : isReward(n) ? "border-2 border-dashed border-mint/60 text-mint" : "border border-white/15 text-[var(--app-muted)]"
                   }`}
-                  aria-label={`Cut ${n}${isReward(n) ? ", $5 off" : ""}${n <= 4 ? ", stamped" : ""}`}
+                  aria-label={`Cut ${n}${isReward(n) ? ", 50% off" : ""}${n <= STAMPED ? ", stamped" : ""}`}
                 >
-                  {isReward(n) ? "$5" : n <= 4 ? <Check className="size-4" strokeWidth={3} /> : n}
+                  {isReward(n) ? "50%" : n <= STAMPED ? <Check className="size-4" strokeWidth={3} /> : n}
                 </motion.li>
               ))}
             </ol>
@@ -289,7 +355,7 @@ function Vip({ qr }: { qr: string }) {
 const QUOTES = [
   { quote: "Saturdays I can't touch my phone. Now my missed calls book themselves while I'm cutting.", who: "Barber name", where: "City, State" },
   { quote: "Clients like getting a text back instead of a voicemail. My slow Tuesdays fill up now.", who: "Barber name", where: "City, State" },
-  { quote: "The portfolio page sells my fades better than I do. People show up already knowing what they want.", who: "Barber name", where: "City, State" },
+  { quote: "I put the link in my bio and my stories. People book straight from Instagram without calling me.", who: "Barber name", where: "City, State" },
 ];
 
 function Quotes() {
@@ -316,8 +382,8 @@ function Quotes() {
   );
 }
 
-const BARBER = ["Missed-call text back", "Your booking page", "Reminder texts & easy reschedule", "Portfolio page with the 3D ring", "QR sticker & VIP list", "Loyalty card & win-back texts", "Google review requests", "Morning summary & dashboard"];
-const SHOP = ["Everything in Barber", "Every barber in the shop gets their own number, booking page & portfolio", "Owner dashboard across every chair", "Priority support & help with setup"];
+const BARBER = ["Missed-call text back, in English and Spanish", "Your booking link for Instagram, TikTok and Google Maps", "Reminder texts 24 hours and 2 hours before", "Share kit: your link + Instagram story image", "Loyalty punch card: every 10th cut 50% off or free", "No-show protection & instant cash-out (coming soon)"];
+const SHOP = ["Everything in Solo Barber", "Every barber in the shop gets their own number & booking link", "Owner dashboard across every chair", "Priority support & help with setup"];
 
 function Pricing() {
   return (
@@ -325,13 +391,13 @@ function Pricing() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <Reveal className="text-center">
           <p className={EYEBROW}>Pricing</p>
-          <h2 className={`mt-3 ${H2}`}>Try it free for 30 days.</h2>
-          <p className="mt-4 text-lg text-[var(--app-muted)]">No card needed to start.</p>
+          <h2 className={`mt-3 ${H2}`}>Try it free for 14 days.</h2>
+          <p className="mt-4 text-lg text-[var(--app-muted)]">No card, no SSN or EIN to start.</p>
         </Reveal>
         <div className="mt-14 grid gap-5 md:grid-cols-2">
           {[
-            { name: "Barber", price: 49, blurb: "Everything LineCatch does, for your chair.", items: BARBER, best: true },
-            { name: "Shop", price: 199, blurb: "LineCatch for every chair in the shop.", items: SHOP },
+            { name: "Solo Barber", price: 49, blurb: "Everything LineCatch does, for your chair.", items: BARBER, best: true },
+            { name: "Multi-Chair Shop", price: 199, blurb: "LineCatch for every chair in the shop.", items: SHOP },
           ].map((p, i) => (
             <Reveal key={p.name} delay={i * 0.12}>
               <motion.div
@@ -349,12 +415,13 @@ function Pricing() {
                 {p.best ? (
                   <Cta className="mt-8 w-full">Start free</Cta>
                 ) : (
-                  <Link href={TRIAL} className="mt-8 inline-flex min-h-[52px] w-full items-center justify-center rounded-full border border-white/20 font-semibold hover:border-mint/60">Start free with Shop</Link>
+                  <Link href={TRIAL} className="mt-8 inline-flex min-h-[52px] w-full items-center justify-center rounded-full border border-white/20 font-semibold hover:border-mint/60">Start free with Multi-Chair Shop</Link>
                 )}
               </motion.div>
             </Reveal>
           ))}
         </div>
+        <p className="mt-8 text-center text-sm text-[var(--app-muted)]">Instant cash-out fee: 1.75% (minimum $0.50). Standard payouts are free.</p>
       </div>
     </section>
   );
@@ -364,9 +431,11 @@ const FAQ = [
   ["Do I need a new phone number?", "No. Clients keep calling the number they already have. When you don't answer, your phone forwards the call to your LineCatch number, and LineCatch sends the text. We walk you through setting up forwarding in a couple of minutes."],
   ["What does the text say?", "You choose. Pick Casual (“Hey, sorry I missed you! I'm with a client right now. Grab a spot here: …”), Professional, or write your own. Every text includes your booking link."],
   ["Will it text the same person over and over?", "No. A caller gets one text for a missed call. If they reply STOP, they won't get texts from you again."],
-  ["Do I need a card for the free trial?", "No. You get 30 days free, and you don't enter a card to start."],
-  ["Does it work for Spanish-speaking clients?", "Yes. The text, your booking page, and your portfolio work in English and Spanish."],
-  ["What's the difference between Barber and Shop?", "Barber is everything LineCatch does, for one chair. Shop gives every barber in your shop their own LineCatch, plus an owner dashboard across every chair and priority support."],
+  ["Do I need a card for the free trial?", "No. You get 14 days free. You don't enter a card, your SSN or an EIN to start."],
+  ["How fast is setup?", "About 60 seconds. You enter your cell number and shop name, LineCatch gives you a texting number right away, and one tap turns on call forwarding."],
+  ["How do no-show protection and instant cash-out work?", "Coming soon. Clients save a card when they book; it's only charged when the cut is done or a no-show or late-cancel fee applies. Cash out to your debit card in about 30 seconds for 1.75% (minimum $0.50), or take standard payouts for free. You verify your identity with Stripe only when you turn this on."],
+  ["Does it work for Spanish-speaking clients?", "Yes. The texts and your booking page work in English and Spanish."],
+  ["What's the difference between Solo Barber and Multi-Chair Shop?", "Solo Barber is everything LineCatch does, for one chair. Multi-Chair Shop gives every barber in your shop their own number and booking link, plus an owner dashboard across every chair and priority support."],
 ];
 
 function Faq() {
@@ -401,7 +470,7 @@ function Final() {
         <h2 className="font-heading text-[clamp(2.5rem,6vw,4.5rem)] font-semibold leading-[1.02] tracking-tight">
           Don&apos;t let your next client <span className="text-mint">call the shop down the street.</span>
         </h2>
-        <p className="mx-auto mt-6 max-w-lg text-lg text-[var(--app-muted)]">Setup takes about five minutes. You get 30 days free, and you don&apos;t need a card.</p>
+        <p className="mx-auto mt-6 max-w-lg text-lg text-[var(--app-muted)]">Setup takes about 60 seconds. You get 14 days free, and you don&apos;t need a card.</p>
         <Cta className="mt-10" />
       </Reveal>
     </section>

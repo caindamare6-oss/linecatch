@@ -13,11 +13,7 @@ export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@l
 /** Used only when a barber hasn't set their own timezone yet. */
 export const DEFAULT_TZ = "America/New_York";
 
-/** Optional QR sticker add-on for the chair or mirror. */
-export const STICKER_PRICE_CENTS = Number(process.env.NEXT_PUBLIC_STICKER_PRICE_CENTS || 700);
 
-/** Loyalty reward shown to clients (the loyalty engine uses REWARD_CENTS from loyalty-rules). */
-export { REWARD_CENTS as REWARD_LABEL_CENTS } from "@/lib/loyalty-rules";
 
 /** Referral rewards. */
 export const REFERRER_FREE_MONTHS = 1;

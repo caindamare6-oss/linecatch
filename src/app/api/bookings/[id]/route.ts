@@ -61,7 +61,8 @@ export async function GET(
     theme: barber?.theme ?? null,
     partySize,
     rewardDue: !!loyalty?.due,
-    rewardCents: loyalty?.loyalty.cents ?? null,
+    rewardCents: loyalty?.rewardCents ?? null,
+    rewardType: loyalty?.loyalty.reward ?? null,
     id: booking.id,
     status: booking.status,
     bookingTime: booking.booking_time,
@@ -130,7 +131,7 @@ export async function PATCH(
 
   const { data: barber } = await supabase
     .from("users")
-    .select("phone_number, forwarding_number, business_name, first_name, booking_link, google_review_url, feature_reviews, timezone, business_hours")
+    .select("phone_number, forwarding_number, business_name, first_name, booking_link, timezone, business_hours")
     .eq("user_id", booking.user_id)
     .single();
 

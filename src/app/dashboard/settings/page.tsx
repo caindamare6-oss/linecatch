@@ -9,14 +9,14 @@ import { PageHeader, SectionLabel, Card, SERIF } from "../ui";
 import { formatPhone } from "@/lib/clients";
 import { DAY_KEYS, type Hours } from "@/lib/validate";
 import { useT, useLocale, LanguageToggle, type Locale } from "@/lib/i18n";
-import { money, STICKER_PRICE_CENTS, SUPPORT_EMAIL } from "@/lib/config";
-import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { SUPPORT_EMAIL } from "@/lib/config";
+import { REWARD_TYPES, rewardLabel, toLoyalty, type RewardType } from "@/lib/loyalty-rules";
 import { type Carrier } from "@/lib/call-mode";
 import ForwardSetup from "./forward-setup";
+import ShareCard from "../share-card";
 import { MISSED_CALL_PRESETS, MISSED_CALL_STYLES, isMissedCallStyle, missedCallTemplate, withShopName, type MissedCallStyle } from "@/lib/missed-call-text";
 
 
-type Address = { name: string; line1: string; line2: string | null; city: string; state: string; zip: string };
 
 type Settings = {
   user_id: string;
@@ -27,29 +27,25 @@ type Settings = {
   call_mode: "forwarded" | "direct";
   numberMissing: string[];
   forwarding_number: string | null;
-  google_review_url: string | null;
+  instagram_handle: string | null;
+  tiktok_handle: string | null;
   booking_link: string | null;
   custom_message: string | null;
   missed_call_style: string | null;
   carrier: Carrier | null;
   loyalty_enabled: boolean | null;
-  loyalty_reward_cents: number | null;
+  loyalty_reward_type: RewardType | null;
   lastMissedCallAt: string | null;
   missedCallPresets?: Partial<Record<"casual" | "professional", { en: string; es: string }>>;
   business_hours: Hours | null;
   timezone: string;
   feature_autotext: boolean | null;
-  feature_wednesday: boolean | null;
-  feature_reviews: boolean | null;
   barber_language: string;
-  winback_offer: string | null;
   slug: string | null;
+  cover_url: string | null;
   is_locked_out: boolean;
   feature_marketing: boolean;
-  shipping_address: Address | null;
-  sticker_requested_at: string | null;
   marketing: "off" | "on";
-  hasActiveSticker: boolean;
   isAdmin: boolean;
   appUrl: string;
 };
@@ -85,7 +81,6 @@ export default function SettingsPage() {
 
   const set = (patchObj: Partial<Settings>) => setS((prev) => (prev ? { ...prev, ...patchObj } : prev));
   const bookingUrl = `${s.appUrl}/book/${s.user_id}`;
-  const vipUrl = `${s.appUrl}/vip/${s.user_id}`;
 
   return (
     <div className="space-y-6">
@@ -136,20 +131,27 @@ export default function SettingsPage() {
               return err;
             }}
           />
-          <div id="reviews">
-            <EditRow
-              label={t("settings.review_link")}
-              value={s.google_review_url || ""}
-              placeholder="g.page/r/your-shop/review"
-              type="url"
-              onSave={async (v) => {
-                const err = await patch({ google_review_url: v });
-                if (!err) set({ google_review_url: v || null, ...(v ? {} : { feature_reviews: false }) });
-                if (!err && !v && s.feature_reviews) await patch({ feature_reviews: false });
-                return err;
-              }}
-            />
-          </div>
+          <EditRow
+            label={t("settings.instagram")}
+            hint={t("settings.social_hint")}
+            value={s.instagram_handle ? `@${s.instagram_handle}` : ""}
+            placeholder="@yourshop"
+            onSave={async (v) => {
+              const err = await patch({ instagram_handle: v });
+              if (!err) set({ instagram_handle: (await fetch("/api/settings").then((r) => r.json())).instagram_handle });
+              return err;
+            }}
+          />
+          <EditRow
+            label={t("settings.tiktok")}
+            value={s.tiktok_handle ? `@${s.tiktok_handle}` : ""}
+            placeholder="@yourshop"
+            onSave={async (v) => {
+              const err = await patch({ tiktok_handle: v });
+              if (!err) set({ tiktok_handle: (await fetch("/api/settings").then((r) => r.json())).tiktok_handle });
+              return err;
+            }}
+          />
           <CopyRow label={t("settings.booking_link")} url={bookingUrl} />
           <EditRow
             label={t("settings.outside")}
@@ -159,8 +161,15 @@ export default function SettingsPage() {
             type="url"
             onSave={async (v) => (await patch({ booking_link: v })) ?? (set({ booking_link: v || null }), null)}
           />
-          <CopyRow label={t("settings.vip_link")} url={vipUrl} />
         </div>
+      </section>
+
+      <section id="share">
+        <ShareCard
+          pageUrl={s.slug ? `${s.appUrl}/${s.slug}` : bookingUrl}
+          shopName={s.business_name?.trim() || s.first_name?.trim() || "LineCatch"}
+          coverUrl={s.cover_url}
+        />
       </section>
 
       <section id="missed-calls">
@@ -193,30 +202,6 @@ export default function SettingsPage() {
       <section id="marketing">
         <SectionLabel>{t("settings.marketing")}</SectionLabel>
         <MarketingCard s={s} onChange={async () => setS(await fetch("/api/settings").then((r) => r.json()))} />
-        {s.feature_marketing && (
-          <div className="space-y-2 mt-2">
-            <Toggle
-              label={t("settings.wednesday")}
-              hint={t("settings.wednesday_hint")}
-              on={!!s.feature_wednesday}
-              onChange={async (v) => (await patch({ feature_wednesday: v })) ?? (set({ feature_wednesday: v }), null)}
-            />
-            <Toggle
-              label={t("settings.reviews")}
-              hint={s.google_review_url ? t("settings.reviews_hint") : t("settings.reviews_need_link")}
-              on={!!s.feature_reviews}
-              disabled={!s.google_review_url}
-              onChange={async (v) => (await patch({ feature_reviews: v })) ?? (set({ feature_reviews: v }), null)}
-            />
-            <EditRow
-              label={t("settings.winback")}
-              hint={t("settings.winback_hint")}
-              value={s.winback_offer || ""}
-              placeholder={t("settings.winback_placeholder", { reward: money(s.loyalty_reward_cents ?? REWARD_CENTS, locale) })}
-              onSave={async (v) => (await patch({ winback_offer: v })) ?? (set({ winback_offer: v || null }), null)}
-            />
-          </div>
-        )}
       </section>
 
       <section id="loyalty">
@@ -224,20 +209,14 @@ export default function SettingsPage() {
         <div className="space-y-2">
           <Toggle
             label={t("loyalty_settings.toggle")}
-            hint={t("loyalty_settings.hint", { amount: money(s.loyalty_reward_cents ?? REWARD_CENTS, locale) })}
+            hint={t("loyalty_settings.hint", { amount: rewardLabel(toLoyalty(s), locale) })}
             on={s.loyalty_enabled !== false}
             onChange={async (v) => (await patch({ loyalty_enabled: v })) ?? (set({ loyalty_enabled: v }), null)}
           />
           {s.loyalty_enabled !== false && (
-            <EditRow
-              label={t("loyalty_settings.amount")}
-              hint={t("loyalty_settings.amount_hint")}
-              value={money(s.loyalty_reward_cents ?? REWARD_CENTS, locale)}
-              placeholder="$5"
-              onSave={async (v) => {
-                const cents = Math.round(Number(v.replace(/[^\d.,]/g, "").replace(",", ".")) * 100);
-                return (await patch({ loyalty_reward_cents: cents })) ?? (set({ loyalty_reward_cents: cents }), null);
-              }}
+            <RewardPicker
+              value={toLoyalty(s).reward}
+              onChange={async (v) => (await patch({ loyalty_reward_type: v })) ?? (set({ loyalty_reward_type: v }), null)}
             />
           )}
         </div>
@@ -261,14 +240,11 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <StickerSection s={s} onChange={async () => setS(await fetch("/api/settings").then((r) => r.json()))} />
-
       <ReferCard />
 
       <section>
         <SectionLabel>{t("settings.account")}</SectionLabel>
         <div className="space-y-2">
-          {s.isAdmin && <NavRow href="/dashboard/admin/stickers" label={t("settings.admin_stickers")} />}
           {s.isAdmin && <NavRow href="/dashboard/admin/twilio" label={t("settings.admin_twilio")} />}
           {s.isAdmin && <NavRow href="/dashboard/admin/texts" label={t("settings.admin_texts")} />}
           <NavRow href="/privacy" label={t("settings.privacy")} />
@@ -562,6 +538,42 @@ function EditRow({ label, value, placeholder, onSave, hint, type = "text" }: { l
   );
 }
 
+/** What every client's 10th cut gets: 50% off or free. */
+function RewardPicker({ value, onChange }: { value: RewardType; onChange: (v: RewardType) => Promise<string | null> }) {
+  const t = useT();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  return (
+    <Card className="px-4 py-3.5">
+      <p className="text-[14px] text-white/85">{t("loyalty_settings.amount")}</p>
+      <p className="text-[12px] text-white/40 mt-0.5 leading-snug">{t("loyalty_settings.amount_hint")}</p>
+      <div role="radiogroup" aria-label={t("loyalty_settings.amount")} className="mt-3 grid grid-cols-2 gap-2">
+        {REWARD_TYPES.map((r) => (
+          <button
+            key={r}
+            type="button"
+            role="radio"
+            aria-checked={value === r}
+            disabled={busy}
+            onClick={async () => {
+              if (r === value) return;
+              setBusy(true);
+              setErr("");
+              const er = await onChange(r);
+              if (er) setErr(er);
+              setBusy(false);
+            }}
+            className={`min-h-11 rounded-xl text-[14px] font-semibold transition-colors disabled:opacity-60 ${value === r ? "bg-[var(--accent-color)] text-[var(--accent-fg)]" : "bg-white/[0.06] text-white/70"}`}
+          >
+            {t(`loyalty_settings.${r}`)}
+          </button>
+        ))}
+      </div>
+      {err && <p className="text-[12px] text-[var(--app-danger)] mt-1.5" role="alert">{t(err)}</p>}
+    </Card>
+  );
+}
+
 function Toggle({ label, hint, on, onChange, disabled }: { label: string; hint: string; on: boolean; onChange: (v: boolean) => Promise<string | null>; disabled?: boolean }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
@@ -779,116 +791,6 @@ function MarketingCard({ s, onChange }: { s: Settings; onChange: () => Promise<v
   );
 }
 
-/** Optional paid add-on. Nothing else in the app depends on it. */
-function StickerSection({ s, onChange }: { s: Settings; onChange: () => Promise<void> }) {
-  const t = useT();
-  const locale = useLocale();
-  const price = money(STICKER_PRICE_CENTS, locale);
-  const a = s.shipping_address;
-  const [codes, setCodes] = useState<{ code: string; status: string }[] | null>(null);
-  const [form, setForm] = useState<Address>({ name: a?.name || s.business_name || "", line1: a?.line1 || "", line2: a?.line2 || "", city: a?.city || "", state: a?.state || "", zip: a?.zip || "" });
-  const [ordering, setOrdering] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [moreSent, setMoreSent] = useState(false);
-  const [err, setErr] = useState("");
-
-  useEffect(() => {
-    fetch("/api/stickers")
-      .then((r) => r.json())
-      .then((d) => setCodes(d.codes || []))
-      .catch(() => setCodes([]));
-  }, []);
-  if (codes === null) return null;
-
-  async function order(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setErr("");
-    const er = await patch({ shipping_address: form, request_sticker: true });
-    setBusy(false);
-    if (er) return setErr(er);
-    setOrdering(false);
-    await onChange();
-  }
-
-  const field = "w-full h-11 rounded-xl bg-white/[0.04] border border-white/[0.12] px-3.5 text-[15px] placeholder-white/25 outline-none focus:border-[var(--accent-color)]/50";
-  const active = codes.filter((c) => c.status === "active");
-
-  return (
-    <section id="sticker">
-      <SectionLabel>{t("settings.sticker")}</SectionLabel>
-      <Card className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-[12px] text-white/50 leading-relaxed">{t("settings.sticker_pitch")}</p>
-          <span className="text-[11px] font-semibold text-[var(--accent-color)] whitespace-nowrap">{t("settings.sticker_addon", { price })}</span>
-        </div>
-
-        {active.map((c) => (
-          <div key={c.code} className="flex items-center justify-between mt-3">
-            <span className="font-mono tracking-[2px] text-[15px]">{c.code}</span>
-            <span className="text-[11px] font-semibold text-[var(--app-ok)]">{t("settings.sticker_active")}</span>
-          </div>
-        ))}
-
-        {active.length > 0 ? (
-          <button
-            onClick={async () => {
-              setBusy(true);
-              const ok = await fetch("/api/stickers/request", { method: "POST" }).then((r) => r.ok).catch(() => false);
-              setBusy(false);
-              if (ok) setMoreSent(true);
-              else setErr("settings.save_error");
-            }}
-            disabled={busy || moreSent}
-            className="mt-3 w-full h-10 rounded-xl border border-white/[0.12] text-[13px] text-white/70 disabled:opacity-50"
-          >
-            {moreSent ? t("settings.sticker_more_sent") : busy ? t("settings.sticker_sending") : t("settings.sticker_more", { price })}
-          </button>
-        ) : s.sticker_requested_at ? (
-          <p className="mt-3 text-[12px] text-[var(--app-warn)] leading-relaxed">
-            {t("settings.sticker_ordered", { city: s.shipping_address?.city || "", state: s.shipping_address?.state || "" })}
-          </p>
-        ) : !ordering ? (
-          <button onClick={() => setOrdering(true)} className="mt-3 w-full h-10 rounded-xl border border-[var(--accent-color)]/35 text-[var(--accent-color)] text-[13px] font-semibold">
-            {t("settings.sticker_order", { price })}
-          </button>
-        ) : (
-          <form onSubmit={order} className="mt-4 space-y-2.5" style={{ animation: "ob-fade-up 220ms ease-out both" }}>
-            <p className="text-[12px] text-white/55">{t("settings.ship_to")}</p>
-            <label className="block text-[12px] text-white/45" htmlFor="ship-name">{t("step5.ship_name")}</label>
-            <input id="ship-name" className={field} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <label className="block text-[12px] text-white/45" htmlFor="ship-line1">{t("step5.ship_street")}</label>
-            <input id="ship-line1" className={field} value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} placeholder={t("step5.ship_street_placeholder")} autoComplete="address-line1" required />
-            <label className="block text-[12px] text-white/45" htmlFor="ship-line2">{t("step5.ship_unit")}</label>
-            <input id="ship-line2" className={field} value={form.line2 || ""} onChange={(e) => setForm({ ...form, line2: e.target.value })} autoComplete="address-line2" />
-            <div className="grid grid-cols-[1fr_64px_92px] gap-2">
-              <div>
-                <label className="block text-[12px] text-white/45 mb-1" htmlFor="ship-city">{t("step5.ship_city")}</label>
-                <input id="ship-city" className={field} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} autoComplete="address-level2" required />
-              </div>
-              <div>
-                <label className="block text-[12px] text-white/45 mb-1" htmlFor="ship-state">{t("step5.ship_state")}</label>
-                <input id="ship-state" className={field} value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase().slice(0, 2) })} placeholder="MA" autoComplete="address-level1" required />
-              </div>
-              <div>
-                <label className="block text-[12px] text-white/45 mb-1" htmlFor="ship-zip">{t("step5.ship_zip")}</label>
-                <input id="ship-zip" className={field} value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value.replace(/[^\d-]/g, "").slice(0, 10) })} inputMode="numeric" autoComplete="postal-code" required />
-              </div>
-            </div>
-            <p className="text-[11px] text-white/35">{t("settings.ship_payment")}</p>
-            <div className="flex gap-2 pt-1">
-              <button type="button" onClick={() => setOrdering(false)} className="h-11 px-4 rounded-xl border border-white/[0.12] text-[13px] text-white/70">{t("common.cancel")}</button>
-              <button type="submit" disabled={busy} className="flex-1 h-11 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[13px] font-semibold disabled:opacity-50">
-                {busy ? t("common.saving") : t("settings.ship_submit", { price })}
-              </button>
-            </div>
-          </form>
-        )}
-        {err && <p className="text-[12px] text-[var(--app-danger)] mt-2" role="alert">{t(err)}</p>}
-      </Card>
-    </section>
-  );
-}
 
 type Referral = { code: string; link: string; signedUp: number; qualified: number; freeMonths: number; discountPercent: number | null; rewards: { referredPercentOff: number } };
 

@@ -69,3 +69,24 @@ export function cleanService(raw: unknown): { name: string; price: number; durat
   if (!Number.isInteger(duration) || duration < 5 || duration > 480) return null;
   return { name, price: Math.round(price * 100) / 100, duration, description };
 }
+
+/**
+ * An Instagram or TikTok handle from "@name", "name" or a profile link. Empty clears it.
+ * Instagram: letters, numbers, dots, underscores (30 max). TikTok: the same, 24 max.
+ */
+export function cleanHandle(raw: unknown, site: "instagram" | "tiktok"): { ok: true; value: string | null } | { ok: false; error: string } {
+  if (raw === null || raw === undefined) return { ok: true, value: null };
+  if (typeof raw !== "string") return { ok: false, error: "Invalid handle" };
+  let v = raw.trim();
+  if (!v) return { ok: true, value: null };
+  const host = site === "instagram" ? /(?:https?:\/\/)?(?:www\.)?instagram\.com\// : /(?:https?:\/\/)?(?:www\.)?tiktok\.com\//;
+  v = v.replace(host, "").replace(/^@/, "").split(/[/?#]/)[0];
+  const max = site === "instagram" ? 30 : 24;
+  if (!new RegExp(`^[A-Za-z0-9._]{1,${max}}$`).test(v)) {
+    return { ok: false, error: site === "instagram" ? "Enter your Instagram username, like @freshcuts" : "Enter your TikTok username, like @freshcuts" };
+  }
+  return { ok: true, value: v.toLowerCase() };
+}
+
+export const instagramUrl = (handle: string) => `https://www.instagram.com/${handle}/`;
+export const tiktokUrl = (handle: string) => `https://www.tiktok.com/@${handle}`;

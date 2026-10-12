@@ -1,20 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
 import { useT, LanguageToggle } from "@/lib/i18n";
-import CutRing, { type RingPhoto } from "./cut-ring";
 
 export type PortfolioData = {
   barberId: string;
   shopName: string;
   firstName: string | null;
-  coverUrl: string | null;
+  instagram: string | null;
+  tiktok: string | null;
   status: string;
   openNow: boolean;
   lowestPrice: string | null;
   services: { id: string; name: string; description: string | null; price: number; minutes: number; priceLabel: string | null }[];
-  photos: { id: string; url: string; thumb: string; width: number | null; height: number | null; serviceId: string | null }[];
   next: { day: string; time: string; then: string[] } | null;
   week: { key: string; label: string; name: string; hours: string | null; today: boolean }[];
   loyalty: { amount: string } | null;
@@ -24,21 +22,15 @@ export type PortfolioData = {
 const POSTER = "font-[family-name:var(--font-poster)] font-normal tracking-[0.01em] leading-[0.95]";
 // Loyalty: the 2nd cut is off, then every 3rd (2, 5, 8…). The first five visits show the pattern.
 const STAMPS = [1, 2, 3, 4, 5];
-const isReward = (n: number) => n >= 2 && (n - 2) % 3 === 0;
+const isReward = (n: number) => n === 10;
 
 export default function PortfolioView({ data }: { data: PortfolioData }) {
   const t = useT();
   const [picked, setPicked] = useState<string | null>(null);
-  const [open, setOpen] = useState<number | null>(null);
   const serviceById = new Map(data.services.map((s) => [s.id, s]));
   const pickedService = picked ? serviceById.get(picked) ?? null : null;
   const book = (serviceId?: string | null) =>
     `/book/${data.barberId}?${serviceId ? `service=${serviceId}&` : ""}src=${data.src}`;
-
-  const ring: RingPhoto[] = data.photos.map((p) => {
-    const s = p.serviceId ? serviceById.get(p.serviceId) : null;
-    return { id: p.id, thumb: p.thumb, label: s?.name ?? data.shopName, sub: s?.priceLabel ?? null };
-  });
 
   const words = (text: string, from: number, accent = false) =>
     text.split(" ").map((w, i) => (
@@ -49,43 +41,39 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
 
   return (
     <>
-      {/* Cover photo, with the shop name over it */}
-      <header className="relative h-[min(460px,62vh)] min-h-[380px] overflow-hidden rounded-b-[34px] bg-[var(--t-tile)] border-b" style={{ borderColor: "color-mix(in srgb, var(--t-accent) 35%, transparent)", boxShadow: "0 20px 60px var(--t-glow)" }}>
-        {data.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={data.coverUrl} alt={t("shop.cover_alt", { shop: data.shopName })} fetchPriority="high" className="pf2-zoom absolute inset-0 w-full h-full object-cover" />
-        ) : (
-          <div aria-hidden className="pf2-zoom absolute inset-0 flex items-center justify-center text-[160px] text-[var(--t-accent)]/30 font-[family-name:var(--font-poster)]" style={{ background: "radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--t-accent) 22%, var(--t-tile)), var(--t-tile))" }}>
-            {data.shopName.charAt(0).toUpperCase()}
+      {/* Shop name, open status and their Instagram / TikTok */}
+      <header className="relative overflow-hidden rounded-b-[34px] border-b px-5 pt-[max(16px,env(safe-area-inset-top))] pb-7" style={{ borderColor: "color-mix(in srgb, var(--t-accent) 30%, transparent)", background: "radial-gradient(120% 90% at 20% 0%, color-mix(in srgb, var(--t-accent) 18%, var(--t-bg)), var(--t-bg) 70%)" }}>
+        <div className="mx-auto max-w-[520px]">
+          <div className="flex items-center justify-between gap-3">
+            <span className="pf2-rise inline-flex items-center gap-2 h-9 px-3 rounded-full text-[13px] font-semibold border border-[var(--t-border)] bg-[var(--t-surface)]">
+              <span
+                className={`w-2 h-2 rounded-full ${data.openNow ? "pf2-pulse" : ""}`}
+                style={{ background: data.openNow ? "var(--t-accent)" : "var(--t-muted)", ["--pf2-pulse" as string]: "color-mix(in srgb, var(--t-accent) 70%, transparent)" }}
+              />
+              {data.status}
+            </span>
+            <div
+              className="pf2-rise shrink-0 rounded-full bg-[var(--t-surface)] [&>div]:border-[var(--t-border)] [&_button[aria-pressed=false]]:text-[var(--t-muted)]"
+              style={{ "--accent-color": "var(--t-cta-bg)", "--accent-fg": "var(--t-cta-text)" } as React.CSSProperties}
+            >
+              <LanguageToggle />
+            </div>
           </div>
-        )}
-        <div aria-hidden className="pf2-scan absolute inset-x-0 top-0 h-24" style={{ background: "linear-gradient(to bottom, transparent, color-mix(in srgb, var(--t-accent) 14%, transparent), transparent)" }} />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 h-60" style={{ background: "linear-gradient(to bottom, transparent, var(--t-bg))" }} />
 
-        <div className="absolute top-[max(16px,env(safe-area-inset-top))] inset-x-5 flex items-center justify-between gap-3">
-          <span className="pf2-rise inline-flex items-center gap-2 h-9 px-3 rounded-full text-[13px] font-semibold text-[#fff] bg-black/50 border border-[#fff]/20 backdrop-blur-md">
-            <span
-              className={`w-2 h-2 rounded-full ${data.openNow ? "pf2-pulse" : ""}`}
-              style={{ background: data.openNow ? "var(--t-accent)" : "rgba(255,255,255,0.5)", ["--pf2-pulse" as string]: "color-mix(in srgb, var(--t-accent) 70%, transparent)" }}
-            />
-            {data.status}
-          </span>
-          <div
-            className="pf2-rise shrink-0 rounded-full bg-black/50 backdrop-blur-md [&>div]:border-[#fff]/20 [&_button[aria-pressed=false]]:text-[#fff]/75"
-            style={{ "--accent-color": "var(--t-cta-bg)", "--accent-fg": "var(--t-cta-text)" } as React.CSSProperties}
-          >
-            <LanguageToggle />
-          </div>
-        </div>
-
-        <div className="absolute left-5 right-5 bottom-6">
-          <span className="pf2-rise inline-flex px-2.5 py-1 rounded-full text-[12px] font-bold uppercase tracking-[1px] bg-[var(--t-cta-bg)] text-[var(--t-cta-text)]" style={{ animationDelay: "0.2s" }}>
+          <span className="pf2-rise mt-8 inline-flex px-2.5 py-1 rounded-full text-[12px] font-bold uppercase tracking-[1px] bg-[var(--t-cta-bg)] text-[var(--t-cta-text)]" style={{ animationDelay: "0.1s" }}>
             {t("shop.barber")}
           </span>
-          <h1 className={`${POSTER} mt-2.5 text-[clamp(48px,14vw,64px)] [text-wrap:balance]`}>{words(data.shopName, 0.3)}</h1>
-          <p className="pf2-rise mt-2 text-base font-medium text-[var(--t-muted)]" style={{ animationDelay: "0.45s" }}>
+          <h1 className={`${POSTER} mt-2.5 text-[clamp(52px,15vw,72px)] [text-wrap:balance]`}>{words(data.shopName, 0.2)}</h1>
+          <p className="pf2-rise mt-2 text-base font-medium text-[var(--t-muted)]" style={{ animationDelay: "0.35s" }}>
             {[data.firstName && t("shop.with", { name: data.firstName }), data.lowestPrice && t("shop.from", { price: data.lowestPrice })].filter(Boolean).join(" · ")}
           </p>
+
+          {(data.instagram || data.tiktok) && (
+            <div className="pf2-rise mt-5 flex flex-wrap gap-2" style={{ animationDelay: "0.45s" }}>
+              {data.instagram && <SocialLink href={`https://www.instagram.com/${data.instagram}/`} label={t("shop.see_instagram", { handle: data.instagram })} icon="instagram" text={`@${data.instagram}`} />}
+              {data.tiktok && <SocialLink href={`https://www.tiktok.com/@${data.tiktok}`} label={t("shop.see_tiktok", { handle: data.tiktok })} icon="tiktok" text={`@${data.tiktok}`} />}
+            </div>
+          )}
         </div>
       </header>
 
@@ -96,7 +84,7 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
           {words(t("shop.head2"), 0.66, true)}
         </p>
         <p className="pf2-rise mt-3 text-[16px] leading-relaxed text-[var(--t-muted)] max-w-[340px]" style={{ animationDelay: "0.85s" }}>
-          {t("shop.intro_book")}
+          {t("shop.intro_fast")}
         </p>
 
         {/* Next opening */}
@@ -115,19 +103,6 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
             </a>
           </div>
         )}
-
-        {/* The work: 3D ring */}
-        <section className="pf2-rise mt-8" style={{ animationDelay: "1.05s" }}>
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className={`${POSTER} text-[38px]`}>{t("shop.the_work")}</h2>
-            {data.photos.length > 0 && <span className="text-[13px] text-[var(--t-muted)] text-right">{t("shop.ring_hint")}</span>}
-          </div>
-          {data.photos.length > 0 ? (
-            <CutRing photos={ring} onOpen={setOpen} />
-          ) : (
-            <p className="mt-4 rounded-2xl border border-[var(--t-border)] bg-[var(--t-surface)] py-14 text-center text-sm text-[var(--t-muted)]">{t("shop.no_photos")}</p>
-          )}
-        </section>
       </div>
 
       {/* Scrolling banner of their cuts */}
@@ -209,7 +184,7 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
                         boxShadow: reward ? "0 0 20px var(--t-glow)" : "none",
                       }}
                     >
-                      {reward ? data.loyalty!.amount : n}
+                      {reward ? "★" : n}
                     </span>
                     <span className="text-[12px] text-[var(--t-muted)]">{t("shop.cut_n", { n })}</span>
                   </li>
@@ -276,105 +251,26 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
         </div>
       </div>
 
-      <AnimatePresence>
-        {open !== null && (
-          <PhotoViewer
-            key="viewer"
-            data={data}
-            index={open}
-            onIndex={setOpen}
-            onClose={() => setOpen(null)}
-            bookHref={(id) => book(id)}
-          />
-        )}
-      </AnimatePresence>
     </>
   );
 }
 
-/** Full-size photo. Tagged photos can be booked straight from here. Swipe down, ✕ or Esc closes. */
-function PhotoViewer({ data, index, onIndex, onClose, bookHref }: { data: PortfolioData; index: number; onIndex: (i: number) => void; onClose: () => void; bookHref: (serviceId: string) => string }) {
-  const t = useT();
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const n = data.photos.length;
-  const photo = data.photos[index];
-  const service = photo.serviceId ? data.services.find((s) => s.id === photo.serviceId) ?? null : null;
-  const go = useCallback((dir: number) => onIndex((index + dir + n) % n), [index, n, onIndex]);
-
-  useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight") go(1);
-      if (e.key === "ArrowLeft") go(-1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = overflow;
-      prev?.focus?.();
-    };
-  }, [onClose, go]);
-
+/** A button out to the barber's Instagram or TikTok (their photos live there). */
+function SocialLink({ href, label, icon, text }: { href: string; label: string; icon: "instagram" | "tiktok"; text: string }) {
   return (
-    <motion.div
-      role="dialog"
-      aria-modal="true"
-      aria-label={t("shop.photo_of", { n: index + 1, total: n })}
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-black/92 px-5 pt-[max(20px,env(safe-area-inset-top))] pb-[max(24px,env(safe-area-inset-bottom))] text-[#fff]"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="min-h-11 px-3.5 rounded-full inline-flex items-center gap-2 border border-[var(--t-border)] bg-[var(--t-surface)] text-sm font-semibold active:scale-[0.97] transition-transform focus-visible:outline-2 focus-visible:outline-[var(--t-accent)]"
     >
-      <button ref={closeRef} type="button" onClick={onClose} aria-label={t("shop.close_photo")} className="absolute top-[max(14px,env(safe-area-inset-top))] right-4 w-12 h-12 rounded-full bg-[#fff]/10 border border-[#fff]/20 flex items-center justify-center">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden><path d="M6 6l12 12M18 6L6 18" /></svg>
-      </button>
-      <motion.img
-        key={photo.id}
-        src={photo.url}
-        alt={service ? service.name : t("shop.photo_of", { n: index + 1, total: n })}
-        draggable={false}
-        className="max-w-[min(100%,460px)] max-h-[64vh] rounded-[22px] object-cover touch-none select-none"
-        initial={{ scale: 0.88, y: 30, opacity: 0 }}
-        animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.92, y: 40, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={0.7}
-        onDragEnd={(_, info) => {
-          if (info.offset.y > 110 || info.velocity.y > 700) onClose();
-          else if (info.offset.x < -80) go(1);
-          else if (info.offset.x > 80) go(-1);
-        }}
-      />
-      <div className="text-center">
-        <p className={`${POSTER} text-[38px]`}>
-          {service ? service.name : data.shopName}
-          {service?.priceLabel && <span className="text-[var(--t-accent)]"> · {service.priceLabel}</span>}
-        </p>
-        {service?.description && <p className="mt-1 text-sm text-[#fff]/70">{service.description}</p>}
-      </div>
-      {service && (
-        <a href={bookHref(service.id)} className="relative overflow-hidden min-h-[52px] px-6 rounded-2xl inline-flex items-center gap-2.5 text-base font-bold bg-[var(--t-cta-bg)] text-[var(--t-cta-text)]" style={{ boxShadow: "0 8px 26px var(--t-glow)" }}>
-          <span aria-hidden className="pf2-shine absolute inset-y-0 left-0 w-2/5 bg-[#fff]/30" />
-          <span className="relative">{t("shop.book_this_cut", { price: service.priceLabel ?? "" }).replace(/ · $/, "")}</span>
-        </a>
+      {icon === "instagram" ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" /></svg>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5" /><path d="M14 3c.6 2.6 2.4 4.2 5 4.5" /></svg>
       )}
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => go(-1)} aria-label={t("shop.prev_photo")} className="w-11 h-11 rounded-full bg-[#fff]/10 flex items-center justify-center">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 18l-6-6 6-6" /></svg>
-        </button>
-        <p className="text-[13px] text-[#fff]/70 tabular-nums">{t("shop.photo_of", { n: index + 1, total: n })}</p>
-        <button type="button" onClick={() => go(1)} aria-label={t("shop.next_photo")} className="w-11 h-11 rounded-full bg-[#fff]/10 flex items-center justify-center">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 18l6-6-6-6" /></svg>
-        </button>
-      </div>
-      <p className="text-xs text-[#fff]/55">{t("shop.swipe_close")}</p>
-    </motion.div>
+      {text}
+    </a>
   );
 }

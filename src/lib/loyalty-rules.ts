@@ -1,39 +1,51 @@
 export type Plan = "basic" | "full";
 
-/** The reward when a barber hasn't set their own amount. */
-export const REWARD_CENTS = 500;
+/** A punch card: every 10th cut gets the reward. */
+export const CARD_SIZE = 10;
+
+/** What the 10th cut gets: half off (the default) or free. Set in Settings → Loyalty rewards. */
+export type RewardType = "half" | "free";
+export const REWARD_TYPES: RewardType[] = ["half", "free"];
 
 export function toPlan(value: unknown): Plan {
   return value === "basic" ? "basic" : "full";
 }
 
-/** A barber's loyalty program: on/off and the reward, from Settings → Loyalty rewards. */
-export type Loyalty = { enabled: boolean; cents: number };
-export const DEFAULT_LOYALTY: Loyalty = { enabled: true, cents: REWARD_CENTS };
-export const MIN_REWARD_CENTS = 100;
-export const MAX_REWARD_CENTS = 5000;
+/** A barber's loyalty program: on/off and what the 10th cut gets. */
+export type Loyalty = { enabled: boolean; reward: RewardType };
+export const DEFAULT_LOYALTY: Loyalty = { enabled: true, reward: "half" };
 
-export function toLoyalty(row: { loyalty_enabled?: boolean | null; loyalty_reward_cents?: number | null } | null | undefined): Loyalty {
-  const cents = Number(row?.loyalty_reward_cents);
+export function toLoyalty(row: { loyalty_enabled?: boolean | null; loyalty_reward_type?: string | null } | null | undefined): Loyalty {
   return {
     enabled: row?.loyalty_enabled !== false,
-    cents: Number.isInteger(cents) && cents >= MIN_REWARD_CENTS && cents <= MAX_REWARD_CENTS ? cents : REWARD_CENTS,
+    reward: row?.loyalty_reward_type === "free" ? "free" : "half",
   };
 }
 
-/**
- * Which visits get the reward, the same for every client however they booked or signed up:
- * the first cut is full price, the 2nd is off, then every 3rd after that: 2, 5, 8, 11…
- */
+/** How much of the cut the reward takes off, in percent. */
+export const rewardPercent = (l: Pick<Loyalty, "reward">) => (l.reward === "free" ? 100 : 50);
+
+/** The reward in cents for a cut at this price (half rounds to the cent). */
+export const rewardCents = (l: Pick<Loyalty, "reward">, priceCents: number) => Math.round((Math.max(priceCents, 0) * rewardPercent(l)) / 100);
+
+/** "50% off" / "free" (en), "con 50% de descuento" / "gratis" (es): fits "Your next cut is …". */
+export function rewardLabel(l: Pick<Loyalty, "reward">, lang: "en" | "es" = "en") {
+  if (l.reward === "free") return lang === "es" ? "gratis" : "free";
+  return lang === "es" ? "con 50% de descuento" : "50% off";
+}
+
+/** Which visits get the reward, the same for every client: 10, 20, 30… */
 export function isRewardCut(cut: number): boolean {
-  return cut === 2 || (cut > 2 && (cut - 2) % 3 === 0);
+  return cut > 0 && cut % CARD_SIZE === 0;
 }
 
 export function nextRewardCut(afterCut: number): number {
-  let n = Math.max(afterCut, 0) + 1;
-  while (!isRewardCut(n)) n++;
-  return n;
+  const n = Math.max(afterCut, 0);
+  return (Math.floor(n / CARD_SIZE) + 1) * CARD_SIZE;
 }
+
+/** The one loyalty text goes out after the cut right before a reward (the 9th, 19th…). */
+export const isHeadsUpCut = (cut: number) => isRewardCut(cut + 1);
 
 /**
  * A visit adds one stamp for that phone number, however many people were in the party,

@@ -138,7 +138,7 @@ function NumberPool() {
   return (
     <section className="mt-6 rounded-xl border border-white/10 p-4">
       <h2 className="mb-1 font-semibold">Number pool</h2>
-      <p className="mb-3 text-[13px] opacity-70">Barbers get a number when their setup, services, hours and portfolio are done. Freed numbers are reused after 30 days, never sold back.</p>
+      <p className="mb-3 text-[13px] opacity-70">Barbers get a number right after the 60-second sign-up (shop name and cell). Freed numbers are reused after 30 days, never sold back.</p>
       {error && <p className="mb-2 text-[13px] text-red-400">{error}</p>}
       {!pool && !error && <p className="opacity-70">Loading…</p>}
       {pool && pool.length === 0 && <p className="opacity-70">No numbers yet.</p>}
