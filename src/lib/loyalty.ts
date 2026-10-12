@@ -187,7 +187,7 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
   // The review cron keys off the last completed person's booking_completed event.
   const lastCompleted = completed[completed.length - 1];
   const cooldownStart = new Date(Date.now() - REVIEW_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  // Review requests are marketing: they need SMS marketing on and an active QR sticker.
+  // Review requests are marketing: they need SMS marketing on.
   const marketingOn = (await getMarketingState(db, row.user_id)) === "on";
   const reviewDue =
     marketingOn &&

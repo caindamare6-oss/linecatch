@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getMarketingState } from "@/lib/marketing";
-import { cronNow } from "@/lib/retention";
+import { cronNow } from "@/lib/cron";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";

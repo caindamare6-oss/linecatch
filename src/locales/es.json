@@ -268,7 +268,7 @@
     "referral_qualified": "Un barbero que referiste terminó su registro. Ganaste un mes gratis.",
     "client": "Cliente",
     "new_client": "Cliente nuevo",
-    "sticker_activated": "Sticker QR {code} conectado. Quien lo escanee llega a tu página VIP.",
+    "sticker_activated": "Sticker QR {code} conectado.",
     "number_assigned": "Tu número de LineCatch está listo: {phone}. Configura el desvío de llamadas en Ajustes."
   },
   "messages": {
@@ -381,8 +381,8 @@
     "f_vip": "VIP",
     "f_due": "Con premio",
     "f_notexts": "Sin mensajes",
-    "vip_link": "Tu enlace de registro VIP",
-    "get_on_list": "Súmalos a tu lista de mensajes",
+    "vip_link": "El enlace de tu página",
+    "get_on_list": "Los clientes se unen a tu lista al reservar. Comparte tu página:",
     "load_error": "No se pudieron cargar los clientes.",
     "no_match": "Sin resultados",
     "no_match_body": "Prueba con otro nombre o número.",
@@ -1243,5 +1243,26 @@
     "in_settings": "El desvío de llamadas te estará esperando en Ajustes → Llamadas perdidas.",
     "later": "Configurar después",
     "done": "Listo"
+  },
+  "share": {
+    "title": "Comparte tu página",
+    "body": "Pon tu enlace en tu bio de Instagram y TikTok, publícalo en tu historia y mándalo a tus clientes.",
+    "share": "Compartir",
+    "share_text": "Reserva tu próximo corte con {shop}",
+    "copy_failed": "No se pudo copiar. Mantén pulsado el enlace para copiarlo.",
+    "story": "Crear imagen para historia",
+    "story_making": "Creando…",
+    "story_alt": "Historia de Instagram de {shop}",
+    "story_ready": "Tu imagen está lista. Publícala y añade un sticker de enlace con tu página.",
+    "story_save": "Guardar o compartir",
+    "story_failed": "No se pudo crear la imagen. Inténtalo de nuevo.",
+    "story_book": "Reserva tu próximo corte",
+    "story_tap": "Toca el enlace para reservar",
+    "tip_bio_title": "Bio:",
+    "tip_bio": "Instagram → Editar perfil → Enlaces → Añadir enlace. TikTok → Editar perfil → Sitio web.",
+    "tip_story_title": "Historia:",
+    "tip_story": "Publica la imagen y añade un sticker de enlace con tu página.",
+    "tip_text_title": "Mensajes:",
+    "tip_text": "Mándalo a tus clientes fijos para que reserven sin llamar."
   }
 }

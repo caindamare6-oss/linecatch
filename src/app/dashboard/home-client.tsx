@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { lazy, Suspense, useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 import { Card, SectionLabel, SERIF } from "./ui";
+import ShareCard from "./share-card";
 import { formatPhone } from "@/lib/clients";
 import { useT, useFormat } from "@/lib/i18n";
 import { money as fmtMoney, REWARD_LABEL_CENTS } from "@/lib/config";
 
-const QRScanner = lazy(() => import("./qr-scanner").then((m) => ({ default: m.QRScanner })));
 
 type FeedEvent = { id: string; event_type: string; client_name: string | null; description: string; metadata?: Record<string, unknown> | null; created_at: string };
 type Suppressed = { id: string; from_number: string; received_at: string; suppressed_reason: string | null };
@@ -75,28 +74,22 @@ export function HomeClient(props: {
   greeting: string;
   dateLine: string;
   paused: boolean;
-  hasActiveSticker: boolean;
-  bookingLink: string;
+  pageUrl: string;
+  shopName: string;
+  coverUrl: string | null;
   revenue: Revenue;
   vips: number;
   callsCaught: number;
   autotextOn: boolean;
   marketing: "off" | "on";
-  stickerOrdered: boolean;
-  wednesdayOn: boolean;
-  wednesdayTargeted: number;
   reviewsOn: boolean;
   feed: FeedEvent[];
   suppressed: Suppressed[];
   timezone: string;
 }) {
-  const router = useRouter();
   const t = useT();
   const f = useFormat();
   const money = (n: number) => fmtMoney(Math.round(n) * 100, f.tag.startsWith("es") ? "es" : "en");
-  const [showScanner, setShowScanner] = useState(false);
-  const [stickerDone, setStickerDone] = useState(false);
-  const [bannerHidden, setBannerHidden] = useState(false);
   const [feed, setFeed] = useState(props.feed);
   const [cursor, setCursor] = useState(props.feed.length >= 20 ? props.feed[props.feed.length - 1].created_at : null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -119,18 +112,6 @@ export function HomeClient(props: {
 
   return (
     <div className="space-y-4">
-      {showScanner && (
-        <Suspense fallback={null}>
-          <QRScanner
-            onClose={() => setShowScanner(false)}
-            onActivated={() => {
-              setStickerDone(true);
-              router.refresh();
-            }}
-          />
-        </Suspense>
-      )}
-
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -173,32 +154,6 @@ export function HomeClient(props: {
         </Card>
       )}
 
-      {props.stickerOrdered && !props.hasActiveSticker && !stickerDone && !bannerHidden && (
-        <Card className="relative p-4">
-          <button onClick={() => setBannerHidden(true)} aria-label={t("common.close")} className="absolute top-2.5 right-2.5 w-8 h-8 flex items-center justify-center text-white/30 hover:text-white/60">
-            <Icon d={I.x} size={15} />
-          </button>
-          <div className="flex gap-3.5 pr-6">
-            <div className="w-10 h-10 shrink-0 rounded-xl bg-[var(--accent-color)]/[0.12] text-[var(--accent-color)] flex items-center justify-center">
-              <Icon d={I.qr} size={18} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">{t("home.sticker_title")}</p>
-              <p className="text-xs text-white/45 mt-1 leading-relaxed">{t("home.sticker_body")}</p>
-              <button
-                onClick={() => setShowScanner(true)}
-                className="mt-3 h-9 px-3.5 rounded-[10px] bg-[var(--accent-color)] text-[var(--accent-fg)] text-xs font-semibold"
-              >
-                {t("home.sticker_scan")}
-              </button>
-              <p className="text-[11px] text-white/35 mt-2.5 leading-relaxed">
-                {t("home.sticker_link")} <span className="text-white/55 break-all">{props.bookingLink.replace(/^https?:\/\//, "")}</span>
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {/* Revenue */}
       <Card className="p-5">
         <div className="flex items-start justify-between gap-3">
@@ -237,16 +192,12 @@ export function HomeClient(props: {
           value={props.callsCaught}
           sub={props.autotextOn ? t("home.calls_sub") : t("home.autotext_off")}
         />
-        <Tile
-          href="/dashboard/settings#marketing"
-          label={t("home.wed")}
-          icon={I.bolt}
-          value={props.marketing === "on" && props.wednesdayOn ? props.wednesdayTargeted : t("home.off")}
-          sub={props.marketing === "off" ? t("home.wed_marketing_off") : props.wednesdayOn ? t("home.wed_due") : t("home.wed_off")}
-          warm
-        />
-        <Tile href="/dashboard/schedule" label={t("home.bookings")} value={revenue.cuts} sub={t("home.bookings_sub")} />
+        <div className="col-span-2">
+          <Tile href="/dashboard/schedule" label={t("home.bookings")} value={revenue.cuts} sub={t("home.bookings_sub")} />
+        </div>
       </div>
+
+      <ShareCard pageUrl={props.pageUrl} shopName={props.shopName} coverUrl={props.coverUrl} />
 
       <div className="grid grid-cols-2 gap-2.5">
         <Link

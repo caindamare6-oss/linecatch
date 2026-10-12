@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useT, useLocale, useSetLocale, type Locale } from "@/lib/i18n";
 import { ACCENT_COLORS, DEFAULT_THEME, THEMES, THEME_IDS, applyAppTheme, type ThemeId } from "@/lib/themes";
-import { money, STICKER_PRICE_CENTS, REFERRED_PERCENT_OFF, DEFAULT_TZ } from "@/lib/config";
+import { REFERRED_PERCENT_OFF, DEFAULT_TZ } from "@/lib/config";
 import PortfolioSection from "@/app/dashboard/settings/portfolio-section";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import ForwardCallsStep from "./forward-calls-step";
@@ -72,7 +72,6 @@ export default function OnboardingPage() {
     googleEmail: string;
     pendingCode?: string | null;
     referral?: { code: string; name: string | null } | null;
-    sticker?: { code: string; shop: string | null } | null;
   } | null>(null);
 
   useEffect(() => {
@@ -123,13 +122,11 @@ function OnboardingFlow({
     googleEmail: string;
     pendingCode?: string | null;
     referral?: { code: string; name: string | null } | null;
-    sticker?: { code: string; shop: string | null } | null;
   } | null;
 }) {
   const router = useRouter();
   const t = useT();
   const locale = useLocale();
-  const stickerPrice = money(STICKER_PRICE_CENTS, locale);
   const [step, setStep] = useState(0);
   const [forwarding, setForwarding] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -144,7 +141,7 @@ function OnboardingFlow({
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [themeId, setThemeId] = useState<ThemeId>(DEFAULT_THEME);
 
-  const [heardFrom, setHeardFrom] = useState(initialData?.sticker ? "in_person" : "");
+  const [heardFrom, setHeardFrom] = useState("");
   const appliedRef = initialData?.referral ?? null;
   const [referralCode, setReferralCode] = useState(appliedRef?.code || initialData?.pendingCode || "");
   const [refResult, setRefResult] = useState<{ code: string; valid: boolean; name: string | null } | null>(null);
@@ -182,15 +179,9 @@ function OnboardingFlow({
   });
 
   const [featureAutotext, setFeatureAutotext] = useState(true);
-  const [featureWednesday, setFeatureWednesday] = useState(true);
+  // SMS marketing (review requests, broadcasts) is off by default.
+  const [featureMarketing, setFeatureMarketing] = useState(false);
   const [featureReviews, setFeatureReviews] = useState(false);
-  // SMS marketing is off by default; turning it on means shipping a QR sticker to the shop.
-  // A sticker handed out in person: a two-step setup, marketing on, nothing to ship.
-  const handed = initialData?.sticker ?? null;
-  const quick = !!handed;
-  const [featureMarketing, setFeatureMarketing] = useState(quick);
-  const [wantsSticker, setWantsSticker] = useState(false);
-  const [shipping, setShipping] = useState({ name: "", line1: "", line2: "", city: "", state: "", zip: "" });
   const [googleReviewUrl, setGoogleReviewUrl] = useState("");
 
   const [confettiDone, setConfettiDone] = useState(false);
@@ -207,19 +198,13 @@ function OnboardingFlow({
     applyAppTheme(p.theme, p.accent_color as string | null);
     if (p.cover_url) setCoverUrl(p.cover_url as string);
     if (p.business_name) setBusinessName(p.business_name as string);
-    else if (initialData.sticker?.shop) setBusinessName(initialData.sticker.shop);
     if (p.forwarding_number) setPhone(p.forwarding_number as string);
     if (p.email) setEmail(p.email as string);
     if (p.business_hours) setBusinessHours(p.business_hours as BusinessHours);
     if (p.timezone) setTimezone(p.timezone as string);
     if (typeof p.feature_autotext === "boolean") setFeatureAutotext(p.feature_autotext);
-    if (typeof p.feature_wednesday === "boolean") setFeatureWednesday(p.feature_wednesday);
     if (typeof p.feature_reviews === "boolean") setFeatureReviews(p.feature_reviews);
     if (typeof p.feature_marketing === "boolean") setFeatureMarketing(p.feature_marketing);
-    if (p.shipping_address && typeof p.shipping_address === "object") {
-      const a = p.shipping_address as Record<string, string | null>;
-      setShipping({ name: a.name || "", line1: a.line1 || "", line2: a.line2 || "", city: a.city || "", state: a.state || "", zip: a.zip || "" });
-    }
     if (p.google_review_url) setGoogleReviewUrl(p.google_review_url as string);
     if (typeof p.referral_source === "string") setHeardFrom(p.referral_source);
     if (initialData.googleName && !p.first_name) setFirstName(initialData.googleName);
@@ -362,22 +347,6 @@ function OnboardingFlow({
     }
     else if (step === 2) {
       result = await saveStep("business", { businessName, phone, email });
-      if (result.ok && quick) {
-        // Quick setup: sensible defaults for the rest; everything is editable in Settings.
-        result = await saveStep("services", { services });
-        if (result.ok) result = await saveStep("hours", { businessHours, timezone });
-        if (result.ok) result = await saveStep("preferences", { featureAutotext: true, featureMarketing: true, featureWednesday: true, featureReviews: false, googleReviewUrl: "", wantsSticker: false });
-        if (!result.ok) {
-          setError(result.error || "Failed to save");
-          return;
-        }
-        setFeatureMarketing(true);
-        setFeatureAutotext(true);
-        setError(null);
-        setAnimKey((k) => k + 1);
-        setStep(DONE);
-        return;
-      }
     }
     else if (step === 3) {
       result = await saveStep("services", { services });
@@ -391,13 +360,9 @@ function OnboardingFlow({
       result = await saveStep("preferences", {
         featureAutotext,
         featureMarketing,
-        // Check-ins and review requests are marketing: off unless marketing is on.
-        featureWednesday: featureMarketing && featureWednesday,
+        // Review requests are marketing: off unless marketing is on.
         featureReviews: featureMarketing && featureReviews,
         googleReviewUrl,
-        // Optional paid add-on: only sent when they chose it.
-        wantsSticker,
-        ...(wantsSticker ? { shippingAddress: { ...shipping, name: shipping.name || businessName || firstName } } : {}),
       });
 
     if (result && !result.ok) {
@@ -530,7 +495,7 @@ function OnboardingFlow({
 
   if (forwarding) return <ForwardCallsStep onDone={() => router.push("/dashboard")} />;
 
-  const STEP_PROGRESS = quick ? [0, 33, 67, 100, 100, 100, 100, 100] : [0, 17, 33, 50, 67, 83, 100, 100];
+  const STEP_PROGRESS = [0, 17, 33, 50, 67, 83, 100, 100];
   const progress = STEP_PROGRESS[step] ?? 0;
 
   return (
@@ -626,11 +591,6 @@ function OnboardingFlow({
           {/* Step 1: Who you are */}
           {step === 1 && (
             <StepContainer title={t("step1.title")} subtitle={t("step1.subtitle")} stepNum={1}>
-              {handed && (
-                <p className="mb-5 text-[13px] rounded-xl px-3.5 py-3 leading-relaxed" style={{ backgroundColor: "rgba(168,196,154,0.1)", color: "var(--app-ok)", border: "1px solid rgba(168,196,154,0.25)" }}>
-                  ✓ {t("step1.quick_banner", { code: handed.code })}
-                </p>
-              )}
               {/* Cover photo: the big photo at the top of their page (there is no profile photo) */}
               <div className="mb-6">
                 <div className="flex items-baseline justify-between mb-2">
@@ -763,7 +723,7 @@ function OnboardingFlow({
                 </div>
               </div>
 
-              {!quick && <div className="mt-5">
+              <div className="mt-5">
                 {appliedRef ? (
                   <p className="text-[13px] rounded-xl px-3.5 py-3" style={{ backgroundColor: "var(--ob-accent-glow)", color: "var(--ob-accent)" }}>
                     ✓ {t("step1.ref_applied", { code: appliedRef.code, percent: REFERRED_PERCENT_OFF })}
@@ -788,7 +748,7 @@ function OnboardingFlow({
                     </p>
                   </>
                 )}
-              </div>}
+              </div>
             </StepContainer>
           )}
 
@@ -969,7 +929,6 @@ function OnboardingFlow({
               {featureMarketing && (
                 <div className="mt-3 space-y-3" style={{ animation: "ob-fade-up 300ms ease-out" }}>
                   <p className="text-xs leading-relaxed px-1" style={{ color: "var(--ob-text-secondary)" }}>{t("step5.marketing_consent_note")}</p>
-                  <ToggleCard label={t("step5.wednesday_label")} description={t("step5.wednesday_desc")} checked={featureWednesday} onChange={setFeatureWednesday} />
                   <ToggleCard label={t("step5.reviews_label")} description={t("step5.reviews_desc")} checked={featureReviews} onChange={setFeatureReviews} />
                   {featureReviews && (
                     <div style={{ animation: "ob-fade-up 300ms ease-out" }}>
@@ -980,24 +939,6 @@ function OnboardingFlow({
                 </div>
               )}
 
-              <p className="text-[11px] font-semibold uppercase tracking-[0.8px] mt-6 mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("step5.sticker_section")}</p>
-              <div className="rounded-xl px-4 py-3 flex gap-3 mb-3" style={{ backgroundColor: "var(--ob-accent-glow)", border: "1px solid var(--ob-border-focus)" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ob-accent)" strokeWidth="2" className="shrink-0 mt-0.5" aria-hidden><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 17h4v4" /></svg>
-                <p className="text-xs leading-relaxed" style={{ color: "var(--ob-text)" }}>{t("step5.sticker_note")}</p>
-              </div>
-              <ToggleCard label={t("step5.sticker_label", { price: stickerPrice })} description={t("step5.sticker_desc")} checked={wantsSticker} onChange={setWantsSticker} />
-              {wantsSticker && (
-                <div className="mt-3 space-y-3" style={{ animation: "ob-fade-up 300ms ease-out" }}>
-                  <InputField label={t("step5.ship_name")} value={shipping.name} onChange={(v) => setShipping((a) => ({ ...a, name: v }))} placeholder={businessName || t("step5.ship_name_placeholder")} />
-                  <InputField label={t("step5.ship_street")} value={shipping.line1} onChange={(v) => setShipping((a) => ({ ...a, line1: v }))} placeholder={t("step5.ship_street_placeholder")} />
-                  <InputField label={t("step5.ship_unit")} value={shipping.line2} onChange={(v) => setShipping((a) => ({ ...a, line2: v }))} placeholder={t("step5.ship_unit_placeholder")} />
-                  <div className="grid grid-cols-[1fr_72px_96px] gap-2">
-                    <InputField label={t("step5.ship_city")} value={shipping.city} onChange={(v) => setShipping((a) => ({ ...a, city: v }))} placeholder="" />
-                    <InputField label={t("step5.ship_state")} value={shipping.state} onChange={(v) => setShipping((a) => ({ ...a, state: v.toUpperCase().slice(0, 2) }))} placeholder="" />
-                    <InputField label={t("step5.ship_zip")} value={shipping.zip} onChange={(v) => setShipping((a) => ({ ...a, zip: v.replace(/[^\d-]/g, "").slice(0, 10) }))} placeholder="" />
-                  </div>
-                </div>
-              )}
             </StepContainer>
           )}
 
@@ -1048,12 +989,7 @@ function OnboardingFlow({
                   <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>{t("done.marketing")}</span>
                   <span className="text-[11px]" style={{ color: featureMarketing ? "var(--ob-accent)" : "var(--ob-text-secondary)" }}>{featureMarketing ? t("done.marketing_on") : t("done.marketing_off")}</span>
                 </div>
-                <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-[11px]" style={{ color: "var(--ob-text-muted)" }}>{t("done.sticker")}</span>
-                  <span className="text-[11px]" style={{ color: handed ? "var(--app-ok)" : "var(--ob-text-secondary)" }}>{handed ? t("done.sticker_connect", { code: handed.code }) : wantsSticker ? t("done.sticker_on") : t("done.sticker_off")}</span>
-                </div>
               </div>
-              {quick && <p className="text-[12px] max-w-xs" style={{ color: "var(--ob-text-muted)" }}>{t("done.quick_note")}</p>}
             </div>
           )}
         </div>

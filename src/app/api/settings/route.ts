@@ -4,8 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/admin";
 import { cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
-import { hasActiveSticker, marketingState } from "@/lib/marketing";
-import { cleanAddress, requestSticker } from "@/lib/sticker-request";
+import { marketingState } from "@/lib/marketing";
 import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
 import { isCallMode, isCarrier } from "@/lib/call-mode";
 import { detectCarrier } from "@/lib/carrier";
@@ -13,7 +12,7 @@ import { isMissedCallStyle } from "@/lib/missed-call-text";
 import { MIN_REWARD_CENTS, MAX_REWARD_CENTS } from "@/lib/loyalty-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_cents";
+  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_reviews, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_cents";
 
 export async function GET() {
   const supabase = await createClient();
@@ -21,7 +20,6 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { data, error } = await supabase.from("users").select(FIELDS).eq("user_id", user.id).single();
   if (error || !data) return NextResponse.json({ error: "Couldn't load settings" }, { status: 500 });
-  const sticker = await hasActiveSticker(createAdminClient(), user.id);
   // Until they have a LineCatch number: what's left before one is assigned.
   const admin = createAdminClient();
   const numberMissing = data.phone_number ? [] : await missingSteps(admin, user.id);
@@ -38,7 +36,7 @@ export async function GET() {
   // Casual and Professional wording as the founder set it on Admin → Texts, for the Settings preview.
   const { data: presetRows } = await admin.from("message_templates").select("template_key, custom_message, custom_message_es").is("user_id", null).in("template_key", ["missed_call_casual", "missed_call_professional"]);
   const missedCallPresets = Object.fromEntries((presetRows || []).map((r) => [r.template_key.replace("missed_call_", ""), { en: r.custom_message, es: r.custom_message_es || r.custom_message }]));
-  return NextResponse.json({ ...data, numberMissing, missedCallPresets, lastMissedCallAt: last?.received_at ?? null, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
+  return NextResponse.json({ ...data, numberMissing, missedCallPresets, lastMissedCallAt: last?.received_at ?? null, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
 }
 
 /** Partial update: only the keys sent are validated and saved. */
@@ -96,13 +94,12 @@ export async function PATCH(request: Request) {
     if (!Number.isInteger(c) || c < MIN_REWARD_CENTS || c > MAX_REWARD_CENTS) return bad("The reward must be between $1 and $50");
     update.loyalty_reward_cents = c;
   }
-  if ("winback_offer" in body) update.winback_offer = cleanText(body.winback_offer, 40);
   if ("business_hours" in body) {
     const h = cleanHours(body.business_hours);
     if (!h.ok) return bad(h.error);
     update.business_hours = h.value;
   }
-  for (const key of ["feature_autotext", "feature_wednesday", "feature_reviews"] as const) {
+  for (const key of ["feature_autotext", "feature_reviews"] as const) {
     if (key in body) {
       if (typeof body[key] !== "boolean") return bad("Invalid toggle");
       update[key] = body[key];
@@ -120,24 +117,12 @@ export async function PATCH(request: Request) {
     const { data } = await supabase.from("users").select("google_review_url").eq("user_id", user.id).single();
     if (!data?.google_review_url) return bad("Add your Google review link first");
   }
-  // Optional paid QR sticker add-on: ordered with request_sticker plus a shop address.
-  let shipTo: Parameters<typeof requestSticker>[2] | null = null;
-  if ("shipping_address" in body) {
-    const a = cleanAddress(body.shipping_address);
-    if (!a.ok) return bad(a.error);
-    update.shipping_address = a.value;
-    shipTo = a.value;
-  }
   // SMS marketing is the barber's call; texts still only reach clients who opted in.
   if ("feature_marketing" in body) {
     if (typeof body.feature_marketing !== "boolean") return bad("Invalid toggle");
     update.feature_marketing = body.feature_marketing;
-    if (body.feature_marketing) update.feature_wednesday = true;
-    if (!body.feature_marketing) {
-      // Marketing off also stops the marketing automations.
-      update.feature_wednesday = false;
-      update.feature_reviews = false;
-    }
+    // Marketing off also stops review requests.
+    if (!body.feature_marketing) update.feature_reviews = false;
   }
   if (Object.keys(update).length === 0) return bad("Nothing to save");
 
@@ -147,7 +132,6 @@ export async function PATCH(request: Request) {
     console.error("[settings]", error);
     return NextResponse.json({ error: "Couldn't save. Try again." }, { status: 500 });
   }
-  if (shipTo && body.request_sticker === true) await requestSticker(admin, user.id, shipTo);
   assignNumberSoon(user.id);
   return NextResponse.json({ ok: true, saved: update });
 }

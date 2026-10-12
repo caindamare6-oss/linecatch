@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cronNow } from "@/lib/retention";
+import { cronNow } from "@/lib/cron";
 import { AUTO_COMPLETE_AFTER_HOURS, completeBooking } from "@/lib/complete-booking";
 
 export const maxDuration = 60;

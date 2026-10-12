@@ -268,7 +268,7 @@
     "referral_qualified": "A barber you referred finished signing up. You earned a free month.",
     "client": "Client",
     "new_client": "New client",
-    "sticker_activated": "QR sticker {code} connected. Walk-ins who scan it land on your VIP page.",
+    "sticker_activated": "QR sticker {code} connected.",
     "number_assigned": "Your LineCatch number is ready: {phone}. Set up call forwarding in Settings."
   },
   "messages": {
@@ -381,8 +381,8 @@
     "f_vip": "VIP",
     "f_due": "Reward due",
     "f_notexts": "No texts",
-    "vip_link": "Your VIP signup link",
-    "get_on_list": "Get them on your text list",
+    "vip_link": "Your page link",
+    "get_on_list": "Clients join your texts list when they book. Share your page:",
     "load_error": "Couldn't load clients.",
     "no_match": "No matches",
     "no_match_body": "Try a different name or number.",
@@ -1184,5 +1184,26 @@
     "in_settings": "Call forwarding will be waiting for you in Settings → Missed calls.",
     "later": "Set up later",
     "done": "Done"
+  },
+  "share": {
+    "title": "Share your page",
+    "body": "Put your link in your Instagram and TikTok bio, post it on your story, and text it to clients.",
+    "share": "Share",
+    "share_text": "Book your next cut with {shop}",
+    "copy_failed": "Couldn't copy. Press and hold the link to copy it.",
+    "story": "Make story image",
+    "story_making": "Making…",
+    "story_alt": "Instagram story for {shop}",
+    "story_ready": "Your story image is ready. Post it and add a link sticker with your page.",
+    "story_save": "Save or share",
+    "story_failed": "Couldn't make the image. Try again.",
+    "story_book": "Book your next cut",
+    "story_tap": "Tap the link to book",
+    "tip_bio_title": "Bio:",
+    "tip_bio": "Instagram → Edit profile → Links → Add link. TikTok → Edit profile → Website.",
+    "tip_story_title": "Story:",
+    "tip_story": "Post the story image and add a Link sticker with your page.",
+    "tip_text_title": "Texts:",
+    "tip_text": "Send it to regulars so they can book without calling."
   }
 }

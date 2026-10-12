@@ -38,7 +38,7 @@ function Cta({ children = "Start your 30-day free trial", className = "" }: { ch
 const H2 = "font-heading text-[clamp(2rem,5vw,3.25rem)] font-semibold leading-[1.05] tracking-tight";
 const EYEBROW = "text-[13px] font-semibold uppercase tracking-[0.18em] text-mint";
 
-export default function Landing({ qr }: { qr: string }) {
+export default function Landing() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="overflow-x-clip bg-[var(--app-bg)] text-[var(--app-fg)]">
@@ -47,7 +47,7 @@ export default function Landing({ qr }: { qr: string }) {
         <HowItWorks />
         <Calculator />
         <Portfolio />
-        <Vip qr={qr} />
+        <Share />
         <Quotes />
         <Pricing />
         <Faq />
@@ -208,7 +208,7 @@ function Portfolio() {
           <p className={EYEBROW}>Your portfolio</p>
           <h2 className={`mt-3 ${H2}`}>Your best cuts, right on their phone.</h2>
           <p className="mt-5 text-lg leading-relaxed text-[var(--app-muted)]">
-            Every barber gets a page clients can open from a text or a QR scan. It shows your work on a 3D ring they can spin with a thumb. They see a cut they like, tap it, and book it.
+            Every barber gets a page clients can open from a text or the link in your bio. It shows your work on a 3D ring they can spin with a thumb. They see a cut they like, tap it, and book it.
           </p>
           <ul className="mt-8 space-y-3">
             {["Your cover photo, shop name, and when you're open", "Up to 50 photos, each one tagged with the cut", "“Book this cut” takes them straight to a time", "Your next opening, one tap away", "In English and Spanish"].map((t) => (
@@ -225,19 +225,19 @@ function Portfolio() {
 const STAMPS = [1, 2, 3, 4, 5, 6, 7, 8];
 const isReward = (n: number) => n === 2 || (n > 2 && (n - 2) % 3 === 0);
 
-function Vip({ qr }: { qr: string }) {
+function Share() {
   const reduced = useReducedMotion();
   return (
     <section className="border-t border-white/[0.06] py-24">
       <div className="mx-auto grid max-w-6xl items-center gap-16 px-4 sm:px-6 md:grid-cols-2">
         <Reveal>
-          <p className={EYEBROW}>QR sticker & VIP list</p>
-          <h2 className={`mt-3 ${H2}`}>Get clients back in your chair.</h2>
+          <p className={EYEBROW}>Share your page</p>
+          <h2 className={`mt-3 ${H2}`}>One link. Everywhere your clients scroll.</h2>
           <p className="mt-5 text-lg leading-relaxed text-[var(--app-muted)]">
-            Put the LineCatch sticker on your mirror. Clients scan it from the chair to join your VIP list. LineCatch follows up with them for you.
+            Put your link in your Instagram and TikTok bio, post it on your story, text it to clients. LineCatch even makes the story image for you.
           </p>
           <ul className="mt-8 space-y-3">
-            {["Clients join your VIP list with one scan", "Win-back texts go to clients who haven't been back in a while", "Google review requests after a great cut", "A loyalty card with every plan: the 2nd cut is on you, then every 3rd"].map((t) => (
+            {["A short link to your page: linecatch.app/your-shop", "A ready-made Instagram story with your cover photo and link", "Clients join your texts list when they book", "Google review requests after a great cut", "A loyalty card with every plan: the 2nd cut is on you, then every 3rd"].map((t) => (
               <li key={t} className="flex gap-3"><Check className="mt-0.5 size-5 shrink-0 text-mint" />{t}</li>
             ))}
           </ul>
@@ -251,9 +251,12 @@ function Vip({ qr }: { qr: string }) {
             className="relative w-[240px] overflow-hidden rounded-[32px] bg-mint p-6 text-center text-[var(--accent-fg)] shadow-[0_30px_80px_rgba(212,175,122,0.25)]"
           >
             <span aria-hidden className="pf2-shine absolute inset-y-0 left-0 w-1/3 bg-white/30" />
-            <p className="font-[family-name:var(--font-poster)] text-3xl tracking-wide">SCAN FOR VIP</p>
-            <div className="mx-auto mt-4 w-40 rounded-2xl bg-[#F2EEE6] p-3 [&_svg]:h-auto [&_svg]:w-full" role="img" aria-label="Sample LineCatch QR sticker" dangerouslySetInnerHTML={{ __html: qr }} />
-            <p className="mt-4 text-sm font-semibold">Fresh Fades · LineCatch</p>
+            <div role="img" aria-label="Sample Instagram story made by LineCatch" className="mx-auto aspect-[9/16] w-full rounded-2xl bg-obsidian p-4 flex flex-col justify-end text-left text-[var(--app-fg)]" style={{ background: "linear-gradient(to bottom, color-mix(in srgb, var(--accent-color) 30%, #121110), #121110 62%)" }}>
+              <p className="font-[family-name:var(--font-poster)] text-4xl leading-none">FRESH FADES</p>
+              <p className="mt-1 font-[family-name:var(--font-poster)] text-xl text-mint">BOOK YOUR NEXT CUT</p>
+              <p className="mt-3 rounded-full bg-mint px-3 py-1.5 text-center text-[11px] font-semibold text-[var(--accent-fg)]">linecatch.app/freshfades</p>
+              <p className="mt-2 text-center text-[10px] text-[var(--app-muted)]">Tap the link to book</p>
+            </div>
           </motion.div>
 
           <Reveal className="w-full max-w-sm rounded-3xl border border-white/[0.08] bg-obsidian-light p-6">
@@ -316,7 +319,7 @@ function Quotes() {
   );
 }
 
-const BARBER = ["Missed-call text back", "Your booking page", "Reminder texts & easy reschedule", "Portfolio page with the 3D ring", "QR sticker & VIP list", "Loyalty card & win-back texts", "Google review requests", "Morning summary & dashboard"];
+const BARBER = ["Missed-call text back", "Your booking page", "Reminder texts & easy reschedule", "Portfolio page with the 3D ring", "Share kit: your link + Instagram story image", "Loyalty card", "Google review requests", "Morning summary & dashboard"];
 const SHOP = ["Everything in Barber", "Every barber in the shop gets their own number, booking page & portfolio", "Owner dashboard across every chair", "Priority support & help with setup"];
 
 function Pricing() {

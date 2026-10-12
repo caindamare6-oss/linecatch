@@ -4,6 +4,8 @@ import { normalizePhone } from "@/lib/phone";
 import { summarizeClients } from "@/lib/clients";
 import { toLoyalty } from "@/lib/loyalty-rules";
 import { appUrl } from "@/lib/config";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureSlug } from "@/lib/portfolio";
 
 type Supa = Awaited<ReturnType<typeof createClient>>;
 
@@ -48,7 +50,9 @@ export async function GET(request: Request) {
   const raw = new URL(request.url).searchParams.get("phone");
   if (!raw) {
     const { clients, loyalty } = await loadAll(supabase, user.id);
-    return NextResponse.json({ clients, loyalty, vipLink: `${appUrl()}/vip/${user.id}` });
+    // Clients join the texts list when they book, so the link to share is their page.
+    const slug = await ensureSlug(createAdminClient(), user.id);
+    return NextResponse.json({ clients, loyalty, vipLink: slug ? `${appUrl()}/${slug}` : `${appUrl()}/book/${user.id}` });
   }
 
   const p = normalizePhone(raw);

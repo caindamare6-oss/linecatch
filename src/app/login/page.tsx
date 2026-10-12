@@ -26,9 +26,7 @@ function Login() {
   const t = useT();
   const params = useSearchParams();
   const refParam = params.get("ref");
-  const stickerParam = params.get("sticker");
-  const [mode, setMode] = useState<"in" | "up">(params.get("mode") === "in" ? "in" : params.get("mode") === "up" || refParam || stickerParam ? "up" : "in");
-  const [sticker, setSticker] = useState<{ code: string; shop: string | null } | null>(null);
+  const [mode, setMode] = useState<"in" | "up">(params.get("mode") === "in" ? "in" : params.get("mode") === "up" || refParam ? "up" : "in");
   const [invite, setInvite] = useState<Invite | null>(null);
   const [method, setMethod] = useState<"email" | "phone">("email");
   const [email, setEmail] = useState("");
@@ -51,23 +49,11 @@ function Login() {
       .catch(() => {});
   }, [refParam]);
 
-  // A sticker handed out in person (/s/CODE → "Set up my shop"): it connects at the end of setup.
-  useEffect(() => {
-    const cookieCode = document.cookie.match(/(?:^|; )lc_sticker=([^;]+)/)?.[1];
-    const code = stickerParam || (cookieCode ? decodeURIComponent(cookieCode) : null);
-    if (!code) return;
-    fetch(`/api/stickers/check?code=${encodeURIComponent(code)}`)
-      .then((r) => r.json())
-      .then((d) => d.valid && setSticker({ code: d.code, shop: d.shop }))
-      .catch(() => {});
-  }, [stickerParam]);
-
-  // The referral code and handed-out sticker ride along in the link, so they survive the email
+  // The referral code rides along in the link, so it survives the email
   // being opened in another browser (mail apps often use their own).
   function callbackUrl() {
     const u = new URL("/auth/callback", window.location.origin);
     if (invite?.code) u.searchParams.set("ref", invite.code);
-    if (sticker?.code) u.searchParams.set("sticker", sticker.code);
     const next = params.get("next");
     if (next) u.searchParams.set("next", safeNext(next));
     return u.toString();
@@ -191,15 +177,6 @@ function Login() {
           </h1>
           <p className="text-[14px] text-white/40 mt-1.5">{t("login.tagline")}</p>
         </div>
-
-        {sticker && (
-          <div className="mb-4 rounded-2xl border border-[var(--app-ok)]/30 bg-[var(--app-ok)]/[0.07] px-4 py-3 text-center" style={{ animation: "ob-fade-up 500ms ease-out 60ms both" }}>
-            <p className="text-[14px] font-semibold text-[var(--app-ok)]">
-              {sticker.shop ? t("login.sticker_banner_shop", { code: sticker.code, shop: sticker.shop }) : t("login.sticker_banner", { code: sticker.code })}
-            </p>
-            <p className="text-[12px] text-white/45 mt-0.5">{t(up ? "login.sticker_sub" : "login.sticker_sub_in")}</p>
-          </div>
-        )}
 
         {invite && (
           <div className="mb-4 rounded-2xl border border-[var(--accent-color)]/30 bg-[var(--accent-color)]/[0.07] px-4 py-3 text-center" style={{ animation: "ob-fade-up 500ms ease-out 60ms both" }}>

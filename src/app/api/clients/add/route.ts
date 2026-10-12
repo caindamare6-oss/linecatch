@@ -5,7 +5,7 @@ import { normalizePhone } from "@/lib/phone";
 /**
  * Barber adds someone to their client list by hand.
  * This saves a contact only: it does NOT opt them in to texts. Consent has to come from the client
- * (VIP signup, booking checkbox, QR), so a typed-in number is never marketed to.
+ * (the booking checkbox), so a typed-in number is never marketed to.
  */
 export async function POST(request: Request) {
   const supabase = await createClient();
