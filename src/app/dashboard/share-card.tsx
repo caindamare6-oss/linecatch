@@ -154,7 +154,13 @@ async function drawStory(opts: { shopName: string; coverUrl: string | null; link
     const scale = Math.max(STORY_W / img.width, photoH / img.height);
     const w = img.width * scale;
     const h = img.height * scale;
+    // Keep the photo inside its area so it never shows under the text.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, STORY_W, photoH);
+    ctx.clip();
     ctx.drawImage(img, (STORY_W - w) / 2, (photoH - h) / 2, w, h);
+    ctx.restore();
   } else {
     ctx.fillStyle = accent;
     ctx.globalAlpha = 0.18;
