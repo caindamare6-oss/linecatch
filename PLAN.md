@@ -26,10 +26,11 @@ Two jobs, one Stripe account:
 - Damare can text a barber their pay link in person.
 - Stripe's built-in emails on: trial ending, receipts, failed payments.
 
-**Still to decide (ask Damare before building that task)**
-- No-show fee and late-cancel fee: fixed amount, % of the cut, or the barber picks? How late is "late" (e.g. under 2 hours)?
-- Who pays Stripe's card fee on client charges (barber, or added to the client's total)?
-- Does LineCatch take any cut of client payments besides the 1.75% instant cash-out fee?
+**Client payment details (Damare, Oct 12, 2026)**
+- **No-show / late-cancel fee:** the barber picks a % of the cut price in Settings (e.g. 50% or 100%).
+- **Late cancel = under 2 hours** before the appointment.
+- **The barber pays Stripe's card fee**, like a normal card reader. Clients see the exact cut price.
+- **LineCatch takes no cut** of client payments. Its only fee is the 1.75% (min $0.50) instant cash-out.
 
 ## Rules for every chat working on this plan
 - **Test mode only** until the go-live phase. Never use or ask for live Stripe keys.
