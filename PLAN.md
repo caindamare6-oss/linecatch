@@ -50,7 +50,7 @@ Two jobs, one Stripe account:
 - [ ] Damare: turn on **Connect** in the Stripe dashboard (test mode, Express accounts) and set the platform branding
 - [ ] Damare: add the test keys to `.env.development.local` on this computer too (so it can be tested locally)
 - [x] Create the product "LineCatch Solo" with a $49/month price (test mode) — the app makes it in Stripe on first use (lookup key `linecatch_solo_monthly`)
-- [x] Database: barber billing fields (migration `20261012c_stripe.sql` written; **not yet applied to staging — needs Damare's OK**) (Stripe customer ID, subscription ID, billing status, trial end) and Connect fields (connected account ID, payouts on, protection on)
+- [x] Database: barber billing fields (migration `20261012c_stripe.sql`, applied to staging 2026-10-12) (Stripe customer ID, subscription ID, billing status, trial end) and Connect fields (connected account ID, payouts on, protection on)
 
 ## Phase 2 (Part A): Barber trial and paying
 - [ ] At sign-up: create the barber's Stripe customer, status "trialing", trial end = sign-up + 14 days
