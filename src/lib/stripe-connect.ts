@@ -163,7 +163,8 @@ export async function createCardSetup(accountId: string, phone: string) {
   const stripe = getStripeClient();
   const customer = await stripe.customers.create({ phone, metadata: { phone } }, { stripeAccount: accountId });
   const intent = await stripe.setupIntents.create(
-    { customer: customer.id, usage: "off_session", metadata: { phone } },
+    // Cards only (Apple Pay and Google Pay are cards): no bank debits, Klarna or Link at a barbershop.
+    { customer: customer.id, usage: "off_session", allowed_payment_method_types: ["card"], metadata: { phone } },
     { stripeAccount: accountId }
   );
   return { clientSecret: intent.client_secret!, setupIntentId: intent.id };

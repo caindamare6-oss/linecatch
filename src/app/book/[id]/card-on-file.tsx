@@ -45,6 +45,8 @@ export function CardOnFile({ account, feePercent, onSaver }: { account: string; 
             // Saved for later (charged after the cut), so only reusable methods show: cards and wallets.
             mode: "setup",
             currency: "usd",
+            // Cards, plus Apple Pay / Google Pay where the phone has them. Nothing else.
+            paymentMethodTypes: ["card"],
             appearance: {
               theme: "night",
               variables: { colorPrimary: colors.accent, colorText: colors.fg, colorBackground: colors.bg, borderRadius: "12px", fontSizeBase: "15px" },
