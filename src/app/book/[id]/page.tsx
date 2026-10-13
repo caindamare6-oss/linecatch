@@ -117,6 +117,9 @@ function BookingContent() {
   // No-show protection: a card is saved (not charged) before the booking goes through.
   const [protection, setProtection] = useState<{ account: string; feePercent: number } | null>(null);
   const saver = useRef<CardSaver | null>(null);
+  // With protection on, the client picks: hold the spot with a card, or pay in store.
+  const [payWith, setPayWith] = useState<"card" | "store">("card");
+  const [heldWithCard, setHeldWithCard] = useState(false);
   const onSaver = useCallback((fn: CardSaver | null) => {
     saver.current = fn;
   }, []);
@@ -212,7 +215,8 @@ function BookingContent() {
     setSubmitting(true);
     try {
       let setupIntentId: string | undefined;
-      if (protection && !forBarber) {
+      const useCard = !!protection && !forBarber && payWith === "card";
+      if (useCard) {
         const setup = await fetch("/api/bookings/card-setup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -252,6 +256,7 @@ function BookingContent() {
           language: forBarber ? undefined : locale,
           source: bookingSource,
           setupIntentId,
+          payment: protection && !forBarber ? payWith : undefined,
         }),
       });
       const data = await res.json();
@@ -266,6 +271,7 @@ function BookingContent() {
       }
       if (data.sessionToken && !forBarber) saveToken(barberId, data.sessionToken);
       setBookingId(data.bookingId);
+      setHeldWithCard(useCard);
       setRewardDue(!!data.rewardDue);
       if (typeof data.rewardCents === "number") setRewardCents(data.rewardCents);
       setStep("done");
@@ -316,7 +322,7 @@ function BookingContent() {
         </div>
 
         <div className="mt-4 w-full max-w-[300px]" style={fadeUp(500)}>
-          <PayInPerson />
+          {heldWithCard ? <CardHeld /> : <PayInPerson />}
         </div>
 
         {bookingId && (
@@ -483,7 +489,7 @@ function BookingContent() {
                 </div>
               )}
             </div>
-            <BottomCta disabled={!service} onClick={() => setStep("time")} note={t("book.pay_note")}>
+            <BottomCta disabled={!service} onClick={() => setStep("time")} note={t(protection && !forBarber ? "pay.note_choice" : "book.pay_note")}>
               {service ? t("book.pick_time") : t("book.choose_service")} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
@@ -590,7 +596,27 @@ function BookingContent() {
               </div>
 
               <div className="mt-3" style={fadeUp(150)}>
-                {protection && !forBarber ? <CardOnFile account={protection.account} feePercent={protection.feePercent} onSaver={onSaver} /> : <PayInPerson />}
+                {protection && !forBarber ? (
+                  <>
+                    <div role="radiogroup" aria-label={t("pay.choose")} className="grid grid-cols-2 gap-2 mb-3">
+                      {(["card", "store"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          role="radio"
+                          aria-checked={payWith === m}
+                          onClick={() => setPayWith(m)}
+                          className={`min-h-12 rounded-xl px-3 text-[13px] font-semibold border-[1.5px] transition-colors ${payWith === m ? "border-[var(--accent-color)] bg-[var(--accent-color)]/10 text-white" : "border-white/[0.08] bg-white/[0.03] text-white/55"}`}
+                        >
+                          {t(m === "card" ? "pay.choice_card" : "pay.choice_store")}
+                        </button>
+                      ))}
+                    </div>
+                    {payWith === "card" ? <CardOnFile account={protection.account} feePercent={protection.feePercent} onSaver={onSaver} /> : <PayInPerson />}
+                  </>
+                ) : (
+                  <PayInPerson />
+                )}
               </div>
 
               <div className="mt-6" style={fadeUp(200)}>
@@ -680,6 +706,17 @@ function NotMe({ name, onClick }: { name: string | null; onClick: () => void }) 
     <button onClick={onClick} className="mt-1 text-xs text-white/30 hover:text-white/60 underline underline-offset-2 transition-colors shrink-0">
       {name ? t("book.not_name", { name }) : t("book.not_you")}
     </button>
+  );
+}
+
+/** Done screen after booking with a card: nothing charged yet. */
+function CardHeld() {
+  const t = useT();
+  return (
+    <div className="rounded-xl px-4 py-3 text-left bg-[var(--accent-color)]/10 border-[1.5px] border-[var(--accent-color)]/40">
+      <div className="text-sm font-bold text-white">{t("pay.held_title")}</div>
+      <div className="text-xs text-white/60">{t("pay.held_sub")}</div>
+    </div>
   );
 }
 

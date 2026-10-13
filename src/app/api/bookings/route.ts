@@ -185,7 +185,8 @@ export async function POST(request: Request) {
   }
 
   // No-show protection: clients booking themselves save a card first (charged only when the cut is done).
-  const needsCard = source !== "barber" && !!barberHours?.protection_enabled && !!barberHours?.stripe_charges_enabled && !!barberHours?.stripe_account_id;
+  // The client can choose to pay in store instead.
+  const needsCard = source !== "barber" && body.payment !== "store" && !!barberHours?.protection_enabled && !!barberHours?.stripe_charges_enabled && !!barberHours?.stripe_account_id;
   const setupIntentId = typeof body.setupIntentId === "string" ? body.setupIntentId : "";
   if (needsCard && !setupIntentId) {
     return NextResponse.json({ error: t("pay.card_required"), cardRequired: true }, { status: 402 });
