@@ -16,6 +16,7 @@ let client: Stripe | null = null;
 
 /** Checked on first use, not at startup or build, so a missing key only affects billing. */
 export function getStripeClient(): Stripe {
-  if (!client) client = new Stripe(assertTestKey(process.env.STRIPE_SECRET_KEY));
+  // SECRET_STRIPE_KEY is the name it was first saved under in Vercel.
+  if (!client) client = new Stripe(assertTestKey(process.env.STRIPE_SECRET_KEY || process.env.SECRET_STRIPE_KEY));
   return client;
 }

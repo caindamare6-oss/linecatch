@@ -13,7 +13,8 @@ import { syncAccount } from "@/lib/stripe-connect";
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
   const body = await request.text();
-  const secrets = [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_CONNECT_WEBHOOK_SECRET].filter(Boolean) as string[];
+  // STRIPE_WEBHOOK is the name the first secret was saved under in Vercel.
+  const secrets = [process.env.STRIPE_WEBHOOK_SECRET, process.env.STRIPE_WEBHOOK, process.env.STRIPE_CONNECT_WEBHOOK_SECRET].filter(Boolean) as string[];
   if (!signature || secrets.length === 0) return NextResponse.json({ error: "Not configured" }, { status: 400 });
 
   let event: Stripe.Event | null = null;
