@@ -1288,5 +1288,20 @@
     "card_required": "Add a card to hold your spot.",
     "card_failed": "Your card couldn't be saved. Check the details and try again.",
     "late_fee_warning": "It's less than {hours} hours away, so a late-cancel fee of {amount} will be charged to your card."
+  },
+  "payouts": {
+    "title": "Where your money goes",
+    "hint": "Add a debit card (Cash App Card works too) for instant cash-outs. Bank accounts get free standard payouts.",
+    "default": "payouts go here",
+    "instant": "Instant",
+    "none": "Nothing added yet.",
+    "add_debit": "Add debit card",
+    "save_card": "Save card",
+    "saving": "Saving…",
+    "debit_note": "Debit cards only. Secured by Stripe; LineCatch never sees your card number.",
+    "err_card": "That card couldn't be added. Check the details and try again.",
+    "err_not_debit": "Use a debit card. Credit cards can't receive payouts.",
+    "not_ready": "Finish your Stripe setup first.",
+    "nothing": "Nothing to cash out yet."
   }
 }

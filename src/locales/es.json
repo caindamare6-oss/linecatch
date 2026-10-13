@@ -1347,5 +1347,20 @@
     "card_required": "Añade una tarjeta para apartar tu lugar.",
     "card_failed": "No se pudo guardar tu tarjeta. Revisa los datos e inténtalo de nuevo.",
     "late_fee_warning": "Faltan menos de {hours} horas, así que se cobrará un cargo por cancelación tardía de {amount} a tu tarjeta."
+  },
+  "payouts": {
+    "title": "A dónde va tu dinero",
+    "hint": "Añade una tarjeta de débito (la Cash App Card también sirve) para retiros instantáneos. Las cuentas bancarias reciben pagos estándar gratis.",
+    "default": "aquí llegan tus pagos",
+    "instant": "Instantáneo",
+    "none": "Aún no has añadido nada.",
+    "add_debit": "Añadir tarjeta de débito",
+    "save_card": "Guardar tarjeta",
+    "saving": "Guardando…",
+    "debit_note": "Solo tarjetas de débito. Protegido por Stripe; LineCatch nunca ve tu número de tarjeta.",
+    "err_card": "No se pudo añadir esa tarjeta. Revisa los datos e inténtalo de nuevo.",
+    "err_not_debit": "Usa una tarjeta de débito. Las de crédito no pueden recibir pagos.",
+    "not_ready": "Primero termina tu configuración de Stripe.",
+    "nothing": "Aún no hay nada para retirar."
   }
 }

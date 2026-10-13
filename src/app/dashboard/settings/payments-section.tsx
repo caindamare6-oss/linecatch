@@ -5,6 +5,7 @@ import { SectionLabel, Card, GoldButton, GhostButton, Segmented, SERIF } from ".
 import { useT, useLocale } from "@/lib/i18n";
 import { money } from "@/lib/config";
 import { SOLO_PRICE_CENTS } from "@/lib/billing-rules";
+import { DebitCardForm } from "./debit-card-form";
 
 type Status = {
   billing: { status: string; banner: "trial" | "add_card" | "past_due" | "paused" | null; daysLeft: number | null; hasCard: boolean };
@@ -15,6 +16,7 @@ type Status = {
     protectionEnabled: boolean;
     feePercent: number;
     balance: { available: number; pending: number; instant: number } | null;
+    payoutMethods?: { id: string; kind: "card" | "bank"; label: string; last4: string; instant: boolean; isDefault: boolean }[];
     stripeOk: boolean;
   };
   recent: { booking_id: string; status: string; amount_cents: number | null; reward_cents: number; card_brand: string | null; card_last4: string | null; charged_at: string | null; failure_message: string | null }[];
@@ -97,6 +99,7 @@ export function PaymentsSection({ s, reload, patch }: { s: Status | null; reload
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [paid, setPaid] = useState("");
+  const [addingCard, setAddingCard] = useState(false);
   if (!s) return null;
   const c = s.connect;
   const ready = c.chargesEnabled;
@@ -182,6 +185,30 @@ export function PaymentsSection({ s, reload, patch }: { s: Status | null; reload
               {t("payments.fee_rule")}
             </p>
             {paid && <p className="text-[12px] text-[var(--app-ok)] mt-1.5" role="status">{paid}</p>}
+          </Card>
+        )}
+
+        {c.started && (
+          <Card className="p-4">
+            <p className="text-[14px] text-white/85">{t("payouts.title")}</p>
+            <p className="text-[12px] text-white/40 mt-0.5 leading-snug">{t("payouts.hint")}</p>
+            {(c.payoutMethods || []).length > 0 ? (
+              <ul className="mt-3 space-y-1.5">
+                {(c.payoutMethods || []).map((m) => (
+                  <li key={m.id} className="flex items-center gap-2 text-[13px] text-white/75">
+                    <span className="flex-1">{m.label} •••• {m.last4}{m.isDefault ? ` · ${t("payouts.default")}` : ""}</span>
+                    {m.instant && <span className="text-[11px] rounded-full px-2 py-0.5 bg-[var(--accent-color)]/15 text-[var(--accent-color)]">{t("payouts.instant")}</span>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-[12px] text-white/45">{t("payouts.none")}</p>
+            )}
+            {addingCard ? (
+              <DebitCardForm onDone={() => { setAddingCard(false); reload(); }} onCancel={() => setAddingCard(false)} />
+            ) : (
+              <div className="mt-3"><GhostButton onClick={() => setAddingCard(true)}>{t("payouts.add_debit")}</GhostButton></div>
+            )}
           </Card>
         )}
 

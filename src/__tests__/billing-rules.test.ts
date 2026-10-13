@@ -89,3 +89,15 @@ describe("client charges", () => {
   });
 });
 
+
+describe("card statement name", () => {
+  it("uses the shop name, cleaned up for Stripe", async () => {
+    const { statementName } = await import("@/lib/stripe-connect");
+    expect(statementName("Freely Shop")).toBe("FREELY SHOP");
+    expect(statementName("Kings' Cuts <Downtown>")).toBe("KINGS CUTS DOWNTOWN");
+    expect(statementName("The Very Long Barbershop Name of Boston")).toBe("THE VERY LONG BARBERSH");
+    expect(statementName("Ed")).toBeNull();
+    expect(statementName("12345")).toBeNull();
+    expect(statementName(null)).toBeNull();
+  });
+});

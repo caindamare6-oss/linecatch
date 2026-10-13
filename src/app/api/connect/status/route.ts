@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { balance, refreshAccount } from "@/lib/stripe-connect";
+import { balance, refreshAccount, payoutMethods, type PayoutMethod } from "@/lib/stripe-connect";
 import { signedInBarber } from "@/lib/stripe-route";
 import { billingState } from "@/lib/billing-rules";
 
@@ -19,11 +19,13 @@ export async function GET() {
   let charges = u.stripe_charges_enabled;
   let payouts = u.stripe_payouts_enabled;
   let money: Awaited<ReturnType<typeof balance>> | null = null;
+  let methods: PayoutMethod[] = [];
   let stripeOk = true;
   if (u.stripe_account_id) {
     try {
       ({ chargesEnabled: charges, payoutsEnabled: payouts } = await refreshAccount(db, u.stripe_account_id));
       if (charges) money = await balance(u.stripe_account_id);
+      methods = await payoutMethods(u.stripe_account_id);
     } catch (err) {
       console.error("[stripe:status]", err);
       stripeOk = false;
@@ -47,6 +49,7 @@ export async function GET() {
       protectionEnabled: u.protection_enabled && charges,
       feePercent: u.no_show_fee_percent,
       balance: money,
+      payoutMethods: methods,
       stripeOk,
     },
     recent: recent || [],

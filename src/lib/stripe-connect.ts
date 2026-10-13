@@ -39,6 +39,8 @@ export async function ensureConnectedAccount(db: Admin, userId: string): Promise
       configuration: {
         merchant: {
           mcc: "7241", // Barber and beauty shops
+          // Clients see the shop's name on their card statement (fewer "what's this?" disputes).
+          ...(statementName(u.business_name) ? { statement_descriptor: { descriptor: statementName(u.business_name)! } } : {}),
           capabilities: { card_payments: { requested: true } },
         },
       },
@@ -88,6 +90,53 @@ export async function refreshAccount(db: Admin, accountId: string) {
   const payoutsEnabled = caps?.stripe_balance?.payouts?.status === "active";
   await syncAccountStatus(db, accountId, chargesEnabled, payoutsEnabled);
   return { chargesEnabled, payoutsEnabled };
+}
+
+/**
+ * A card statement name from the shop name: 5–22 characters, no < > \ ' " *, at least one
+ * letter. Null when the name can't make a valid one (Stripe then asks during setup).
+ */
+export function statementName(name: string | null | undefined): string | null {
+  const clean = (name || "").replace(/[<>\\'"*]/g, "").replace(/\s+/g, " ").trim().toUpperCase().slice(0, 22).trim();
+  return clean.length >= 5 && /[A-Z]/.test(clean) ? clean : null;
+}
+
+// ── Where the barber's money goes ──
+
+export type PayoutMethod = { id: string; kind: "card" | "bank"; label: string; last4: string; instant: boolean; isDefault: boolean };
+
+/** Their debit cards and bank accounts, newest default first. */
+export async function payoutMethods(accountId: string): Promise<PayoutMethod[]> {
+  const list = await getStripeClient().accounts.listExternalAccounts(accountId, { limit: 10 });
+  return list.data.map((x) => {
+    const card = x.object === "card";
+    const xx = x as unknown as { id: string; brand?: string; bank_name?: string | null; last4: string; available_payout_methods?: string[] | null; default_for_currency?: boolean | null };
+    return {
+      id: xx.id,
+      kind: card ? "card" : "bank",
+      label: (card ? xx.brand : xx.bank_name) || (card ? "Card" : "Bank"),
+      last4: xx.last4,
+      instant: (xx.available_payout_methods || []).includes("instant"),
+      isDefault: !!xx.default_for_currency,
+    };
+  });
+}
+
+/**
+ * Adds a debit card (tokenized by Stripe's card form; LineCatch never sees the number) and makes
+ * it where payouts go. Stripe refuses credit cards and cards that can't receive payouts.
+ */
+export async function addDebitCard(db: Admin, userId: string, token: string) {
+  const { data: u } = await db.from("users").select("stripe_account_id").eq("user_id", userId).single();
+  if (!u?.stripe_account_id) return { ok: false as const, error: "payouts.not_ready" };
+  try {
+    await getStripeClient().accounts.createExternalAccount(u.stripe_account_id, { external_account: token, default_for_currency: true });
+    return { ok: true as const };
+  } catch (err) {
+    const e = err as { code?: string; message?: string };
+    console.error("[stripe:debit-card]", e.code, e.message);
+    return { ok: false as const, error: e.code === "card_declined" || /debit/i.test(e.message || "") ? "payouts.err_not_debit" : "payouts.err_card" };
+  }
 }
 
 // ── Saving a client's card at booking ──
