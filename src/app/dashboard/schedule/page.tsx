@@ -23,6 +23,8 @@ type Booking = {
   price: number;
   minutes: number;
   groupId: string | null;
+  /** A saved card (no-show protection) and what happened to it; null = paying in store. */
+  payment: { status: string; amountCents: number | null; last4: string | null; brand: string | null } | null;
 };
 type Hours = Record<string, { open: string; close: string } | null> | null;
 type Data = { timezone: string; today: string; dates: string[]; hours: Hours; bookings: Booking[]; barberId: string };
@@ -229,6 +231,7 @@ function Schedule() {
                   {isNext && <Badge tone="gold">{t("schedule.up_next")}</Badge>}
                   {done && <Badge tone="vip">{t("schedule.done")}</Badge>}
                   {ns && <Badge tone="danger">{t("schedule.no_show")}</Badge>}
+                  <PayBadge b={b} />
                 </span>
                 {h > 44 && (
                   <span className="block text-[12px] text-white/45 truncate">
@@ -318,6 +321,7 @@ function BookingSheet({ booking: b, tz, started, canUndo, onClose, onChanged }: 
           <span className={`${SERIF} text-lg font-semibold text-[var(--accent-color)]`}>{money(Math.round(b.price) * 100, locale)}</span>
         </div>
         <p className="text-sm text-white/75 mt-3">{b.service}</p>
+        <p className="text-[13px] mt-1.5 text-white/55">{payLine(t, b, (c) => money(c, locale))}</p>
 
         <div className="grid grid-cols-2 gap-2 mt-4">
           <Link href={`/dashboard/messages/${clientPathId(b.phone)}`} className="h-11 rounded-xl border border-white/[0.1] text-[13px] font-medium text-white/75 flex items-center justify-center">{t("schedule.sheet_message")}</Link>
@@ -372,4 +376,28 @@ function BookingSheet({ booking: b, tz, started, canUndo, onClose, onChanged }: 
       </div>
     </div>
   );
+}
+
+/** "Card on file" or "Pays in store" on each booking. */
+function PayBadge({ b }: { b: Booking }) {
+  const t = useT();
+  if (!b.payment) return <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/50">{t("schedule.pay_store")}</span>;
+  const failed = b.payment.status === "failed";
+  return (
+    <span className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${failed ? "bg-[var(--app-danger)]/15 text-[var(--app-danger)]" : "bg-[var(--accent-color)]/15 text-[var(--accent-color)]"}`}>
+      {t(failed ? "schedule.pay_failed" : b.payment.status === "card_saved" ? "schedule.pay_card" : "schedule.pay_charged")}
+    </span>
+  );
+}
+
+function payLine(t: (k: string, v?: Record<string, string | number>) => string, b: Booking, fmt: (cents: number) => string) {
+  const p = b.payment;
+  if (!p) return t("schedule.pay_store_line");
+  const card = p.last4 ? `${(p.brand || "card").toUpperCase()} •••• ${p.last4}` : t("schedule.pay_card");
+  if (p.status === "card_saved") return t("schedule.pay_card_line", { card });
+  if (p.status === "paid") return t("schedule.pay_paid_line", { card, amount: fmt(p.amountCents ?? 0) });
+  if (p.status === "fee_charged") return t("schedule.pay_fee_line", { card, amount: fmt(p.amountCents ?? 0) });
+  if (p.status === "failed") return t("schedule.pay_failed_line", { card });
+  if (p.status === "refunded") return t("schedule.pay_refunded_line", { card });
+  return t("schedule.pay_card_line", { card });
 }

@@ -88,8 +88,25 @@ export async function refreshAccount(db: Admin, accountId: string) {
   const caps = account.configuration?.merchant?.capabilities;
   const chargesEnabled = caps?.card_payments?.status === "active";
   const payoutsEnabled = caps?.stripe_balance?.payouts?.status === "active";
+  const { data: before } = await db.from("users").select("stripe_charges_enabled").eq("stripe_account_id", accountId).maybeSingle();
   await syncAccountStatus(db, accountId, chargesEnabled, payoutsEnabled);
+  // The first time they can take cards: let Apple Pay work on the booking page for their account.
+  if (chargesEnabled && !before?.stripe_charges_enabled) await registerWalletDomain(accountId);
   return { chargesEnabled, payoutsEnabled };
+}
+
+/**
+ * Apple Pay only shows on domains registered for the account taking the payment (cards are saved
+ * on each barber's own account). Google Pay works without this. Safe to call again.
+ */
+export async function registerWalletDomain(accountId: string) {
+  try {
+    await getStripeClient().paymentMethodDomains.create({ domain_name: new URL(appUrl()).hostname }, { stripeAccount: accountId });
+  } catch (err) {
+    // Already registered is fine; anything else only affects Apple Pay, never the booking.
+    const e = err as { code?: string; message?: string };
+    if (!/already/i.test(e.message || "")) console.error("[stripe:wallet-domain]", e.code, e.message);
+  }
 }
 
 /**

@@ -49,6 +49,13 @@ export async function GET(request: Request) {
     supabase.from("contacts").select("caller_phone, name").eq("user_id", user.id),
   ]);
 
+  // How each client is paying: a saved card (and what happened to it), or in store.
+  const ids = (bookings || []).map((b) => b.id);
+  const { data: cards } = ids.length
+    ? await supabase.from("booking_payments").select("booking_id, status, amount_cents, card_brand, card_last4").in("booking_id", ids)
+    : { data: [] };
+  const payment = new Map((cards || []).map((c) => [c.booking_id, c]));
+
   const svc = new Map((services || []).map((s) => [s.id, s]));
   const names = new Map<string, string>();
   for (const v of vips || []) if (v.first_name?.trim()) names.set(v.phone_number, v.first_name.trim());
@@ -71,6 +78,9 @@ export async function GET(request: Request) {
       minutes: s?.duration_minutes ?? 30,
       groupId: b.group_id,
       source: b.source,
+      payment: payment.has(b.id)
+        ? { status: payment.get(b.id)!.status as string, amountCents: payment.get(b.id)!.amount_cents as number | null, last4: payment.get(b.id)!.card_last4 as string | null, brand: payment.get(b.id)!.card_brand as string | null }
+        : null,
     };
   });
 

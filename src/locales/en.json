@@ -368,7 +368,17 @@
     "min": "{n} min",
     "back_today": "Back to today",
     "didnt_show": "Didn't show up? Mark as no-show",
-    "auto_done_note": "Not tapped? It’s marked done {hours} hours after it ends."
+    "auto_done_note": "Not tapped? It’s marked done {hours} hours after it ends.",
+    "pay_store": "In store",
+    "pay_card": "Card on file",
+    "pay_charged": "Paid",
+    "pay_failed": "Card declined",
+    "pay_store_line": "Pays in store.",
+    "pay_card_line": "Card on file ({card}). Charged when you mark it done.",
+    "pay_paid_line": "Paid {amount} by card ({card}).",
+    "pay_fee_line": "No-show / late-cancel fee {amount} charged ({card}).",
+    "pay_failed_line": "Card declined ({card}). Collect payment in store.",
+    "pay_refunded_line": "Refunded to {card}."
   },
   "clients": {
     "title": "Clients",

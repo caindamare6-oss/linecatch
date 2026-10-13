@@ -368,7 +368,17 @@
     "min": "{n} min",
     "back_today": "Volver a hoy",
     "didnt_show": "¿No vino? Marcar como inasistencia",
-    "auto_done_note": "¿No lo marcaste? Se marca como hecho {hours} horas después de terminar."
+    "auto_done_note": "¿No lo marcaste? Se marca como hecho {hours} horas después de terminar.",
+    "pay_store": "En persona",
+    "pay_card": "Tarjeta guardada",
+    "pay_charged": "Pagado",
+    "pay_failed": "Tarjeta rechazada",
+    "pay_store_line": "Paga en la barbería.",
+    "pay_card_line": "Tarjeta guardada ({card}). Se cobra cuando lo marques como hecho.",
+    "pay_paid_line": "Pagó {amount} con tarjeta ({card}).",
+    "pay_fee_line": "Se cobró el cargo por ausencia / cancelación tardía de {amount} ({card}).",
+    "pay_failed_line": "Tarjeta rechazada ({card}). Cobra en la barbería.",
+    "pay_refunded_line": "Reembolsado a {card}."
   },
   "clients": {
     "title": "Clientes",
