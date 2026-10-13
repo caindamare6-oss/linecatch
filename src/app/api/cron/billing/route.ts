@@ -3,27 +3,27 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { cronNow } from "@/lib/cron";
 import { sendSMS } from "@/lib/twilio";
 import { appUrl, DEFAULT_TZ } from "@/lib/config";
-import { billingState, trialDay, TRIAL_TEXT_DAYS, type BillingStatus } from "@/lib/billing-rules";
+import { billingState, daysSinceTrialEnd, CARD_TEXT_DAYS, type BillingStatus } from "@/lib/billing-rules";
 
 export const maxDuration = 60;
 
 const TEXTS = {
   en: {
-    d10: "LineCatch: 4 days left in your free trial. Add your card so your missed calls keep getting texted back: {link}",
-    d13: "LineCatch: your free trial ends tomorrow. Add your card to keep your clients: {link}",
-    d14: "LineCatch: your free trial ends today. Your texts keep running 7 more days. Add your card here: {link}",
+    d0: "LineCatch: your free trial is over. Add your card to keep your missed calls getting texted back. Texts keep running 7 more days: {link}",
+    d3: "LineCatch: 4 days left to add your card before your texts pause: {link}",
+    d6: "LineCatch: your texts pause tomorrow. Add your card to keep your clients: {link}",
   },
   es: {
-    d10: "LineCatch: te quedan 4 días de prueba gratis. Añade tu tarjeta para que tus llamadas perdidas sigan recibiendo respuesta: {link}",
-    d13: "LineCatch: tu prueba gratis termina mañana. Añade tu tarjeta para no perder a tus clientes: {link}",
-    d14: "LineCatch: tu prueba gratis termina hoy. Tus textos siguen 7 días más. Añade tu tarjeta aquí: {link}",
+    d0: "LineCatch: tu prueba gratis terminó. Añade tu tarjeta para que tus llamadas perdidas sigan recibiendo respuesta. Los textos siguen 7 días más: {link}",
+    d3: "LineCatch: te quedan 4 días para añadir tu tarjeta antes de que se pausen tus textos: {link}",
+    d6: "LineCatch: tus textos se pausan mañana. Añade tu tarjeta para no perder a tus clientes: {link}",
   },
 };
 
 /**
- * Hourly (texts go out at 10 AM the barber's time): trial reminders with the pay link on days
- * 10, 13 and 14, then pausing accounts with no card after the 7-day grace, and failed payments
- * after theirs. Adding a card turns everything back on (Stripe webhook).
+ * Hourly (texts go out at 10 AM the barber's time). No card prompts during the trial; once it
+ * ends, pay-link texts on that day and 3 and 6 days later, then accounts with no card pause after
+ * the 7-day grace (failed payments after theirs). Adding a card turns everything back on (Stripe webhook).
  */
 export async function GET(request: Request) {
   if (request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -52,13 +52,13 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // Trial texts: only without a card on file, once each, at 10 AM their time.
+    // After the trial, without a card on file: each text once, at 10 AM their time.
     if (b.billing_status !== "trialing" || b.stripe_subscription_id || !b.trial_ends_at || !b.phone_number || !b.forwarding_number) continue;
     const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: b.timezone || DEFAULT_TZ, hour: "numeric", hourCycle: "h23" }).format(now));
     if (hour !== 10) continue;
-    const day = trialDay(b.trial_ends_at, now.getTime());
-    const due = TRIAL_TEXT_DAYS.find((d) => d === day);
-    const key = due ? (`d${due}` as const) : null;
+    const since = daysSinceTrialEnd(b.trial_ends_at, now.getTime());
+    const due = CARD_TEXT_DAYS.find((d) => d === since);
+    const key = due !== undefined ? (`d${due}` as const) : null;
     if (!key || (b.billing_texts_sent || []).includes(key)) continue;
 
     const lang = b.barber_language === "es" ? "es" : "en";

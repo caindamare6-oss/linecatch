@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   billingState,
-  trialDay,
+  daysSinceTrialEnd,
   trialDaysLeft,
   fromStripeStatus,
   cutChargeCents,
@@ -23,15 +23,16 @@ const barber = (o: Partial<Parameters<typeof billingState>[0]> = {}) => ({
 });
 
 describe("14-day trial", () => {
-  it("counts days left and which trial day it is", () => {
+  it("counts days left, and days since it ended", () => {
     expect(trialDaysLeft(at(14), NOW)).toBe(14);
-    expect(trialDay(at(14), NOW)).toBe(1);
-    expect(trialDay(at(4), NOW)).toBe(11);
-    expect(trialDay(at(0.5), NOW)).toBe(14);
+    expect(daysSinceTrialEnd(at(1), NOW)).toBe(-1);
+    expect(daysSinceTrialEnd(at(-0.2), NOW)).toBe(0);
+    expect(daysSinceTrialEnd(at(-3.5), NOW)).toBe(3);
   });
 
-  it("shows the trial banner while it runs, no pause", () => {
-    expect(billingState(barber(), NOW)).toMatchObject({ status: "trialing", banner: "trial", shouldPause: false, daysLeft: 14 });
+  it("never asks for a card while the trial runs", () => {
+    expect(billingState(barber(), NOW)).toMatchObject({ status: "trialing", banner: null, shouldPause: false, daysLeft: 14 });
+    expect(billingState(barber({ trial_ends_at: at(0.5) }), NOW).banner).toBeNull();
   });
 
   it("a card added during the trial: no banner, no pause", () => {

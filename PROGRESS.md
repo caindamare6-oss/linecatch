@@ -56,3 +56,10 @@ Notes from each chat, newest at the bottom. The builder writes what it changed a
 - End-to-end needs: the migration on staging, Connect turned on, test keys in `.env.development.local`, and the two webhook secrets.
 
 **Next task:** Damare approves the staging migration, turns on Connect, adds the webhook endpoints. Then Phase 5 testing with Stripe test cards.
+
+## 2026-10-12 — Testing on staging (builder)
+- Webhooks: both Stripe destinations point at the staging site; a test event was recorded in the staging DB.
+- Step 1 passed: Add card → Stripe Checkout ("13 days free, then $49/mo") → subscription created, status trialing, Settings shows "Card on file".
+- Step 2 failed at first: Stripe refuses Accounts v1 for new Connect platforms. Switched to Accounts v2 (Express Dashboard, Stripe collects card fees from the barber, Stripe covers negative balances).
+- Damare: no card prompts during the trial. Texts on the day it ends, +3 and +6 days; pause on day 7.
+- Found: every Vercel preview except `staging` uses the LIVE Supabase keys and real Twilio ("Production and Preview"). Needs fixing in Vercel (re-enter values) before anyone uses branch previews.

@@ -60,8 +60,8 @@ Two jobs, one Stripe account:
 - [ ] Turn on Stripe's built-in emails
 
 ## Phase 3 (Part A): Reminders and pausing
-- [x] Text the pay link on trial day 10, day 13 and day 14
-- [x] Dashboard banner: "X days left in your free trial — Add card"
+- [x] No card prompts during the trial (Damare, Oct 12). Pay-link texts once it ends: that day, +3 and +6 days
+- [x] Dashboard banner only after the trial: "Add your card to keep your clients"
 - [x] Day 14 with no card: texts keep running, "Add your card to keep your clients" banner
 - [x] Day 21 with no card: pause (no outgoing texts, dashboard shows "Add card to turn LineCatch back on")
 - [x] Failed payment: 7-day grace with banner, then pause the same way

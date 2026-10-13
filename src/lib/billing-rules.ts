@@ -9,8 +9,11 @@ export const SOLO_PRICE_LOOKUP_KEY = "linecatch_solo_monthly";
 export const TRIAL_DAYS = 14;
 /** After the trial with no card (or a failed payment), texts keep running this long, then pause. */
 export const GRACE_DAYS = 7;
-/** Pay-link texts during the trial: on these days after sign-up. */
-export const TRIAL_TEXT_DAYS = [10, 13, 14] as const;
+/**
+ * Nobody is asked for a card during the trial. Pay-link texts go out once it's over: the day it
+ * ends, then 3 and 6 days later (texting pauses on day 7).
+ */
+export const CARD_TEXT_DAYS = [0, 3, 6] as const;
 
 export type BillingStatus = "trialing" | "active" | "past_due" | "paused" | "canceled";
 
@@ -22,9 +25,9 @@ export function trialDaysLeft(trialEndsAt: string | Date | null, now = Date.now(
   return Math.ceil((new Date(trialEndsAt).getTime() - now) / DAY);
 }
 
-/** Which trial day it is (1 on sign-up day). */
-export function trialDay(trialEndsAt: string | Date, now = Date.now()): number {
-  return TRIAL_DAYS - Math.ceil((new Date(trialEndsAt).getTime() - now) / DAY) + 1;
+/** Whole days since the trial ended (0 on the day it ends, negative while it's still running). */
+export function daysSinceTrialEnd(trialEndsAt: string | Date, now = Date.now()): number {
+  return Math.floor((now - new Date(trialEndsAt).getTime()) / DAY);
 }
 
 /**
@@ -47,7 +50,8 @@ export function billingState(
 
   // Trialing. A card on file during the trial: the subscription starts itself at trial end.
   if (u.stripe_subscription_id) return { status: "trialing", shouldPause: false, banner: null, daysLeft };
-  if (daysLeft === null || daysLeft > 0) return { status: "trialing", shouldPause: false, banner: "trial", daysLeft };
+  // During the trial: no card prompts at all.
+  if (daysLeft === null || daysLeft > 0) return { status: "trialing", shouldPause: false, banner: null, daysLeft };
   // Trial over, no card: texts keep going for the grace days, then pause.
   const pastTrial = -daysLeft;
   if (pastTrial < GRACE_DAYS) return { status: "trialing", shouldPause: false, banner: "add_card", daysLeft };
