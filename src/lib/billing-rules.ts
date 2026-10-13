@@ -94,19 +94,3 @@ export function noShowFeeCents(priceCents: number, percent: number): number {
   const fee = Math.round((Math.max(priceCents, 0) * p) / 100);
   return fee < MIN_CHARGE_CENTS ? 0 : fee;
 }
-
-/** Instant cash-out: 1.75%, at least $0.50. Standard payouts are free. */
-export const INSTANT_FEE_BPS = 175;
-export const INSTANT_FEE_MIN_CENTS = 50;
-
-export function instantPayoutFeeCents(amountCents: number): number {
-  return Math.max(Math.round((amountCents * INSTANT_FEE_BPS) / 10_000), INSTANT_FEE_MIN_CENTS);
-}
-
-/** What lands on their debit card after the fee (0 if the balance can't cover the fee). */
-export function instantPayoutNetCents(availableCents: number): { amount: number; fee: number } {
-  if (availableCents <= INSTANT_FEE_MIN_CENTS) return { amount: 0, fee: 0 };
-  const fee = instantPayoutFeeCents(availableCents);
-  const amount = availableCents - fee;
-  return amount > 0 ? { amount, fee } : { amount: 0, fee: 0 };
-}

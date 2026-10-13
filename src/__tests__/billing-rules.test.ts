@@ -7,8 +7,6 @@ import {
   cutChargeCents,
   noShowFeeCents,
   isLateCancel,
-  instantPayoutFeeCents,
-  instantPayoutNetCents,
 } from "@/lib/billing-rules";
 
 const DAY = 86_400_000;
@@ -91,15 +89,3 @@ describe("client charges", () => {
   });
 });
 
-describe("instant cash-out", () => {
-  it("1.75%, at least 50¢", () => {
-    expect(instantPayoutFeeCents(10_000)).toBe(175);
-    expect(instantPayoutFeeCents(1_000)).toBe(50);
-  });
-
-  it("what lands on the debit card", () => {
-    expect(instantPayoutNetCents(10_000)).toEqual({ amount: 9825, fee: 175 });
-    expect(instantPayoutNetCents(50)).toEqual({ amount: 0, fee: 0 });
-    expect(instantPayoutNetCents(0)).toEqual({ amount: 0, fee: 0 });
-  });
-});

@@ -2,14 +2,15 @@ import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appUrl } from "@/lib/config";
-import { cutChargeCents, noShowFeeCents, instantPayoutNetCents } from "@/lib/billing-rules";
+import { cutChargeCents, noShowFeeCents } from "@/lib/billing-rules";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
 /**
- * Part B of PLAN.md. Every barber with no-show protection has a Stripe Connect Express account.
- * Clients' cards are saved on (and charged from) the barber's own account, so Stripe's card fee
- * comes out of the barber's side like any card reader, and LineCatch takes no cut.
+ * Part B of PLAN.md. Every barber with no-show protection has a Stripe connected account that
+ * lives entirely inside LineCatch (no Stripe dashboard login): balance, payments and cash-out are
+ * in Settings → Payments. Clients' cards are saved on (and charged from) the barber's own account;
+ * Stripe takes its card fee from the barber and covers negative balances. LineCatch takes nothing.
  */
 
 // ── The barber's payout account ──
@@ -18,14 +19,15 @@ export async function ensureConnectedAccount(db: Admin, userId: string): Promise
   const { data: u } = await db.from("users").select("stripe_account_id, email, business_name, first_name").eq("user_id", userId).single();
   if (!u) throw new Error("Barber not found");
   if (u.stripe_account_id) return u.stripe_account_id;
-  // Accounts v2 (Stripe no longer allows v1 accounts for new Connect platforms). Express Dashboard;
-  // Stripe takes its card fee straight from the barber and covers negative balances.
+  // Accounts v2 (Stripe no longer allows v1 accounts for new Connect platforms). No Stripe
+  // dashboard: everything is in LineCatch. Stripe collects its fees from the barber and is
+  // responsible for negative balances, so LineCatch carries no risk.
   const account = await getStripeClient().v2.core.accounts.create(
     {
       display_name: u.business_name || u.first_name || undefined,
       contact_email: u.email || undefined,
       identity: { country: "us" },
-      dashboard: "express",
+      dashboard: "none",
       defaults: { responsibilities: { fees_collector: "stripe", losses_collector: "stripe" } },
       configuration: {
         merchant: {
@@ -34,7 +36,7 @@ export async function ensureConnectedAccount(db: Admin, userId: string): Promise
       },
       metadata: { user_id: userId },
     },
-    { idempotencyKey: `connect-v2-${userId}` }
+    { idempotencyKey: `connect-v2-none-${userId}` }
   );
   await db.from("users").update({ stripe_account_id: account.id }).eq("user_id", userId);
   return account.id;
@@ -54,11 +56,6 @@ export async function onboardingUrl(db: Admin, userId: string): Promise<string> 
     },
   });
   return link.url;
-}
-
-/** Stripe's Express dashboard for the barber (payout history, bank details). */
-export async function expressDashboardUrl(accountId: string): Promise<string> {
-  return (await getStripeClient().accounts.createLoginLink(accountId)).url;
 }
 
 /** Copies Stripe's verdict onto the barber. Protection only works once cards can be charged. */
@@ -222,21 +219,18 @@ export async function balance(accountId: string) {
 }
 
 /**
- * Cash out now: LineCatch's 1.75% (min $0.50) is taken from the barber's Stripe balance first,
- * then the rest goes to their debit card in about 30 minutes or less.
+ * Cash out now: the barber's whole instant-available balance goes to their debit card in about
+ * 30 minutes. Stripe's own instant payout fee applies; LineCatch adds nothing.
  */
 export async function instantCashOut(db: Admin, userId: string) {
   const { data: u } = await db.from("users").select("stripe_account_id, stripe_payouts_enabled").eq("user_id", userId).single();
   if (!u?.stripe_account_id || !u.stripe_payouts_enabled) return { ok: false as const, error: "payouts.not_ready" };
-  const stripe = getStripeClient();
   const { instant } = await balance(u.stripe_account_id);
-  const { amount, fee } = instantPayoutNetCents(instant);
-  if (amount <= 0) return { ok: false as const, error: "payouts.nothing" };
-
-  const key = `cashout-${userId}-${instant}-${new Date().toISOString().slice(0, 13)}`;
-  // Account debit: moves the fee from the barber's Stripe balance to LineCatch.
-  await stripe.charges.create({ amount: fee, currency: "usd", source: u.stripe_account_id, description: "LineCatch instant cash-out fee" }, { idempotencyKey: `${key}-fee` });
-  const payout = await stripe.payouts.create({ amount, currency: "usd", method: "instant" }, { stripeAccount: u.stripe_account_id, idempotencyKey: key });
-  await db.from("payouts").insert({ user_id: userId, stripe_payout_id: payout.id, amount_cents: amount, fee_cents: fee, method: "instant", status: payout.status });
-  return { ok: true as const, amount, fee };
+  if (instant <= 0) return { ok: false as const, error: "payouts.nothing" };
+  const payout = await getStripeClient().payouts.create(
+    { amount: instant, currency: "usd", method: "instant" },
+    { stripeAccount: u.stripe_account_id, idempotencyKey: `cashout-${userId}-${instant}-${new Date().toISOString().slice(0, 13)}` }
+  );
+  await db.from("payouts").insert({ user_id: userId, stripe_payout_id: payout.id, amount_cents: instant, fee_cents: 0, method: "instant", status: payout.status });
+  return { ok: true as const, amount: instant };
 }

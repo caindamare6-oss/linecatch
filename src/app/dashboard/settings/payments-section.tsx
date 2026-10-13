@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SectionLabel, Card, GoldButton, GhostButton, Segmented, SERIF } from "../ui";
 import { useT, useLocale } from "@/lib/i18n";
 import { money } from "@/lib/config";
-import { SOLO_PRICE_CENTS, instantPayoutNetCents } from "@/lib/billing-rules";
+import { SOLO_PRICE_CENTS } from "@/lib/billing-rules";
 
 type Status = {
   billing: { status: string; banner: "trial" | "add_card" | "past_due" | "paused" | null; daysLeft: number | null; hasCard: boolean };
@@ -100,7 +100,7 @@ export function PaymentsSection({ s, reload, patch }: { s: Status | null; reload
   if (!s) return null;
   const c = s.connect;
   const ready = c.chargesEnabled;
-  const instant = c.balance ? instantPayoutNetCents(c.balance.instant) : { amount: 0, fee: 0 };
+  const instant = { amount: c.balance?.instant ?? 0 };
 
   const run = async (fn: () => Promise<string | null>) => {
     setBusy(true);
@@ -177,10 +177,9 @@ export function PaymentsSection({ s, reload, patch }: { s: Status | null; reload
               >
                 {instant.amount > 0 ? t("payments.cash_out", { amount: money(instant.amount, locale) }) : t("payments.cash_out_none")}
               </GoldButton>
-              <GhostButton disabled={busy} onClick={() => run(() => go("/api/connect/dashboard"))}>{t("payments.payout_details")}</GhostButton>
             </div>
             <p className="text-[11px] text-white/35 mt-2.5 leading-snug">
-              {instant.amount > 0 ? t("payments.cash_out_fee", { fee: money(instant.fee, locale) }) : t("payments.fee_rule")}
+              {t("payments.fee_rule")}
             </p>
             {paid && <p className="text-[12px] text-[var(--app-ok)] mt-1.5" role="status">{paid}</p>}
           </Card>
