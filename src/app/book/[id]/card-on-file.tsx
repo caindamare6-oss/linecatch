@@ -83,5 +83,5 @@ function PaymentFields({ onSaver }: { onSaver: (saver: CardSaver | null) => void
     return () => onSaver(null);
   }, [stripe, elements, onSaver, t]);
 
-  return <PaymentElement options={{ layout: "tabs", wallets: { applePay: "auto", googlePay: "auto" } }} />;
+  return <PaymentElement options={{ layout: "tabs", wallets: { applePay: "auto", googlePay: "auto", link: "never" } }} />;
 }
