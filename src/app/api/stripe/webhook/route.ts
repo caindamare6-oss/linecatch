@@ -29,7 +29,12 @@ export async function POST(request: Request) {
   const db = createAdminClient();
   // Stripe can send the same event twice: only the first one does anything.
   const { error: seen } = await db.from("stripe_events").insert({ id: event.id, type: event.type });
-  if (seen) return NextResponse.json({ received: true, duplicate: true });
+  if (seen?.code === "23505") return NextResponse.json({ received: true, duplicate: true });
+  if (seen) {
+    // Not a repeat: the database had a problem. Stripe retries on a 500.
+    console.error("[stripe:webhook] couldn't record event", seen);
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  }
 
   try {
     switch (event.type) {
