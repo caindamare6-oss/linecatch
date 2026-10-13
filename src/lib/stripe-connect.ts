@@ -15,20 +15,26 @@ type Admin = ReturnType<typeof createAdminClient>;
 // ── The barber's payout account ──
 
 export async function ensureConnectedAccount(db: Admin, userId: string): Promise<string> {
-  const { data: u } = await db.from("users").select("stripe_account_id, email, business_name").eq("user_id", userId).single();
+  const { data: u } = await db.from("users").select("stripe_account_id, email, business_name, first_name").eq("user_id", userId).single();
   if (!u) throw new Error("Barber not found");
   if (u.stripe_account_id) return u.stripe_account_id;
-  const account = await getStripeClient().accounts.create(
+  // Accounts v2 (Stripe no longer allows v1 accounts for new Connect platforms). Express Dashboard;
+  // Stripe takes its card fee straight from the barber and covers negative balances.
+  const account = await getStripeClient().v2.core.accounts.create(
     {
-      type: "express",
-      country: "US",
-      email: u.email || undefined,
-      business_type: "individual",
-      business_profile: { name: u.business_name || undefined, mcc: "7241", product_description: "Barber services" },
-      capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+      display_name: u.business_name || u.first_name || undefined,
+      contact_email: u.email || undefined,
+      identity: { country: "us" },
+      dashboard: "express",
+      defaults: { responsibilities: { fees_collector: "stripe", losses_collector: "stripe" } },
+      configuration: {
+        merchant: {
+          capabilities: { card_payments: { requested: true } },
+        },
+      },
       metadata: { user_id: userId },
     },
-    { idempotencyKey: `connect-${userId}` }
+    { idempotencyKey: `connect-v2-${userId}` }
   );
   await db.from("users").update({ stripe_account_id: account.id }).eq("user_id", userId);
   return account.id;
@@ -37,11 +43,15 @@ export async function ensureConnectedAccount(db: Admin, userId: string): Promise
 /** Stripe's own pages where the barber verifies who they are and adds their bank or debit card. */
 export async function onboardingUrl(db: Admin, userId: string): Promise<string> {
   const account = await ensureConnectedAccount(db, userId);
-  const link = await getStripeClient().accountLinks.create({
+  const link = await getStripeClient().v2.core.accountLinks.create({
     account,
-    type: "account_onboarding",
-    refresh_url: `${appUrl()}/api/connect/onboard?again=1`,
-    return_url: `${appUrl()}/dashboard/settings?connect=done#payments`,
+    use_case: {
+      type: "account_onboarding",
+      account_onboarding: {
+        refresh_url: `${appUrl()}/api/connect/onboard?again=1`,
+        return_url: `${appUrl()}/dashboard/settings?connect=done#payments`,
+      },
+    },
   });
   return link.url;
 }
@@ -51,20 +61,26 @@ export async function expressDashboardUrl(accountId: string): Promise<string> {
   return (await getStripeClient().accounts.createLoginLink(accountId)).url;
 }
 
-/** Copies Stripe's verdict onto the barber. Protection only works once charges are enabled. */
-export async function syncAccount(db: Admin, account: Stripe.Account) {
-  const update: Record<string, unknown> = {
-    stripe_charges_enabled: !!account.charges_enabled,
-    stripe_payouts_enabled: !!account.payouts_enabled,
-  };
-  if (!account.charges_enabled) update.protection_enabled = false;
-  await db.from("users").update(update).eq("stripe_account_id", account.id);
+/** Copies Stripe's verdict onto the barber. Protection only works once cards can be charged. */
+export async function syncAccountStatus(db: Admin, accountId: string, chargesEnabled: boolean, payoutsEnabled: boolean) {
+  const update: Record<string, unknown> = { stripe_charges_enabled: chargesEnabled, stripe_payouts_enabled: payoutsEnabled };
+  if (!chargesEnabled) update.protection_enabled = false;
+  await db.from("users").update(update).eq("stripe_account_id", accountId);
 }
 
+/** Older v1-style account.updated events still carry the two flags. */
+export async function syncAccount(db: Admin, account: Stripe.Account) {
+  await syncAccountStatus(db, account.id, !!account.charges_enabled, !!account.payouts_enabled);
+}
+
+/** Asks Stripe (Accounts v2) whether the barber can take cards and get paid yet. */
 export async function refreshAccount(db: Admin, accountId: string) {
-  const account = await getStripeClient().accounts.retrieve(accountId);
-  await syncAccount(db, account);
-  return account;
+  const account = await getStripeClient().v2.core.accounts.retrieve(accountId, { include: ["configuration.merchant", "requirements"] });
+  const caps = account.configuration?.merchant?.capabilities;
+  const chargesEnabled = caps?.card_payments?.status === "active";
+  const payoutsEnabled = caps?.stripe_balance?.payouts?.status === "active";
+  await syncAccountStatus(db, accountId, chargesEnabled, payoutsEnabled);
+  return { chargesEnabled, payoutsEnabled };
 }
 
 // ── Saving a client's card at booking ──

@@ -22,9 +22,7 @@ export async function GET() {
   let stripeOk = true;
   if (u.stripe_account_id) {
     try {
-      const account = await refreshAccount(db, u.stripe_account_id);
-      charges = !!account.charges_enabled;
-      payouts = !!account.payouts_enabled;
+      ({ chargesEnabled: charges, payoutsEnabled: payouts } = await refreshAccount(db, u.stripe_account_id));
       if (charges) money = await balance(u.stripe_account_id);
     } catch (err) {
       console.error("[stripe:status]", err);
