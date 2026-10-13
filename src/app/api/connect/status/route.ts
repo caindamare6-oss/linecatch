@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { balance, refreshAccount, payoutMethods, type PayoutMethod } from "@/lib/stripe-connect";
+import { balance, refreshAccount, payoutMethods, registerWalletDomain, type PayoutMethod } from "@/lib/stripe-connect";
 import { signedInBarber } from "@/lib/stripe-route";
 import { billingState } from "@/lib/billing-rules";
 
@@ -25,6 +25,9 @@ export async function GET() {
     try {
       ({ chargesEnabled: charges, payoutsEnabled: payouts } = await refreshAccount(db, u.stripe_account_id));
       if (charges) money = await balance(u.stripe_account_id);
+      // Keeps Apple Pay working on their booking page (also covers accounts approved before it existed).
+      const acct = u.stripe_account_id;
+      if (charges) after(() => registerWalletDomain(acct));
       methods = await payoutMethods(u.stripe_account_id);
     } catch (err) {
       console.error("[stripe:status]", err);
