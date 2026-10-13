@@ -16,7 +16,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 // ── The barber's payout account ──
 
 export async function ensureConnectedAccount(db: Admin, userId: string): Promise<string> {
-  const { data: u } = await db.from("users").select("stripe_account_id, email, business_name, first_name").eq("user_id", userId).single();
+  const { data: u } = await db.from("users").select("stripe_account_id, email, business_name, first_name, slug").eq("user_id", userId).single();
   if (!u) throw new Error("Barber not found");
   if (u.stripe_account_id) return u.stripe_account_id;
   // Accounts v2 (Stripe no longer allows v1 accounts for new Connect platforms). No Stripe
@@ -26,17 +26,25 @@ export async function ensureConnectedAccount(db: Admin, userId: string): Promise
     {
       display_name: u.business_name || u.first_name || undefined,
       contact_email: u.email || undefined,
-      identity: { country: "us" },
+      // Shortest onboarding without filling in anyone's personal details: they're a barber
+      // working as an individual, and their LineCatch page is their website.
+      identity: { country: "us", entity_type: "individual" },
       dashboard: "none",
-      defaults: { responsibilities: { fees_collector: "stripe", losses_collector: "stripe" } },
+      defaults: {
+        profile: {
+          product_description: "Haircuts and barber services",
+          ...(u.slug ? { business_url: `${appUrl()}/${u.slug}` } : {}),
+        },
+        responsibilities: { fees_collector: "stripe", losses_collector: "stripe" } },
       configuration: {
         merchant: {
+          mcc: "7241", // Barber and beauty shops
           capabilities: { card_payments: { requested: true } },
         },
       },
       metadata: { user_id: userId },
     },
-    { idempotencyKey: `connect-v2-none-${userId}` }
+    { idempotencyKey: `connect-v2-short-${userId}` }
   );
   await db.from("users").update({ stripe_account_id: account.id }).eq("user_id", userId);
   return account.id;
@@ -50,6 +58,8 @@ export async function onboardingUrl(db: Admin, userId: string): Promise<string> 
     use_case: {
       type: "account_onboarding",
       account_onboarding: {
+        // Only what Stripe needs right now, nothing it might want later.
+        collection_options: { fields: "currently_due", future_requirements: "omit" },
         refresh_url: `${appUrl()}/api/connect/onboard?again=1`,
         return_url: `${appUrl()}/dashboard/settings?connect=done#payments`,
       },
