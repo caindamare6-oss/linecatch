@@ -135,7 +135,7 @@ export async function addDebitCard(db: Admin, userId: string, token: string) {
   } catch (err) {
     const e = err as { code?: string; message?: string };
     console.error("[stripe:debit-card]", e.code, e.message);
-    return { ok: false as const, error: e.code === "card_declined" || /debit/i.test(e.message || "") ? "payouts.err_not_debit" : "payouts.err_card" };
+    return { ok: false as const, error: e.code === "invalid_card_type" || /debit|credit/i.test(e.message || "") ? "payouts.err_not_debit" : "payouts.err_card" };
   }
 }
 

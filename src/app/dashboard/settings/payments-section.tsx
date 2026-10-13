@@ -40,6 +40,10 @@ export function useStripeStatus() {
   const load = useCallback(() => fetch("/api/connect/status").then((r) => (r.ok ? r.json() : null)).then(setS).catch(() => {}), []);
   useEffect(() => {
     load();
+    // Back from Stripe's setup pages: Stripe can take a few seconds to approve, so check again.
+    if (!new URLSearchParams(window.location.search).has("connect")) return;
+    const again = [4000, 10000].map((ms) => setTimeout(load, ms));
+    return () => again.forEach(clearTimeout);
   }, [load]);
   return { s, reload: load };
 }
