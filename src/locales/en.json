@@ -460,6 +460,8 @@
     "language": "Language",
     "language_hint": "Changes the app only. Texts to clients go out in English, or Spanish if they booked in Spanish.",
     "g_shop": "Shop",
+    "weekly_email": "Weekly summary email",
+    "weekly_email_hint": "Mondays: missed calls LineCatch caught, how many booked, and the money saved.",
     "photo": "Photo",
     "photo_hint": "Optional. Shows on your story image.",
     "photo_add": "Add photo",

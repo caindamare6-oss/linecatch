@@ -40,6 +40,7 @@ type Settings = {
   business_hours: Hours | null;
   timezone: string;
   feature_autotext: boolean | null;
+  weekly_email: boolean | null;
   barber_language: string;
   slug: string | null;
   cover_url: string | null;
@@ -157,6 +158,12 @@ export default function SettingsPage() {
       </Group>
 
       <Group id="account" title={t("settings.account")} summary={s.email || ""}>
+        <Toggle
+          label={t("settings.weekly_email")}
+          hint={t("settings.weekly_email_hint")}
+          on={s.weekly_email !== false}
+          onChange={async (v) => (await patch({ weekly_email: v })) ?? (set({ weekly_email: v }), null)}
+        />
         <Card className="px-4 py-3.5 flex items-center gap-3">
           <p className="flex-1 text-[12px] text-white/45 leading-snug">{t("settings.language_hint")}</p>
           <LanguageToggle

@@ -1,91 +1,46 @@
 import { NextResponse } from "next/server";
 import { barberLocalToUTC } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendSMS } from "@/lib/twilio";
-import { resolveTemplate, interpolateTemplate } from "@/lib/messages";
+import { sendEmail } from "@/lib/email";
 import { DEFAULT_TZ } from "@/lib/config";
+import { hasNews, weeklyNumbers, weeklySummaryEmail } from "@/lib/weekly-summary";
 
+/**
+ * Hourly; acts at 8am Monday on each barber's own clock. Emails the barber their week:
+ * missed calls caught → booked → money saved. Skips barbers with nothing caught or who turned it off.
+ */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createAdminClient();
+  const db = createAdminClient();
   const now = new Date();
   let sent = 0;
 
-  const { data: barbers } = await supabase
+  const { data: barbers } = await db
     .from("users")
-    .select("user_id, phone_number, forwarding_number, business_name, timezone, is_locked_out, is_active, avg_booking_value, barber_language")
+    .select("user_id, email, business_name, timezone")
     .eq("is_active", true)
-    .eq("is_locked_out", false);
+    .eq("is_locked_out", false)
+    .eq("weekly_email", true)
+    .not("email", "is", null);
 
-  if (!barbers || barbers.length === 0) {
-    return NextResponse.json({ sent: 0 });
-  }
+  for (const b of barbers || []) {
+    const tz = b.timezone || DEFAULT_TZ;
+    const local = new Date(now.toLocaleString("en-US", { timeZone: tz }));
+    if (local.getDay() !== 1 || local.getHours() !== 8) continue;
 
-  for (const barber of barbers) {
-    const tz = barber.timezone || DEFAULT_TZ;
-    const localTime = new Date(now.toLocaleString("en-US", { timeZone: tz }));
-    if (localTime.getDay() !== 0 || localTime.getHours() !== 9) continue;
-
-    // Last 7 days, midnight to midnight on the barber's wall clock.
+    // Last Monday 00:00 to this Monday 00:00, on the barber's wall clock.
     const ymd = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: tz });
-    const weekEnd = barberLocalToUTC(ymd(now), "00:00", tz);
-    const weekStart = barberLocalToUTC(ymd(new Date(weekEnd.getTime() - 6.5 * 86_400_000)), "00:00", tz);
+    const end = barberLocalToUTC(ymd(now), "00:00", tz);
+    const start = barberLocalToUTC(ymd(new Date(end.getTime() - 6.5 * 86_400_000)), "00:00", tz);
 
-    const [{ data: done }, { data: services }] = await Promise.all([
-      supabase
-        .from("bookings")
-        .select("service_id")
-        .eq("user_id", barber.user_id)
-        .eq("status", "completed")
-        .gte("booking_time", weekStart.toISOString())
-        .lt("booking_time", weekEnd.toISOString()),
-      supabase.from("services").select("id, price").eq("user_id", barber.user_id),
-    ]);
+    const numbers = await weeklyNumbers(db, b.user_id, start, end);
+    if (!hasNews(numbers)) continue;
 
-    const cuts = done?.length || 0;
-    if (cuts === 0) continue;
-
-    // Actual service prices, so the recap matches the dashboard.
-    const prices = new Map((services || []).map((sv) => [sv.id, Number(sv.price)]));
-    const revenue = String(Math.round((done || []).reduce((sum, b) => sum + (prices.get(b.service_id) ?? barber.avg_booking_value ?? 35), 0)));
-
-    const { count: missedCaught } = await supabase
-      .from("missed_calls_log")
-      .select("call_id", { count: "exact", head: true })
-      .eq("user_id", barber.user_id)
-      .eq("status", "sms_sent")
-      .gte("timestamp", weekStart.toISOString())
-      .lt("timestamp", weekEnd.toISOString());
-
-    const { data: barberProfile } = await supabase
-      .from("users")
-      .select("first_name")
-      .eq("user_id", barber.user_id)
-      .single();
-
-    const barberName = barberProfile?.first_name || barber.business_name || "Boss";
-
-    const template = await resolveTemplate(barber.user_id, "weekly_report", barber.barber_language || "en");
-    const msg = template
-      ? interpolateTemplate(template, {
-          barber_name: barberName,
-          cuts: String(cuts),
-          revenue,
-          missed_caught: String(missedCaught || 0),
-        })
-      : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, and ${missedCaught || 0} missed calls caught.`;
-
-    try {
-      if (!barber.forwarding_number) continue;
-      await sendSMS({ to: barber.forwarding_number, from: barber.phone_number, body: msg, userId: barber.user_id, templateKey: "weekly_report", language: barber.barber_language || "en", audience: "barber" });
-      sent++;
-    } catch (err) {
-      console.error(`Weekly report failed for ${barber.user_id}:`, err);
-    }
+    const { subject, html } = weeklySummaryEmail(numbers, b.business_name?.trim() || null);
+    if (await sendEmail({ to: b.email!, subject, html, replyTo: "support@linecatch.app" })) sent++;
   }
 
   return NextResponse.json({ sent });

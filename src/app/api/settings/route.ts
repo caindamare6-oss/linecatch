@@ -12,7 +12,7 @@ import { REWARD_TYPES, type RewardType } from "@/lib/loyalty-rules";
 import { MIN_FEE_PERCENT, MAX_FEE_PERCENT } from "@/lib/billing-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
+  "first_name, email, business_name, phone_number, forwarding_number, booking_link, custom_message, business_hours, timezone, feature_autotext, weekly_email, barber_language, accent_color, slug, cover_url, plan, is_locked_out, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
 
 export async function GET() {
   const supabase = await createClient();
@@ -107,7 +107,7 @@ export async function PATCH(request: Request) {
     if (!h.ok) return bad(h.error);
     update.business_hours = h.value;
   }
-  for (const key of ["feature_autotext"] as const) {
+  for (const key of ["feature_autotext", "weekly_email"] as const) {
     if (key in body) {
       if (typeof body[key] !== "boolean") return bad("Invalid toggle");
       update[key] = body[key];
