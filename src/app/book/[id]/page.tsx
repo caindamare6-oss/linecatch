@@ -6,7 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Calendar, Check, ChevronLeft, ChevronRight, MessageSquare, Scissors, User, Users, Wallet } from "lucide-react";
 import { normalizePhone } from "@/lib/phone";
 import { barberLocalToUTC } from "@/lib/format";
-import { consentText } from "@/lib/consent";
+import { consentText, offersConsentText } from "@/lib/consent";
 import { DEFAULT_TZ, money } from "@/lib/config";
 import { rewardLabel, type Loyalty } from "@/lib/loyalty-rules";
 import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
@@ -104,6 +104,8 @@ function BookingContent() {
   const [slots, setSlots] = useState<string[]>([]);
   // Which date/service/party the current `slots` are for; anything else is still loading.
   const [slotsFor, setSlotsFor] = useState("");
+  // The optional "openings and deals" box (who gets broadcasts). Off until they tick it.
+  const [offersOptIn, setOffersOptIn] = useState(false);
   const [firstName, setFirstName] = useState(() => (forBarber ? (searchParams.get("name") || "").slice(0, 40) : ""));
   const [phone, setPhone] = useState(() => (forBarber ? (searchParams.get("phone") || "").replace(/[^\d]/g, "").slice(0, 11) : ""));
   const [shopName, setShopName] = useState("");
@@ -209,6 +211,7 @@ function BookingContent() {
   const dateLabel = bookingDate ? f.date(bookingDate, { weekday: "short", month: "short", day: "numeric", timeZone: timezone }) : "";
   const partyLabel = partySize > 1 ? t("book.party_of", { n: partySize }) : t("book.just_me");
   const shownConsent = consentText(locale);
+  const shownOffers = offersConsentText(locale);
 
   function notMe() {
     forget();
@@ -264,6 +267,7 @@ function BookingContent() {
           userId: barberId,
           serviceId: service.id,
           serviceIds: partyServices.map((s) => s.id),
+          offersOptIn: !forBarber && offersOptIn,
           partySize,
           customerPhone,
           sessionToken: known?.token,
@@ -693,7 +697,21 @@ function BookingContent() {
                 )}
 
                 {!forBarber && (
-                  <p className="mt-4 text-[11px] text-white/30 leading-relaxed">
+                  <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked={offersOptIn} onChange={(e) => setOffersOptIn(e.target.checked)} className="sr-only peer" />
+                    <span
+                      className={`mt-0.5 w-5 h-5 rounded-[5px] border-2 shrink-0 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent-color)]/40 ${
+                        offersOptIn ? "bg-[var(--accent-color)] border-[var(--accent-color)]" : "border-white/20"
+                      }`}
+                    >
+                      {offersOptIn && <Check className="w-3 h-3 text-[var(--app-bg-deep,#0C0B0A)]" strokeWidth={3} />}
+                    </span>
+                    <span className="text-xs text-white/50 leading-relaxed">{shownOffers}</span>
+                  </label>
+                )}
+
+                {!forBarber && (
+                  <p className="mt-3 text-[11px] text-white/30 leading-relaxed">
                     {shownConsent}{" "}
                     <Link href="/privacy" className="text-[var(--accent-color)]/70 hover:underline">{t("common.privacy")}</Link>
                     {" & "}

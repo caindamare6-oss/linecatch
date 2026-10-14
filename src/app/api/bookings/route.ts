@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { normalizePhone } from "@/lib/phone";
-import { consentText } from "@/lib/consent";
+import { offersConsentText } from "@/lib/consent";
 import { getT } from "@/lib/i18n-server";
 import { CLIENT_PAYMENTS, DEFAULT_TZ, appUrl } from "@/lib/config";
 import { isLocale, translate } from "@/lib/i18n-shared";
@@ -56,17 +56,17 @@ export async function POST(request: Request) {
     .eq("phone_number", normalized)
     .maybeSingle();
 
-  // Booking agrees to appointment texts (the line under the Book button). Recorded only when the
-  // client books themselves; that record is also who gets broadcasts. STOP always wins.
-  const selfBooked = source !== "barber";
-  const consent = selfBooked
+  // Booking agrees to appointment texts (the line under the Book button), so those go to everyone.
+  // Openings and deals (broadcasts) only go to clients who ticked the optional box. STOP always wins.
+  const optedIntoOffers = source !== "barber" && body.offersOptIn === true;
+  const consent = optedIntoOffers
     ? {
         is_opted_in: true,
         opted_in_at: new Date().toISOString(),
         opt_in_source: "booking_form",
         opt_in_ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown",
         opt_in_user_agent: request.headers.get("user-agent") || "unknown",
-        consent_text: consentText(clientLanguage),
+        consent_text: offersConsentText(clientLanguage),
       }
     : null;
 

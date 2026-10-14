@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   if (barber.is_locked_out) {
     return NextResponse.json({ error: "Texting is paused on your account. Contact support." }, { status: 402 });
   }
-  // Clients who booked themselves (and agreed to texts doing it). Callers who never booked aren't recipients.
+  // Only clients who ticked openings and deals when booking. Everyone else just gets appointment texts.
   const recipients = await broadcastRecipients(admin, user.id);
   let sent = 0;
   for (const r of recipients) {
