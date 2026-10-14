@@ -11,7 +11,7 @@ export async function GET() {
   const db = createAdminClient();
   const { data: u } = await db
     .from("users")
-    .select("billing_status, trial_ends_at, billing_grace_until, stripe_subscription_id, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, protection_enabled, no_show_fee_percent")
+    .select("referred_by, billing_status, trial_ends_at, billing_grace_until, stripe_subscription_id, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, protection_enabled, no_show_fee_percent")
     .eq("user_id", me.userId)
     .single();
   if (!u) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -44,7 +44,7 @@ export async function GET() {
     .limit(10);
 
   return NextResponse.json({
-    billing: { ...billingState(u), hasCard: !!u.stripe_subscription_id },
+    billing: { ...billingState(u), hasCard: !!u.stripe_subscription_id, referred: !!u.referred_by },
     connect: {
       started: !!u.stripe_account_id,
       chargesEnabled: charges,

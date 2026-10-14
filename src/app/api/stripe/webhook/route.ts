@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncSubscription } from "@/lib/stripe-billing";
+import { rewardReferral, syncSubscription } from "@/lib/stripe-billing";
 import { syncAccount } from "@/lib/stripe-connect";
 
 /**
@@ -53,6 +53,16 @@ export async function POST(request: Request) {
       case "customer.subscription.resumed":
         await syncSubscription(db, event.data.object as Stripe.Subscription);
         break;
+      case "invoice.paid": {
+        // A referred barber's first real payment rewards whoever sent them.
+        const inv = event.data.object as Stripe.Invoice;
+        const customerId = typeof inv.customer === "string" ? inv.customer : inv.customer?.id;
+        if (inv.amount_paid > 0 && customerId) {
+          const { data: u } = await db.from("users").select("user_id").eq("stripe_customer_id", customerId).maybeSingle();
+          if (u) await rewardReferral(db, u.user_id);
+        }
+        break;
+      }
       case "account.updated":
         await syncAccount(db, event.data.object as Stripe.Account);
         break;

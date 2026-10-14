@@ -21,9 +21,11 @@ export const CLIENT_PAYMENTS = false;
 
 
 
-/** Referral rewards. */
-export const REFERRER_FREE_MONTHS = 1;
-export const REFERRED_PERCENT_OFF = 50;
+/**
+ * Referrals: the new barber gets this much off their first month at checkout, and once they pay,
+ * the barber who sent them gets the same off a month (a credit on their next bill).
+ */
+export const REFERRAL_PERCENT_OFF = 50;
 
 export function money(cents: number, locale: "en" | "es" = "en"): string {
   const whole = cents % 100 === 0;

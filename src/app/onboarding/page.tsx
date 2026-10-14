@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT, useLocale, useSetLocale, type Locale } from "@/lib/i18n";
-import { REFERRED_PERCENT_OFF, DEFAULT_TZ } from "@/lib/config";
+import { REFERRAL_PERCENT_OFF, DEFAULT_TZ } from "@/lib/config";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import ForwardCallsStep from "./forward-calls-step";
 
@@ -136,7 +136,7 @@ function QuickSetup({ language, setLanguage, initial }: { language: Locale; setL
 
           {applied && (
             <p className="text-[13px] rounded-xl px-3.5 py-3" style={{ backgroundColor: "var(--ob-accent-glow)", color: "var(--ob-accent)" }}>
-              ✓ {t("step1.ref_applied", { code: applied.code, percent: REFERRED_PERCENT_OFF })}
+              ✓ {t("step1.ref_applied", { code: applied.code, percent: REFERRAL_PERCENT_OFF })}
             </p>
           )}
 

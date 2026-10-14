@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { applyReferral, ensureReferralCode, qualifyReferral, HEARD_FROM, REF_COOKIE, normalizeCode } from "@/lib/referrals";
+import { applyReferral, ensureReferralCode, HEARD_FROM, REF_COOKIE, normalizeCode } from "@/lib/referrals";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
@@ -58,7 +58,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
     await ensureReferralCode(admin, user.id);
-    await qualifyReferral(admin, user.id);
     assignNumberSoon(user.id);
     return NextResponse.json({ ok: true });
   }
@@ -213,9 +212,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
 
-    // Their own code for referring others, and the referral (if any) now counts.
+    // Their own code for referring others.
     await ensureReferralCode(admin, user.id);
-    await qualifyReferral(admin, user.id);
 
     assignNumberSoon(user.id);
     return NextResponse.json({ ok: true });

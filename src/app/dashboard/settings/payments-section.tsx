@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { SectionLabel, Card, GoldButton, GhostButton, Segmented, SERIF } from "../ui";
 import { useT, useLocale } from "@/lib/i18n";
-import { money } from "@/lib/config";
+import { REFERRAL_PERCENT_OFF, money } from "@/lib/config";
 import { SOLO_PRICE_CENTS } from "@/lib/billing-rules";
 import { DebitCardForm } from "./debit-card-form";
 
 type Status = {
-  billing: { status: string; banner: "trial" | "add_card" | "past_due" | "paused" | null; daysLeft: number | null; hasCard: boolean };
+  billing: { status: string; banner: "trial" | "add_card" | "past_due" | "paused" | null; daysLeft: number | null; hasCard: boolean; referred: boolean };
   connect: {
     started: boolean;
     chargesEnabled: boolean;
@@ -49,11 +49,12 @@ export function useStripeStatus() {
 }
 
 /** Settings → Billing: the barber's own $49/month plan. */
-export function BillingSection({ s }: { s: Status | null }) {
+export function BillingSection({ s, reload }: { s: Status | null; reload: () => void }) {
   const t = useT();
   const locale = useLocale();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [code, setCode] = useState("");
   if (!s) return null;
   const b = s.billing;
   const price = money(SOLO_PRICE_CENTS, locale);
@@ -89,6 +90,32 @@ export function BillingSection({ s }: { s: Status | null }) {
             </GoldButton>
           )}
         </div>
+        {!managed && !b.referred && (
+          <form
+            className="mt-3 flex gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!code.trim()) return;
+              setBusy(true);
+              setErr("");
+              const res = await fetch("/api/referrals", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+              const body = await res.json().catch(() => ({}));
+              if (res.ok) reload();
+              else setErr(`step1.err_${body.error || "not_found"}`);
+              setBusy(false);
+            }}
+          >
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder={t("billing.ref_placeholder")}
+              aria-label={t("billing.ref_placeholder")}
+              className="min-w-0 flex-1 h-10 rounded-xl bg-white/[0.04] border border-white/[0.1] px-3 text-[14px] uppercase tracking-[1px] placeholder:normal-case placeholder:tracking-normal placeholder-white/30 outline-none focus:border-[var(--accent-color)]/50"
+            />
+            <button disabled={busy || !code.trim()} className="h-10 px-4 rounded-xl border border-white/[0.14] text-[13px] font-semibold disabled:opacity-40">{t("billing.ref_apply")}</button>
+          </form>
+        )}
+        {!managed && b.referred && <p className="text-[12px] text-[var(--app-ok)] mt-2.5">{t("billing.ref_applied", { percent: REFERRAL_PERCENT_OFF })}</p>}
         <p className="text-[11px] text-white/35 mt-2.5 leading-snug">{t("billing.note")}</p>
         {err && <p className="text-[12px] text-[var(--app-danger)] mt-1.5" role="alert">{t(err)}</p>}
       </Card>

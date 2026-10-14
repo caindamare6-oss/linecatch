@@ -159,7 +159,6 @@ export default function SettingsPage() {
         />
       </section>
 
-      <InstallCard />
 
       <section id="features">
         <SectionLabel>{t("settings.included")}</SectionLabel>
@@ -177,7 +176,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <BillingSection s={pay} />
+      <BillingSection s={pay} reload={reloadPay} />
 
       {CLIENT_PAYMENTS && <PaymentsSection s={pay} reload={reloadPay} patch={patch} />}
 
@@ -334,63 +333,6 @@ function ForwardingCard({ s, onMode, onCarrier }: { s: Settings; onMode: (m: "fo
   );
 }
 
-type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
-
-/** "Put LineCatch on your home screen": hidden once it's opened from the home screen. */
-function InstallCard() {
-  const t = useT();
-  // Settings only renders in the browser (after it loads), so navigator and matchMedia are there.
-  const [installed] = useState(() => window.matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true);
-  const [iphone] = useState(() => /iPhone|iPad|iPod/i.test(navigator.userAgent));
-  const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
-  const [done, setDone] = useState(false);
-  useEffect(() => {
-    // Android Chrome offers a real "Install" button.
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      setPrompt(e as InstallPrompt);
-    };
-    const onInstalled = () => setDone(true);
-    window.addEventListener("beforeinstallprompt", onPrompt);
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
-  }, []);
-  if (installed) return null;
-
-  return (
-    <section id="app">
-      <SectionLabel>{t("install.section")}</SectionLabel>
-      <Card className="p-4 space-y-3">
-        <p className="text-[14px] text-white/85">{t("install.title")}</p>
-        {done ? (
-          <p className="text-[13px] text-[var(--app-ok)]">✓ {t("install.done")}</p>
-        ) : prompt ? (
-          <button
-            onClick={async () => {
-              await prompt.prompt();
-              if ((await prompt.userChoice).outcome === "accepted") setDone(true);
-              setPrompt(null);
-            }}
-            className="w-full h-11 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] text-[13px] font-semibold"
-          >
-            {t("install.button")}
-          </button>
-        ) : (
-          <ol className="space-y-1.5 text-[13px] text-white/65 list-decimal pl-5">
-            {(iphone ? ["iphone_1", "iphone_2", "iphone_3"] : ["android_1", "android_2", "android_3"]).map((k) => (
-              <li key={k}>{t(`install.${k}`)}</li>
-            ))}
-          </ol>
-        )}
-        <p className="text-[12px] text-white/40 leading-relaxed">{t(iphone ? "install.login_iphone" : "install.login")}</p>
-        {iphone && <p className="text-[12px] text-white/40 leading-relaxed">{t("install.safari_tip")}</p>}
-      </Card>
-    </section>
-  );
-}
 
 function NavRow({ href, label }: { href: string; label: string }) {
   return (
@@ -732,7 +674,7 @@ function HoursEditor({ initial, timezone, onSaved }: { initial: Hours | null; ti
   );
 }
 
-type Referral = { code: string; link: string; signedUp: number; qualified: number; freeMonths: number; discountPercent: number | null; rewards: { referredPercentOff: number } };
+type Referral = { code: string; link: string; signedUp: number; paid: number; discountPending: boolean; percent: number };
 
 function ReferCard() {
   const t = useT();
@@ -745,7 +687,7 @@ function ReferCard() {
       .catch(() => {});
   }, []);
   if (!r) return null;
-  const percent = r.rewards.referredPercentOff;
+  const percent = r.percent;
   const shareText = t("settings.refer_share_text", { percent });
 
   async function share() {
@@ -779,11 +721,10 @@ function ReferCard() {
             {copied ? t("common.copied") : t("settings.refer_share")}
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-3">
+        <div className="grid grid-cols-2 gap-2 mt-3">
           {[
             [r.signedUp, t("settings.refer_joined")],
-            [r.qualified, t("settings.refer_qualified")],
-            [r.freeMonths, t("settings.refer_free")],
+            [r.paid, t("settings.refer_qualified", { percent })],
           ].map(([n, label]) => (
             <div key={String(label)} className="rounded-xl bg-white/[0.03] py-2.5 text-center">
               <p className={`${SERIF} text-[18px] font-semibold`}>{n}</p>
@@ -791,7 +732,7 @@ function ReferCard() {
             </div>
           ))}
         </div>
-        {r.discountPercent ? <p className="text-[12px] text-[var(--app-ok)] mt-3">{t("settings.refer_discount", { percent: r.discountPercent })}</p> : null}
+        {r.discountPending ? <p className="text-[12px] text-[var(--app-ok)] mt-3">{t("settings.refer_discount", { percent })}</p> : null}
       </Card>
     </section>
   );

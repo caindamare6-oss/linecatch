@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
 import { getStripeClient } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { appUrl } from "@/lib/config";
+import { REFERRAL_PERCENT_OFF, appUrl } from "@/lib/config";
 import { SOLO_PRICE_CENTS, SOLO_PRICE_LOOKUP_KEY, fromStripeStatus, GRACE_DAYS, type BillingStatus } from "@/lib/billing-rules";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -19,6 +19,18 @@ export async function soloPriceId(stripe: Stripe = getStripeClient()): Promise<s
     lookup_key: SOLO_PRICE_LOOKUP_KEY,
   });
   return price.id;
+}
+
+const REFERRAL_COUPON_ID = "lc-referral-50";
+
+/** "50% off one month": made in Stripe the first time it's needed. */
+async function referralCouponId(stripe: Stripe = getStripeClient()): Promise<string> {
+  try {
+    return (await stripe.coupons.retrieve(REFERRAL_COUPON_ID)).id;
+  } catch {
+    const c = await stripe.coupons.create({ id: REFERRAL_COUPON_ID, percent_off: REFERRAL_PERCENT_OFF, duration: "once", name: `Referral: ${REFERRAL_PERCENT_OFF}% off a month` });
+    return c.id;
+  }
 }
 
 /** The barber's Stripe customer, made once and saved. */
@@ -46,6 +58,8 @@ export async function ensureCustomer(db: Admin, userId: string): Promise<string>
 export async function checkoutUrl(db: Admin, userId: string): Promise<string> {
   const { data: u } = await db.from("users").select("trial_ends_at, billing_status").eq("user_id", userId).single();
   const customer = await ensureCustomer(db, userId);
+  // Referred and not paid yet: their first month is discounted right on Stripe's page.
+  const { data: ref } = await db.from("referrals").select("id").eq("referred_user_id", userId).eq("status", "signed_up").maybeSingle();
   const trialEnd = u?.trial_ends_at ? Math.floor(new Date(u.trial_ends_at).getTime() / 1000) : 0;
   // Stripe needs a trial end at least 48 hours away.
   const keepTrial = trialEnd > Math.floor(Date.now() / 1000) + 48 * 3600;
@@ -55,6 +69,7 @@ export async function checkoutUrl(db: Admin, userId: string): Promise<string> {
     line_items: [{ price: await soloPriceId(), quantity: 1 }],
     subscription_data: { metadata: { user_id: userId }, ...(keepTrial ? { trial_end: trialEnd } : {}) },
     payment_method_collection: "always",
+    ...(ref ? { discounts: [{ coupon: await referralCouponId() }] } : {}),
     client_reference_id: userId,
     success_url: `${appUrl()}/dashboard/settings?billing=added#billing`,
     cancel_url: `${appUrl()}/dashboard/settings#billing`,
@@ -100,4 +115,27 @@ export async function syncSubscription(db: Admin, sub: Stripe.Subscription) {
   }
   await db.from("users").update(update).eq("user_id", u.user_id);
   return { userId: u.user_id, status };
+}
+
+/**
+ * A referred barber paid their first month: the barber who sent them gets 50% off a month, as a
+ * credit Stripe takes off their next bill. Runs once per referral (Stripe retries are safe).
+ */
+export async function rewardReferral(db: Admin, referredId: string) {
+  const { data: ref } = await db.from("referrals").select("id, referrer_user_id").eq("referred_user_id", referredId).eq("status", "signed_up").maybeSingle();
+  if (!ref) return null;
+  const customer = await ensureCustomer(db, ref.referrer_user_id);
+  await getStripeClient().customers.createBalanceTransaction(
+    customer,
+    { amount: -Math.round((SOLO_PRICE_CENTS * REFERRAL_PERCENT_OFF) / 100), currency: "usd", description: `Referral reward: ${REFERRAL_PERCENT_OFF}% off a month` },
+    { idempotencyKey: `referral-reward-${ref.id}` }
+  );
+  await db.from("referrals").update({ status: "qualified", qualified_at: new Date().toISOString() }).eq("id", ref.id);
+  await db.from("activity_feed").insert({
+    user_id: ref.referrer_user_id,
+    event_type: "referral_qualified",
+    description: `A barber you referred paid their first month. You get ${REFERRAL_PERCENT_OFF}% off your next month.`,
+    metadata: { referral_id: ref.id },
+  });
+  return ref.id;
 }
