@@ -59,12 +59,10 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
             </div>
           </div>
 
-          <span className="pf2-rise mt-8 inline-flex px-2.5 py-1 rounded-full text-[12px] font-bold uppercase tracking-[1px] bg-[var(--t-cta-bg)] text-[var(--t-cta-text)]" style={{ animationDelay: "0.1s" }}>
-            {t("shop.barber")}
-          </span>
-          <h1 className={`${POSTER} mt-2.5 text-[clamp(52px,15vw,72px)] [text-wrap:balance]`}>{words(data.shopName, 0.2)}</h1>
+          {/* The barber's name first, then their shop: "Damare Cain, with Freely Shop". */}
+          <h1 className={`${POSTER} mt-8 text-[clamp(52px,15vw,72px)] [text-wrap:balance]`}>{words(data.firstName || data.shopName, 0.2)}</h1>
           <p className="pf2-rise mt-2 text-base font-medium text-[var(--t-muted)]" style={{ animationDelay: "0.35s" }}>
-            {[data.firstName && t("shop.with", { name: data.firstName }), data.lowestPrice && t("shop.from", { price: data.lowestPrice })].filter(Boolean).join(" · ")}
+            {[data.firstName && t("shop.with", { name: data.shopName }), data.lowestPrice && t("shop.from", { price: data.lowestPrice })].filter(Boolean).join(" · ")}
           </p>
 
           {data.instagram && (

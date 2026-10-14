@@ -240,11 +240,13 @@ const STARTER_SERVICES = {
     { name: "Lineup", description: "Sharp edges and shape-up", price: 30, duration_minutes: 30 },
     { name: "Taper", description: "Taper with a lineup", price: 35, duration_minutes: 45 },
     { name: "Full Service", description: "Taper, lineup and beard", price: 45, duration_minutes: 60 },
+    { name: "Kids Cut", description: "Ages 12 and under", price: 25, duration_minutes: 30 },
   ],
   es: [
     { name: "Lineup", description: "Contornos definidos y perfilado", price: 30, duration_minutes: 30 },
     { name: "Taper", description: "Taper con lineup", price: 35, duration_minutes: 45 },
     { name: "Servicio completo", description: "Taper, lineup y barba", price: 45, duration_minutes: 60 },
+    { name: "Corte para niños", description: "Hasta 12 años", price: 25, duration_minutes: 30 },
   ],
 } as const;
 

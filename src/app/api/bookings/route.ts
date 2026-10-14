@@ -96,18 +96,23 @@ export async function POST(request: Request) {
   const smsLanguage = clientLanguage || vipClient?.client_language || "en";
 
 
-  // Verify service exists
-  const { data: service } = await supabase
+  // One cut per person, in order (the person booking first). Older pages send one serviceId for everyone.
+  const ids: string[] = Array.isArray(body.serviceIds) ? body.serviceIds : Array(partySize).fill(serviceId);
+  if (ids.length !== partySize || !ids.every((x) => typeof x === "string" && x)) {
+    return NextResponse.json({ error: t("book.err_missing") }, { status: 400 });
+  }
+  const { data: found } = await supabase
     .from("services")
     .select("id, name, price, duration_minutes")
-    .eq("id", serviceId)
+    .in("id", [...new Set(ids)])
     .eq("user_id", userId)
-    .eq("is_active", true)
-    .single();
-
-  if (!service) {
+    .eq("is_active", true);
+  const byId = new Map((found || []).map((s) => [s.id, s]));
+  const party = ids.map((id) => byId.get(id));
+  if (party.some((s) => !s)) {
     return NextResponse.json({ error: t("book.err_service_not_found") }, { status: 404 });
   }
+  const partyServices = party as NonNullable<(typeof party)[number]>[];
 
   const { data: barberHours } = await supabase
     .from("users")
@@ -117,7 +122,7 @@ export async function POST(request: Request) {
   const tz = barberHours?.timezone || DEFAULT_TZ;
 
   const bTime = new Date(bookingTime);
-  const totalMinutes = service.duration_minutes * partySize;
+  const totalMinutes = partyServices.reduce((m, s) => m + s.duration_minutes, 0);
   const TAKEN = t("book.err_taken");
 
   if (isNaN(bTime.getTime()) || bTime.getTime() <= Date.now()) {
@@ -139,11 +144,13 @@ export async function POST(request: Request) {
   }
 
   const groupId = partySize > 1 ? crypto.randomUUID() : null;
-  const rows = Array.from({ length: partySize }, (_, i) => ({
+  // Back to back, each person's cut taking its own time.
+  const startMin = partyServices.map((_, i) => partyServices.slice(0, i).reduce((m, s) => m + s.duration_minutes, 0));
+  const rows = partyServices.map((s, i) => ({
     user_id: userId,
-    service_id: serviceId,
+    service_id: s.id,
     customer_phone: normalized,
-    booking_time: new Date(bTime.getTime() + i * service.duration_minutes * 60 * 1000).toISOString(),
+    booking_time: new Date(bTime.getTime() + startMin[i] * 60 * 1000).toISOString(),
     status: "confirmed",
     source: source || "direct",
     ...(groupId ? { group_id: groupId } : {}),
@@ -185,7 +192,7 @@ export async function POST(request: Request) {
   }
 
   const booking = created[0];
-  const serviceLabel = partySize > 1 ? `${service.name} x${partySize}` : service.name;
+  const serviceLabel = partyServices.map((s) => s.name).join(" + ");
   const clientName = firstName?.trim() || vipClient?.first_name || null;
   await supabase.from("activity_feed").insert({
     user_id: userId,
@@ -193,7 +200,7 @@ export async function POST(request: Request) {
     client_name: clientName,
     client_phone: normalized,
     description: `${clientName || "New client"} booked ${serviceLabel}`,
-    metadata: { booking_id: booking.id, group_id: groupId, party_size: partySize, service_name: service.name, price: Number(service.price) * partySize, source: source || "direct" },
+    metadata: { booking_id: booking.id, group_id: groupId, party_size: partySize, service_name: serviceLabel, price: partyServices.reduce((sum, s) => sum + Number(s.price), 0), source: source || "direct" },
   });
 
   // Get barber info for confirmation SMS and barber notify

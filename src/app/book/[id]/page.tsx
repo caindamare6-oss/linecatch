@@ -96,6 +96,9 @@ function BookingContent() {
   const [services, setServices] = useState<Service[]>([]);
   const [pickedService, setService] = useState<Service | null>(null);
   const [partySize, setPartySize] = useState(1);
+  // Everyone after the person booking picks their own cut; `person` is whose cut is being picked.
+  const [others, setOthers] = useState<(Service | null)[]>([]);
+  const [person, setPerson] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
@@ -129,6 +132,22 @@ function BookingContent() {
 
   // 1-tap rebook: a returning client's last service is preselected until they pick another.
   const service = pickedService ?? services.find((s) => s.id === known?.client.lastServiceId) ?? null;
+  const party = Array.from({ length: partySize }, (_, i) => (i === 0 ? service : others[i - 1] ?? null));
+  const partyReady = party.every(Boolean);
+  const partyServices = party.filter((s): s is Service => !!s);
+  const partyIds = partyServices.map((s) => s.id).join(",");
+  const serviceSummary = partyServices.map((s) => s.name).join(" + ");
+
+  function pickCut(s: Service) {
+    const next = [...party];
+    next[person] = s;
+    if (person === 0) setService(s);
+    else setOthers((o) => Object.assign([...o], { [person - 1]: s }));
+    setSelectedTime("");
+    // Move on to the next person who hasn't picked yet.
+    const open = next.findIndex((x, i) => i > person && !x);
+    if (open > 0) setPerson(open);
+  }
 
   useEffect(() => {
     async function load() {
@@ -161,14 +180,14 @@ function BookingContent() {
     load();
   }, [barberId]);
 
-  const slotKey = selectedDate && service ? `${selectedDate}|${service.id}|${partySize}` : "";
+  const slotKey = selectedDate && partyReady ? `${selectedDate}|${partyIds}` : "";
   const slotsLoading = !!slotKey && slotsFor !== slotKey;
 
   useEffect(() => {
-    if (!selectedDate || !service) return;
+    if (!selectedDate || !partyReady) return;
     let cancelled = false;
-    const key = `${selectedDate}|${service.id}|${partySize}`;
-    fetch(`/api/bookings/slots?userId=${barberId}&date=${selectedDate}&serviceId=${service.id}&partySize=${partySize}`)
+    const key = `${selectedDate}|${partyIds}`;
+    fetch(`/api/bookings/slots?userId=${barberId}&date=${selectedDate}&serviceIds=${partyIds}`)
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled) setSlots(data.slots || []);
@@ -182,10 +201,10 @@ function BookingContent() {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate, service, partySize, barberId]);
+  }, [selectedDate, partyReady, partyIds, barberId]);
 
-  const total = service ? service.price * partySize : 0;
-  const totalMinutes = service ? service.duration_minutes * partySize : 0;
+  const total = partyServices.reduce((sum, s) => sum + s.price, 0);
+  const totalMinutes = partyServices.reduce((m, s) => m + s.duration_minutes, 0);
   const bookingDate = selectedDate && selectedTime ? barberLocalToUTC(selectedDate, selectedTime, timezone) : null;
   const dateLabel = bookingDate ? f.date(bookingDate, { weekday: "short", month: "short", day: "numeric", timeZone: timezone }) : "";
   const partyLabel = partySize > 1 ? t("book.party_of", { n: partySize }) : t("book.just_me");
@@ -244,6 +263,7 @@ function BookingContent() {
         body: JSON.stringify({
           userId: barberId,
           serviceId: service.id,
+          serviceIds: partyServices.map((s) => s.id),
           partySize,
           customerPhone,
           sessionToken: known?.token,
@@ -304,13 +324,13 @@ function BookingContent() {
             <em className="text-[var(--accent-color)]">{forBarber ? t("book.done_barber_b") : t("book.done_b")}</em>
           </h1>
           <p className="text-sm text-white/45 mt-2 leading-relaxed">
-            {service?.name}{partySize > 1 ? t("book.party_suffix", { n: partySize }) : ""} · {dateLabel}, {formatSlot(selectedTime)}
+            {serviceSummary}{partySize > 1 ? t("book.party_suffix", { n: partySize }) : ""} · {dateLabel}, {formatSlot(selectedTime)}
             {getsTexts && !forBarber && <><br />{t("book.confirmation_coming")}</>}
           </p>
         </div>
 
         <div className="mt-7 w-full max-w-[300px] rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 text-left" style={fadeUp(500)}>
-          <SummaryRow label={t("book.service")} value={service?.name || ""} />
+          <SummaryRow label={t("book.service")} value={serviceSummary} />
           <SummaryRow label={t("book.party")} value={partyLabel} />
           <SummaryRow label={t("book.date")} value={dateLabel} />
           <SummaryRow label={t("book.time")} value={formatSlot(selectedTime)} />
@@ -403,7 +423,7 @@ function BookingContent() {
           )}
           {step === "time" && service && (
             <p className="text-[13px] text-white/50 mt-1.5">
-              {service.name} · {partyLabel.toLowerCase()} · {t("book.minutes", { n: totalMinutes })}{total > 0 && ` · ${usd(total, locale)}`}
+              {serviceSummary} · {partyLabel.toLowerCase()} · {t("book.minutes", { n: totalMinutes })}{total > 0 && ` · ${usd(total, locale)}`}
               {" · "}
               <button type="button" onClick={() => { setError(""); setStep("service"); }} className="font-semibold text-[var(--accent-color)] hover:underline underline-offset-2 min-h-[44px] -my-3 px-1">
                 {t("book.change")}
@@ -424,6 +444,7 @@ function BookingContent() {
                     aria-pressed={partySize === n}
                     onClick={() => {
                       setPartySize(n);
+                      setPerson((p) => Math.min(p, n - 1));
                       setSelectedTime("");
                     }}
                     className={`tap-spring ${HEADING} h-12 rounded-xl text-[15px] font-semibold border-[1.5px] flex items-center justify-center gap-1.5 ${
@@ -438,24 +459,39 @@ function BookingContent() {
                 ))}
               </div>
               <p className="text-xs text-white/25 mb-6">
-                {partySize > 1 ? t("book.same_service") : t("book.for_yourself")}
+                {partySize > 1 ? t("book.own_cut") : t("book.for_yourself")}
               </p>
 
               <SectionLabel>{t("book.choose_service")}</SectionLabel>
+              {partySize > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 mb-3 -mx-1 px-1" role="tablist" aria-label={t("book.who")}>
+                  {party.map((p, i) => (
+                    <button
+                      key={i}
+                      role="tab"
+                      aria-selected={person === i}
+                      onClick={() => setPerson(i)}
+                      className={`tap-spring shrink-0 min-h-12 px-3.5 py-2 rounded-xl border-[1.5px] text-left ${
+                        person === i ? "border-[var(--accent-color)] bg-[var(--accent-color)]/[0.08]" : "border-white/[0.06] bg-white/[0.02]"
+                      }`}
+                    >
+                      <span className="block text-[13px] font-semibold">{i === 0 ? t("book.person_you") : t("book.person_n", { n: i + 1 })}</span>
+                      <span className={`block text-[11px] mt-0.5 ${p ? "text-[var(--accent-color)]" : "text-white/35"}`}>{p ? p.name : t("book.pick_cut")}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {services.length === 0 ? (
                 <p className="text-white/30 text-sm text-center py-8">{t("book.no_services")}</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {services.map((s) => {
-                    const picked = service?.id === s.id;
+                    const picked = party[person]?.id === s.id;
                     return (
                       <button
                         key={s.id}
                         aria-pressed={picked}
-                        onClick={() => {
-                          setService(s);
-                          setSelectedTime("");
-                        }}
+                        onClick={() => pickCut(s)}
                         className={`tap-spring p-4 rounded-[14px] border-2 flex items-center gap-3.5 text-left ${
                           picked
                             ? "border-[var(--accent-color)]/60 bg-[var(--accent-color)]/[0.07] shadow-[0_0_22px_color-mix(in_srgb,var(--accent-color)_18%,transparent)]"
@@ -477,7 +513,6 @@ function BookingContent() {
                         {s.price > 0 && (
                           <span className={`${HEADING} text-base font-bold text-[var(--accent-color)]`}>
                             {usd(s.price, locale)}
-                            {partySize > 1 && <span className="text-xs text-white/30 font-medium">{t("book.each_short")}</span>}
                           </span>
                         )}
                       </button>
@@ -486,8 +521,16 @@ function BookingContent() {
                 </div>
               )}
             </div>
-            <BottomCta disabled={!service} onClick={() => setStep("time")} note={t(protection && !forBarber ? "pay.note_choice" : "book.pay_note")}>
-              {service ? t("book.pick_time") : t("book.choose_service")} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+            <BottomCta
+              disabled={!partyReady}
+              onClick={() => {
+                const open = party.findIndex((x) => !x);
+                if (open >= 0) setPerson(open);
+                else setStep("time");
+              }}
+              note={t(protection && !forBarber ? "pay.note_choice" : "book.pay_note")}
+            >
+              {partyReady ? t("book.pick_time") : t("book.choose_service")} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
         )}
@@ -574,7 +617,9 @@ function BookingContent() {
             <div className="flex-1 px-6 py-5 overflow-y-auto">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-[18px]" style={fadeUp(100)}>
                 <SectionLabel>{t("book.your_appointment")}</SectionLabel>
-                <DetailRow icon={<Scissors className="w-4 h-4" />} title={service.name} sub={`${t("book.minutes", { n: service.duration_minutes })}${service.price > 0 ? ` · ${usd(service.price, locale)}` : ""}${partySize > 1 ? t("book.each") : ""}`} />
+                {partyServices.map((s, i) => (
+                  <DetailRow key={i} icon={<Scissors className="w-4 h-4" />} title={partySize > 1 ? `${i === 0 ? t("book.person_you") : t("book.person_n", { n: i + 1 })}: ${s.name}` : s.name} sub={`${t("book.minutes", { n: s.duration_minutes })}${s.price > 0 ? ` · ${usd(s.price, locale)}` : ""}`} />
+                ))}
                 <Divider />
                 <DetailRow icon={<Users className="w-4 h-4" />} title={partyLabel} sub={partySize > 1 ? t("book.back_to_back", { n: totalMinutes }) : undefined} />
                 <Divider />
