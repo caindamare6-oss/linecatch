@@ -7,8 +7,10 @@ Do these in order. Nothing goes live until step 4, when you say "merge staging i
 - [ ] **Call forwarding on your phone (T-Mobile).** Dial `**004*18575052551**10#` and press call.
   Check it anytime with `*#004#`. It stays on until you dial `##004#`, reset network settings,
   or change SIM/eSIM. Test: have someone call your cell, decline, and you should get the text within seconds.
-- [ ] **A2P texting registration (Twilio → Messaging → Regulatory / Campaigns).** Check the campaign
-  is approved. Update it to match how texts work now (wording below). Remove "review requests".
+- [x] **A2P texting registration:** approved. Check the campaign's use case covers marketing
+  ("Mixed" or "Marketing") since broadcasts send openings and deals. If it's only customer care /
+  notifications, add a marketing campaign or skip broadcasts at launch. If Twilio lets you edit the
+  opt-in description, use the wording below (booking line + optional box, no review requests).
 - [ ] **Twilio:** turn on auto-recharge (each new barber's number is about $1.15/month).
   Make sure `TWILIO_MESSAGING_SERVICE_SID` is set in Vercel (Production) so new numbers join your A2P campaign.
 - [ ] **Vercel env:** live Supabase keys are set for "Production and Preview". Set them for Production only,
