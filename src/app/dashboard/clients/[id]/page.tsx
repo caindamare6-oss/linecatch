@@ -8,7 +8,7 @@ import { PageSkeleton } from "@/components/ui/skeleton";
 import { formatPhone, phoneFromPathId, clientPathId, shortAgo, type ClientSummary } from "@/lib/clients";
 import { useT, useFormat, useLocale } from "@/lib/i18n";
 import { money } from "@/lib/config";
-import { DEFAULT_LOYALTY, type Loyalty } from "@/lib/loyalty-rules";
+import { CARD_SIZE, DEFAULT_LOYALTY, rewardLabel, type Loyalty } from "@/lib/loyalty-rules";
 
 type Visit = { id: string; time: string; status: string; service: string; price: number };
 type Detail = { client: ClientSummary; barberId: string; notes: string; source: string | null; loyalty: Loyalty; history: Visit[] };
@@ -27,7 +27,7 @@ export default function ClientDetailPage() {
   const locale = useLocale();
   const phone = phoneFromPathId(id);
   const [data, setData] = useState<Detail | null>(null);
-  const reward = money((data?.loyalty ?? DEFAULT_LOYALTY).cents, locale);
+  const reward = rewardLabel(data?.loyalty ?? DEFAULT_LOYALTY, locale);
   const [error, setError] = useState(phone ? "" : t("client.not_found"));
 
   useEffect(() => {
@@ -64,8 +64,7 @@ export default function ClientDetailPage() {
         <NameEditor phone={c.phone} initial={c.name} />
         <a href={`tel:${c.phone}`} className="block text-[13px] text-white/40 mt-1">{formatPhone(c.phone)}</a>
         <div className="flex gap-1.5 justify-center mt-2.5">
-          {c.isVip && <Badge tone="vip">{t("clients.badge_vip")}</Badge>}
-          {c.optedOut ? <Badge tone="danger">{t("clients.badge_optout")}</Badge> : c.isVip ? <Badge tone="gold">{t("client.opted_in")}</Badge> : <Badge tone="muted">{t("clients.badge_notexts")}</Badge>}
+          {c.optedOut && <Badge tone="danger">{t("clients.badge_optout")}</Badge>}
           {c.rewardDue && c.visits > 0 && <Badge tone="due">{t("client.reward_next", { reward })}</Badge>}
         </div>
       </section>
@@ -85,10 +84,11 @@ export default function ClientDetailPage() {
       {data.loyalty?.enabled !== false && <section className="mb-6">
         <SectionLabel>{t("client.loyalty")}</SectionLabel>
         <Card className="p-4">
-          <div className="flex gap-1.5" aria-label={t("client.stamped", { n: c.stamps })}>
-            {Array.from({ length: Math.max(c.stamps + c.cutsToReward, 3) }, (_, i) => i).slice(-6).map((i) => {
-              const filled = i < c.stamps;
-              const isReward = i === c.stamps + c.cutsToReward - 1;
+          {/* This punch card: 10 slots, the last one is the reward. */}
+          <div className="grid grid-cols-5 gap-1.5" aria-label={t("client.stamped", { n: c.stamps })}>
+            {Array.from({ length: CARD_SIZE }, (_, i) => i).map((i) => {
+              const filled = i < CARD_SIZE - c.cutsToReward;
+              const isReward = i === CARD_SIZE - 1;
               return (
                 <span
                   key={i}
@@ -96,7 +96,7 @@ export default function ClientDetailPage() {
                     filled ? "bg-[var(--accent-color)] text-[var(--accent-fg)]" : isReward ? "border border-dashed border-[var(--app-warn)]/60 text-[var(--app-warn)]" : "bg-white/[0.05] text-white/25"
                   }`}
                 >
-                  {isReward && !filled ? reward : i + 1}
+                  {isReward && !filled ? "★" : i + 1}
                 </span>
               );
             })}

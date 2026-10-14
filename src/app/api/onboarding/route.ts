@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { applyReferral, ensureReferralCode, qualifyReferral, HEARD_FROM, REF_COOKIE, normalizeCode } from "@/lib/referrals";
+import { applyReferral, ensureReferralCode, HEARD_FROM, REF_COOKIE, normalizeCode } from "@/lib/referrals";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { cleanAddress, requestSticker } from "@/lib/sticker-request";
-import { claimSticker, pendingSticker, STICKER_COOKIE } from "@/lib/sticker-claim";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
 import { assignNumberSoon } from "@/lib/phone-numbers";
 import { THEME_IDS } from "@/lib/themes";
@@ -20,6 +18,49 @@ export async function POST(request: Request) {
   const { step } = body;
   const data = body.data && typeof body.data === "object" ? body.data : {};
   const admin = createAdminClient();
+
+  // The 60-second sign-up: shop name and cell. Services and hours start with defaults they can edit
+  // later; setup is finished and their LineCatch number is assigned right away.
+  if (step === "quick") {
+    const businessName = cleanText(data.businessName, 60);
+    if (!businessName) return NextResponse.json({ error: "Add your shop name", field: "businessName" }, { status: 400 });
+    const phone = cleanOptionalPhone(data.phone);
+    if (!phone.ok || !phone.value) return NextResponse.json({ error: phone.ok ? "Add your cell number" : phone.error, field: "phone" }, { status: 400 });
+    if (typeof data.referralCode === "string" && data.referralCode.trim()) {
+      const r = await applyReferral(admin, user.id, data.referralCode);
+      if (!r.ok) return NextResponse.json({ error: r.error, field: "referralCode" }, { status: 400 });
+    }
+    const language = data.language === "es" ? "es" : "en";
+    const update: Record<string, unknown> = {
+      business_name: businessName,
+      forwarding_number: phone.value,
+      email: user.email || null,
+      barber_language: language,
+      onboarding_completed: true,
+    };
+    if (typeof data.timezone === "string" && isTimeZone(data.timezone)) update.timezone = data.timezone;
+
+    const [{ data: profile }, { count: serviceCount }] = await Promise.all([
+      admin.from("users").select("business_hours").eq("user_id", user.id).maybeSingle(),
+      admin.from("services").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+    ]);
+    if (!profile?.business_hours) update.business_hours = DEFAULT_HOURS;
+    if (!serviceCount) {
+      const { error: svcError } = await admin.from("services").insert(
+        STARTER_SERVICES[language].map((svc, i) => ({ user_id: user.id, ...svc, is_active: true, sort_order: i }))
+      );
+      if (svcError) console.error("[onboarding quick services]", svcError);
+    }
+
+    const { error } = await admin.from("users").update(update).eq("user_id", user.id);
+    if (error) {
+      console.error("[onboarding]", error);
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    }
+    await ensureReferralCode(admin, user.id);
+    assignNumberSoon(user.id);
+    return NextResponse.json({ ok: true });
+  }
 
   if (step === "who") {
     const update: Record<string, unknown> = {};
@@ -140,16 +181,8 @@ export async function POST(request: Request) {
   if (step === "preferences") {
     const update: Record<string, unknown> = {};
     if (typeof data.featureAutotext === "boolean") update.feature_autotext = data.featureAutotext;
-    if (typeof data.featureWednesday === "boolean") update.feature_wednesday = data.featureWednesday;
     if (typeof data.featureReviews === "boolean") update.feature_reviews = data.featureReviews;
     if (typeof data.featureMarketing === "boolean") update.feature_marketing = data.featureMarketing;
-    // Optional paid add-on: a QR sticker for the chair, only when they chose it.
-    if (data.wantsSticker === true) {
-      const addr = cleanAddress(data.shippingAddress);
-      if (!addr.ok) return NextResponse.json({ error: addr.error }, { status: 400 });
-      update.shipping_address = addr.value;
-      await requestSticker(admin, user.id, addr.value);
-    }
     if (data.googleReviewUrl !== undefined) {
       const url = cleanUrl(data.googleReviewUrl);
       if (!url.ok) return NextResponse.json({ error: url.error }, { status: 400 });
@@ -179,26 +212,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
 
-    // Their own code for referring others, and the referral (if any) now counts.
+    // Their own code for referring others.
     await ensureReferralCode(admin, user.id);
-    await qualifyReferral(admin, user.id);
 
-    // A sticker handed to them in person connects now. If it can't (someone else set it up first),
-    // setup still finishes; the sticker is optional.
-    const jar = await cookies();
-    let sticker: string | null = null;
-    const pending = jar.get(STICKER_COOKIE)?.value;
-    if (pending) {
-      const claimed = await claimSticker(admin, user.id, pending);
-      if (claimed.ok) sticker = claimed.code;
-      jar.delete(STICKER_COOKIE);
-    }
     assignNumberSoon(user.id);
-    return NextResponse.json({ ok: true, sticker });
+    return NextResponse.json({ ok: true });
   }
 
   return NextResponse.json({ error: "Invalid step" }, { status: 400 });
 }
+
+const DEFAULT_HOURS = {
+  monday: { open: "10:00", close: "19:00" },
+  tuesday: { open: "10:00", close: "19:00" },
+  wednesday: { open: "10:00", close: "19:00" },
+  thursday: { open: "10:00", close: "19:00" },
+  friday: { open: "10:00", close: "19:00" },
+  saturday: { open: "10:00", close: "19:00" },
+  sunday: null,
+};
+
+// Short names, with what's included as a details line.
+const STARTER_SERVICES = {
+  en: [
+    { name: "Lineup", description: "Sharp edges and shape-up", price: 30, duration_minutes: 30 },
+    { name: "Lineup + Taper", description: "Taper with a lineup", price: 35, duration_minutes: 45 },
+    { name: "Full Service", description: "Taper, lineup and beard", price: 45, duration_minutes: 60 },
+    { name: "Kids Cut", description: "Ages 12 and under", price: 25, duration_minutes: 30 },
+  ],
+  es: [
+    { name: "Lineup", description: "Contornos definidos y perfilado", price: 30, duration_minutes: 30 },
+    { name: "Lineup + Taper", description: "Taper con lineup", price: 35, duration_minutes: 45 },
+    { name: "Servicio completo", description: "Taper, lineup y barba", price: 45, duration_minutes: 60 },
+    { name: "Corte para niños", description: "Hasta 12 años", price: 25, duration_minutes: 30 },
+  ],
+} as const;
 
 export async function GET() {
   const supabase = await createClient();
@@ -212,7 +260,7 @@ export async function GET() {
   const { data: profile } = await admin
     .from("users")
     .select(
-      "first_name, email, business_name, forwarding_number, theme, accent_color, business_hours, barber_language, timezone, cover_url, feature_autotext, feature_wednesday, feature_reviews, feature_marketing, shipping_address, google_review_url, referral_source, referred_by"
+      "first_name, email, business_name, forwarding_number, theme, accent_color, business_hours, barber_language, timezone, cover_url, feature_autotext, feature_reviews, feature_marketing, google_review_url, referral_source, referred_by"
     )
     .eq("user_id", user.id)
     .single();
@@ -229,8 +277,6 @@ export async function GET() {
   // A code from a share link (/join/CODE) waits in a cookie until signup.
   const jar = await cookies();
   const pendingCode = normalizeCode(jar.get(REF_COOKIE)?.value);
-  // A sticker handed out in person (/s/CODE → "Set up my shop"): shorter setup, no address.
-  const sticker = await pendingSticker(admin, jar.get(STICKER_COOKIE)?.value);
   let referral: { code: string; name: string | null } | null = null;
   if (profile?.referred_by) {
     const [{ data: ref }, { data: who }] = await Promise.all([
@@ -247,7 +293,6 @@ export async function GET() {
     googleEmail,
     pendingCode,
     referral,
-    sticker,
   });
 }
 

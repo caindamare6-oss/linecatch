@@ -4,16 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/admin";
 import { cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
-import { hasActiveSticker, marketingState } from "@/lib/marketing";
-import { cleanAddress, requestSticker } from "@/lib/sticker-request";
 import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
 import { isCallMode, isCarrier } from "@/lib/call-mode";
 import { detectCarrier } from "@/lib/carrier";
 import { isMissedCallStyle } from "@/lib/missed-call-text";
-import { MIN_REWARD_CENTS, MAX_REWARD_CENTS } from "@/lib/loyalty-rules";
+import { REWARD_TYPES, type RewardType } from "@/lib/loyalty-rules";
+import { MIN_FEE_PERCENT, MAX_FEE_PERCENT } from "@/lib/billing-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, google_review_url, booking_link, custom_message, business_hours, timezone, feature_autotext, feature_wednesday, feature_reviews, barber_language, accent_color, slug, winback_offer, plan, is_locked_out, feature_marketing, shipping_address, sticker_requested_at, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_cents";
+  "first_name, email, business_name, phone_number, forwarding_number, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
 
 export async function GET() {
   const supabase = await createClient();
@@ -21,7 +20,6 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { data, error } = await supabase.from("users").select(FIELDS).eq("user_id", user.id).single();
   if (error || !data) return NextResponse.json({ error: "Couldn't load settings" }, { status: 500 });
-  const sticker = await hasActiveSticker(createAdminClient(), user.id);
   // Until they have a LineCatch number: what's left before one is assigned.
   const admin = createAdminClient();
   const numberMissing = data.phone_number ? [] : await missingSteps(admin, user.id);
@@ -38,7 +36,7 @@ export async function GET() {
   // Casual and Professional wording as the founder set it on Admin → Texts, for the Settings preview.
   const { data: presetRows } = await admin.from("message_templates").select("template_key, custom_message, custom_message_es").is("user_id", null).in("template_key", ["missed_call_casual", "missed_call_professional"]);
   const missedCallPresets = Object.fromEntries((presetRows || []).map((r) => [r.template_key.replace("missed_call_", ""), { en: r.custom_message, es: r.custom_message_es || r.custom_message }]));
-  return NextResponse.json({ ...data, numberMissing, missedCallPresets, lastMissedCallAt: last?.received_at ?? null, hasActiveSticker: sticker, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
+  return NextResponse.json({ ...data, numberMissing, missedCallPresets, lastMissedCallAt: last?.received_at ?? null, user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
 }
 
 /** Partial update: only the keys sent are validated and saved. */
@@ -67,11 +65,6 @@ export async function PATCH(request: Request) {
     if (body.carrier !== null && !isCarrier(body.carrier)) return bad("Invalid carrier");
     update.carrier = body.carrier;
   }
-  if ("google_review_url" in body) {
-    const u = cleanUrl(body.google_review_url);
-    if (!u.ok) return bad(u.error);
-    update.google_review_url = u.value;
-  }
   if ("booking_link" in body) {
     const u = cleanUrl(body.booking_link);
     if (!u.ok) return bad(u.error);
@@ -91,18 +84,30 @@ export async function PATCH(request: Request) {
     if (typeof body.loyalty_enabled !== "boolean") return bad("Invalid request");
     update.loyalty_enabled = body.loyalty_enabled;
   }
-  if ("loyalty_reward_cents" in body) {
-    const c = Number(body.loyalty_reward_cents);
-    if (!Number.isInteger(c) || c < MIN_REWARD_CENTS || c > MAX_REWARD_CENTS) return bad("The reward must be between $1 and $50");
-    update.loyalty_reward_cents = c;
+  if ("loyalty_reward_type" in body) {
+    if (!REWARD_TYPES.includes(body.loyalty_reward_type as RewardType)) return bad("Invalid request");
+    update.loyalty_reward_type = body.loyalty_reward_type;
   }
-  if ("winback_offer" in body) update.winback_offer = cleanText(body.winback_offer, 40);
+  if ("protection_enabled" in body) {
+    if (typeof body.protection_enabled !== "boolean") return bad("Invalid request");
+    if (body.protection_enabled) {
+      // Only once Stripe has verified them and they can take cards.
+      const { data: acct } = await createAdminClient().from("users").select("stripe_charges_enabled").eq("user_id", user.id).single();
+      if (!acct?.stripe_charges_enabled) return bad("payments.err_finish_setup");
+    }
+    update.protection_enabled = body.protection_enabled;
+  }
+  if ("no_show_fee_percent" in body) {
+    const pct = Number(body.no_show_fee_percent);
+    if (!Number.isInteger(pct) || pct < MIN_FEE_PERCENT || pct > MAX_FEE_PERCENT) return bad("payments.err_fee");
+    update.no_show_fee_percent = pct;
+  }
   if ("business_hours" in body) {
     const h = cleanHours(body.business_hours);
     if (!h.ok) return bad(h.error);
     update.business_hours = h.value;
   }
-  for (const key of ["feature_autotext", "feature_wednesday", "feature_reviews"] as const) {
+  for (const key of ["feature_autotext"] as const) {
     if (key in body) {
       if (typeof body[key] !== "boolean") return bad("Invalid toggle");
       update[key] = body[key];
@@ -116,29 +121,7 @@ export async function PATCH(request: Request) {
     if (!["en", "es"].includes(body.barber_language)) return bad("Unsupported language");
     update.barber_language = body.barber_language;
   }
-  if (update.feature_reviews === true && !("google_review_url" in update)) {
-    const { data } = await supabase.from("users").select("google_review_url").eq("user_id", user.id).single();
-    if (!data?.google_review_url) return bad("Add your Google review link first");
-  }
-  // Optional paid QR sticker add-on: ordered with request_sticker plus a shop address.
-  let shipTo: Parameters<typeof requestSticker>[2] | null = null;
-  if ("shipping_address" in body) {
-    const a = cleanAddress(body.shipping_address);
-    if (!a.ok) return bad(a.error);
-    update.shipping_address = a.value;
-    shipTo = a.value;
-  }
   // SMS marketing is the barber's call; texts still only reach clients who opted in.
-  if ("feature_marketing" in body) {
-    if (typeof body.feature_marketing !== "boolean") return bad("Invalid toggle");
-    update.feature_marketing = body.feature_marketing;
-    if (body.feature_marketing) update.feature_wednesday = true;
-    if (!body.feature_marketing) {
-      // Marketing off also stops the marketing automations.
-      update.feature_wednesday = false;
-      update.feature_reviews = false;
-    }
-  }
   if (Object.keys(update).length === 0) return bad("Nothing to save");
 
   const admin = createAdminClient();
@@ -147,7 +130,6 @@ export async function PATCH(request: Request) {
     console.error("[settings]", error);
     return NextResponse.json({ error: "Couldn't save. Try again." }, { status: 500 });
   }
-  if (shipTo && body.request_sticker === true) await requestSticker(admin, user.id, shipTo);
   assignNumberSoon(user.id);
   return NextResponse.json({ ok: true, saved: update });
 }

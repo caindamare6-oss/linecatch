@@ -2,12 +2,11 @@ import { NextResponse } from "next/server";
 import { getT } from "@/lib/i18n-server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assignNumberSoon } from "@/lib/phone-numbers";
 
 const MAX_SIZE = 5 * 1024 * 1024;
 const TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
-/** The barber's cover photo: the big photo at the top of their page (replaces the profile photo). */
+/** The barber's photo for their story image (optional; no photo is the default). */
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -41,8 +40,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("portfolio.err_save_photo") }, { status: 500 });
   }
   if (before?.cover_path && before.cover_path !== path) await db.storage.from("covers").remove([before.cover_path]);
-
-  // The cover can be the last step before they get a LineCatch number.
-  assignNumberSoon(user.id);
   return NextResponse.json({ coverUrl });
+}
+
+/** Remove the photo: the story image goes back to just the shop name and link. */
+export async function DELETE() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const db = createAdminClient();
+  const { data: before } = await db.from("users").select("cover_path").eq("user_id", user.id).maybeSingle();
+  const { error } = await db.from("users").update({ cover_url: null, cover_path: null }).eq("user_id", user.id);
+  if (error) return NextResponse.json({ error: "Failed" }, { status: 500 });
+  if (before?.cover_path) await db.storage.from("covers").remove([before.cover_path]);
+  return NextResponse.json({ ok: true });
 }

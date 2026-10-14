@@ -1,6 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMarketingState } from "@/lib/marketing";
-import { toLoyalty, visitReward, nextRewardCut, type Loyalty } from "@/lib/loyalty-rules";
+import { toLoyalty, visitReward, nextRewardCut, rewardCents, rewardLabel, type Loyalty } from "@/lib/loyalty-rules";
 import { money } from "@/lib/config";
 
 export * from "@/lib/loyalty-rules";
@@ -15,6 +14,8 @@ export const localDate = (d: string | Date, tz: string) =>
 
 export type VisitProjection = ReturnType<typeof visitReward> & {
   loyalty: Loyalty;
+  /** The reward on this visit's first cut (50% or all of its price), in cents. */
+  rewardCents: number;
   stampsBefore: number;
   partySize: number;
   visitKey: string;
@@ -30,16 +31,16 @@ export type VisitProjection = ReturnType<typeof visitReward> & {
 export async function projectVisit(db: Admin, bookingId: string): Promise<VisitProjection | null> {
   const { data: anchor } = await db
     .from("bookings")
-    .select("id, user_id, customer_phone, booking_time, group_id")
+    .select("id, user_id, customer_phone, booking_time, group_id, service_id")
     .eq("id", bookingId)
     .single();
   if (!anchor) return null;
 
-  let rows = [{ id: anchor.id, booking_time: anchor.booking_time, status: "confirmed" }];
+  let rows = [{ id: anchor.id, booking_time: anchor.booking_time, status: "confirmed", service_id: anchor.service_id }];
   if (anchor.group_id) {
     const { data: group } = await db
       .from("bookings")
-      .select("id, booking_time, status")
+      .select("id, booking_time, status, service_id")
       .eq("group_id", anchor.group_id)
       .in("status", ["confirmed", "completed"])
       .order("booking_time", { ascending: true });
@@ -50,8 +51,8 @@ export async function projectVisit(db: Admin, bookingId: string): Promise<VisitP
   const visitStamped = rows.some((r) => r.status === "completed") ? 1 : 0;
   const visitKey = anchor.group_id || anchor.id;
 
-  const [{ data: barber }, { data: vip }, { data: earlier }, { data: reward }] = await Promise.all([
-    db.from("users").select("loyalty_enabled, loyalty_reward_cents").eq("user_id", anchor.user_id).single(),
+  const [{ data: barber }, { data: vip }, { data: earlier }, { data: reward }, { data: service }] = await Promise.all([
+    db.from("users").select("loyalty_enabled, loyalty_reward_type").eq("user_id", anchor.user_id).single(),
     db.from("vip_clients").select("cut_count").eq("user_id", anchor.user_id).eq("phone_number", anchor.customer_phone).maybeSingle(),
     db
       .from("bookings")
@@ -63,6 +64,8 @@ export async function projectVisit(db: Admin, bookingId: string): Promise<VisitP
       // Older than this, a still-"confirmed" booking is a no-show, not a future stamp.
       .gte("booking_time", new Date(Date.now() - NO_SHOW_AFTER_HOURS * 60 * 60 * 1000).toISOString()),
     db.from("loyalty_rewards").select("id").eq("visit_key", visitKey).maybeSingle(),
+    // The reward goes on one cut: the first one in the visit.
+    first.service_id ? db.from("services").select("price").eq("id", first.service_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
   const loyalty = toLoyalty(barber);
@@ -74,6 +77,7 @@ export async function projectVisit(db: Admin, bookingId: string): Promise<VisitP
   return {
     ...visitReward(stampsBefore, loyalty),
     loyalty,
+    rewardCents: rewardCents(loyalty, Math.round(Number(service?.price ?? 0) * 100)),
     stampsBefore,
     partySize,
     visitKey,
@@ -125,7 +129,7 @@ export async function completeBookingLoyalty(db: Admin, bookingId: string, tz: s
       client_phone: row.customer_phone,
       booking_id: projection.firstBookingId,
       visit_key: projection.visitKey,
-      amount_cents: projection.loyalty.cents,
+      amount_cents: projection.rewardCents,
       cut_number: projection.rewardCut,
     });
     rewardedNow = !rewardError;
@@ -134,13 +138,10 @@ export async function completeBookingLoyalty(db: Admin, bookingId: string, tz: s
   return { projection, newCutCount, rewardedNow };
 }
 
-const REVIEW_COOLDOWN_DAYS = 30;
-const REVIEW_MIN_CUTS = 2;
-
 /**
  * Closes out a visit once every person in it is completed or cancelled and at least one
  * was completed. Returns null until then, and null on every later call (visit_closeouts is
- * keyed by visit, so the loyalty text and review request can only happen once).
+ * keyed by visit, so the loyalty text can only happen once).
  * Only completed people added stamps, so cut_count here is already correct.
  */
 export async function closeVisitIfResolved(db: Admin, bookingId: string) {
@@ -171,10 +172,10 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
   if (claimError) return null;
 
   const [{ data: barber }, { data: vip }, { data: reward }] = await Promise.all([
-    db.from("users").select("google_review_url, feature_reviews, loyalty_enabled, loyalty_reward_cents").eq("user_id", row.user_id).single(),
+    db.from("users").select("loyalty_enabled, loyalty_reward_type").eq("user_id", row.user_id).single(),
     db
       .from("vip_clients")
-      .select("cut_count, is_opted_in, opted_out_at, last_review_request_at")
+      .select("cut_count")
       .eq("user_id", row.user_id)
       .eq("phone_number", row.customer_phone)
       .maybeSingle(),
@@ -184,40 +185,25 @@ export async function closeVisitIfResolved(db: Admin, bookingId: string) {
   const loyalty = toLoyalty(barber);
   const cutCount = vip?.cut_count ?? null;
 
-  // The review cron keys off the last completed person's booking_completed event.
-  const lastCompleted = completed[completed.length - 1];
-  const cooldownStart = new Date(Date.now() - REVIEW_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  // Review requests are marketing: they need SMS marketing on and an active QR sticker.
-  const marketingOn = (await getMarketingState(db, row.user_id)) === "on";
-  const reviewDue =
-    marketingOn &&
-    !!barber?.google_review_url &&
-    barber.feature_reviews !== false &&
-    !!vip?.is_opted_in &&
-    !vip.opted_out_at &&
-    (cutCount ?? 0) >= REVIEW_MIN_CUTS &&
-    (!vip.last_review_request_at || vip.last_review_request_at < cooldownStart);
-
-  if (reviewDue) {
-    await db.from("booking_reminders").insert({ booking_id: lastCompleted.id, reminder_type: "review" });
-  }
-
   return {
     visitKey,
     cutCount,
     nextCut: cutCount !== null ? nextRewardCut(cutCount) : null,
     visitRewarded: !!reward,
     loyalty,
-    reviewScheduled: reviewDue,
     completedCount: completed.length,
   };
 }
 
-/** The reward line in the booking confirmation and 2-hour reminder: " $5 off this visit." */
-export function rewardVars(due: boolean, cents: number) {
-  const amount = money(cents);
+/** The reward line in the booking confirmation and 2-hour reminder: " 50% off this cut." */
+export function rewardVars(due: boolean, loyalty: Loyalty, cents: number) {
+  const free = loyalty.reward === "free";
+  const amount = cents > 0 ? ` (${money(cents)})` : "";
   return {
-    reward: due ? ` ${amount} off this visit.` : "",
-    reward_es: due ? ` ${amount} de descuento en esta visita.` : "",
+    reward: !due ? "" : free ? ` This cut is free, it's your 10th.` : ` 50% off this cut${amount}, it's your 10th.`,
+    reward_es: !due ? "" : free ? ` Este corte es gratis, es tu 10.º.` : ` 50% de descuento en este corte${amount}, es tu 10.º.`,
   };
 }
+
+/** For texts that say what the next reward is. */
+export const rewardText = (l: Loyalty) => ({ amount: rewardLabel(l, "en"), amount_es: rewardLabel(l, "es") });

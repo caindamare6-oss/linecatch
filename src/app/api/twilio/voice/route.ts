@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("forwarding_number, is_active, call_mode, barber_language")
+    .select("forwarding_number, is_active, call_mode")
     .eq("phone_number", to)
     .maybeSingle();
 
@@ -39,7 +39,8 @@ export async function POST(request: Request) {
     return twiml(`${say("en", pooled ? numberChangedLine("en") : "Sorry, this number is not available right now. Please try again later.")}\n  <Hangup/>`);
   }
 
-  const lang: CallLang = barber.barber_language === "es" ? "es" : "en";
+  // Callers hear English: the barber's app language only changes the app.
+  const lang: CallLang = "en";
 
   // Forwarded mode: the barber's own phone already rang and wasn't answered, and the carrier sent
   // the call here. Never dial the barber again (it would loop back through the forward): text the

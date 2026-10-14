@@ -3,7 +3,6 @@ import { isRewardCut, nextRewardCut, type Loyalty } from "@/lib/loyalty-rules";
 export type ClientSummary = {
   phone: string;
   name: string | null;
-  isVip: boolean;
   optedOut: boolean;
   visits: number;
   spent: number;
@@ -47,7 +46,7 @@ export function summarizeClients(input: {
   const get = (phone: string) => {
     let c = byPhone.get(phone);
     if (!c) {
-      c = { phone, name: null, isVip: false, optedOut: false, visits: 0, spent: 0, lastVisit: null, nextBooking: null, stamps: 0, rewardDue: false, cutsToReward: 0 };
+      c = { phone, name: null, optedOut: false, visits: 0, spent: 0, lastVisit: null, nextBooking: null, stamps: 0, rewardDue: false, cutsToReward: 0 };
       byPhone.set(phone, c);
     }
     return c;
@@ -56,14 +55,12 @@ export function summarizeClients(input: {
   for (const v of input.vips) {
     const c = get(v.phone_number);
     c.name = v.first_name?.trim() || null;
-    c.isVip = v.is_opted_in && !v.opted_out_at;
     c.optedOut = !!v.opted_out_at;
     c.stamps = v.cut_count ?? 0;
   }
   for (const p of input.optOuts) {
     const c = get(p);
     c.optedOut = true;
-    c.isVip = false;
   }
   // A name the barber typed beats the one the client gave.
   for (const ct of input.contacts) {

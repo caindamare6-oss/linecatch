@@ -5,8 +5,7 @@ import {
   AnimatePresence, animate, motion, useInView, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform,
   type HTMLMotionProps,
 } from "motion/react";
-import { Check, MessageCircle, Phone as PhoneIcon, PhoneMissed, PhoneOff, Scissors, X } from "lucide-react";
-import CutRing, { type RingPhoto } from "./[slug]/cut-ring";
+import { Check, MessageCircle, Phone as PhoneIcon, PhoneMissed, PhoneOff, Scissors } from "lucide-react";
 import { THEMES, themeVars } from "@/lib/themes";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -382,27 +381,17 @@ function DashScene() {
 
 /* ───────────────────────── Portfolio: the barber's page on a client's phone ───────────────────────── */
 
-// Placeholder art until real cut photos go in. Swap `thumb` for photo URLs (e.g. /landing/taper.jpg).
-const HAIR = [
-  "M31 60c0-20 11-31 25-31s25 11 25 31c-7-7-15-10-25-10s-18 3-25 10z",
-  "M28 63c-3-27 11-41 28-41s31 14 28 41c-6-11-15-15-28-15s-22 4-28 15z",
-  "M24 66c-6-33 12-49 32-49s38 16 32 49c-4-14-16-20-32-20s-28 6-32 20z",
+const LINK_CUTS = [
+  { name: "Lineup", sub: "Sharp edges and shape-up", price: "$30" },
+  { name: "Taper", sub: "Taper with a lineup", price: "$35" },
+  { name: "Full Service", sub: "Taper, lineup and beard", price: "$45" },
 ];
-export function cutArt(i: number) {
-  const hue = [28, 18, 36, 12, 24, 40, 8, 32][i % 8];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 112 156"><defs><linearGradient id="g" x2="0" y2="1"><stop offset="0" stop-color="hsl(${hue} 22% 24%)"/><stop offset="1" stop-color="#121110"/></linearGradient><radialGradient id="l" cx=".3" cy=".2" r=".9"><stop offset="0" stop-color="#D4AF7A" stop-opacity=".35"/><stop offset="1" stop-color="#D4AF7A" stop-opacity="0"/></radialGradient></defs><rect width="112" height="156" fill="url(#g)"/><rect width="112" height="156" fill="url(#l)"/><path d="M12 156c3-30 21-45 44-45s41 15 44 45z" fill="#0d0c0b"/><rect x="47" y="90" width="18" height="24" rx="6" fill="hsl(${hue} 30% 30%)"/><ellipse cx="56" cy="70" rx="24" ry="29" fill="hsl(${hue} 32% 38%)"/><path d="${HAIR[i % 3]}" fill="#141210"/></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
 
-const CUTS: RingPhoto[] = [
-  ["Taper", "$35"], ["Skin Fade", "$40"], ["Lineup", "$20"], ["Full Service", "$50"],
-  ["Beard Trim", "$15"], ["Burst Fade", "$40"], ["Kids Cut", "$25"], ["Waves", "$35"],
-].map(([label, sub], i) => ({ id: String(i), thumb: cutArt(i), label, sub }));
-
-export function PortfolioPhone() {
+/** The barber's booking link: what a client sees after tapping the link in their bio. */
+export function LinkPhone() {
   const reduced = useReducedMotion();
   const [hover, setHover] = useState(false);
-  const [open, setOpen] = useState<number | null>(null);
+  const [picked, setPicked] = useState(1);
   const still = reduced || hover;
 
   return (
@@ -412,62 +401,60 @@ export function PortfolioPhone() {
       onFocus={() => setHover(true)}
       onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setHover(false)}
     >
-      {/* Floats and turns on its own; faces you while you use it. */}
       <Phone
-        animate={still ? { rotateY: 0, rotateX: 0, y: 0 } : { rotateY: [-26, 26], rotateX: [8, 2], y: [0, -16] }}
+        animate={still ? { rotateY: 0, rotateX: 0, y: 0 } : { rotateY: [-24, 24], rotateX: [8, 2], y: [0, -14] }}
         transition={still ? { type: "spring", stiffness: 60, damping: 16 } : { duration: 7, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
       >
         <div style={themeVars(THEMES.gold) as CSSProperties} className="absolute inset-0 overflow-y-auto overscroll-contain bg-[var(--t-bg)] text-[var(--t-text)] [scrollbar-width:none]">
           <header
-            className="relative h-[165px] overflow-hidden rounded-b-[28px]"
-            style={{ background: "radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--t-accent) 30%, var(--t-tile)), var(--t-tile) 70%)" }}
+            className="rounded-b-[28px] px-5 pb-5 pt-12"
+            style={{ background: "radial-gradient(120% 90% at 20% 0%, color-mix(in srgb, var(--t-accent) 22%, var(--t-bg)), var(--t-bg) 70%)" }}
           >
-            <div aria-hidden className="pf2-scan absolute inset-x-0 top-0 h-20" style={{ background: "linear-gradient(to bottom, transparent, color-mix(in srgb, var(--t-accent) 16%, transparent), transparent)" }} />
-            <span className="absolute left-4 top-12 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/50 px-2.5 py-1 text-[11px] font-semibold">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--t-border)] bg-[var(--t-surface)] px-2.5 py-1 text-[11px] font-semibold">
               <span className="pf2-pulse size-1.5 rounded-full bg-[var(--t-accent)]" style={{ ["--pf2-pulse" as string]: "color-mix(in srgb, var(--t-accent) 70%, transparent)" }} />
               Open now · till 7 PM
             </span>
-            <p className="absolute bottom-4 left-5 font-[family-name:var(--font-poster)] text-[42px] leading-[0.88]">
-              FRESH<br /><span className="text-[var(--t-accent)]">FADES</span>
+            <p className="mt-4 font-[family-name:var(--font-poster)] text-[44px] leading-[0.88]">
+              FRESH <span className="text-[var(--t-accent)]">FADES</span>
             </p>
+            <div className="mt-3 flex gap-1.5">
+              <span className="rounded-full border border-[var(--t-border)] bg-[var(--t-surface)] px-2.5 py-1 text-[11px] font-semibold">@freshfades · Instagram</span>
+            </div>
           </header>
           <div className="px-5 pb-8 pt-4">
             <div className="flex items-center justify-between rounded-2xl border border-[var(--t-border)] bg-[var(--t-surface)] p-3">
               <span>
                 <span className="block text-[11px] text-[var(--t-muted)]">Next opening</span>
-                <span className="text-sm font-semibold">Thu 3:30 PM</span>
+                <span className="text-sm font-semibold">Today 3:30 PM</span>
               </span>
               <span className="rounded-full bg-[var(--t-cta-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--t-cta-text)]">Grab it</span>
             </div>
-            <p className="mt-3 font-[family-name:var(--font-poster)] text-2xl tracking-wide">THE WORK</p>
-            <CutRing photos={CUTS} onOpen={setOpen} />
-            <span className="mt-4 block rounded-[14px] bg-[var(--t-cta-bg)] py-3 text-center text-sm font-semibold text-[var(--t-cta-text)]">Book a cut</span>
+            <p className="mt-4 font-[family-name:var(--font-poster)] text-2xl tracking-wide">PICK YOUR CUT</p>
+            <div role="radiogroup" aria-label="Pick your cut" className="mt-2 space-y-2">
+              {LINK_CUTS.map((c, i) => (
+                <button
+                  key={c.name}
+                  type="button"
+                  role="radio"
+                  aria-checked={picked === i}
+                  onClick={() => setPicked(i)}
+                  className="flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors"
+                  style={{ borderColor: picked === i ? "var(--t-accent)" : "var(--t-border)", background: picked === i ? "color-mix(in srgb, var(--t-accent) 12%, transparent)" : "var(--t-surface)" }}
+                >
+                  <span className="grid size-4 shrink-0 place-items-center rounded-full border-2" style={{ borderColor: picked === i ? "var(--t-accent)" : "var(--t-muted)", background: picked === i ? "var(--t-accent)" : "transparent" }} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-semibold">{c.name}</span>
+                    <span className="block text-[10px] text-[var(--t-muted)]">{c.sub}</span>
+                  </span>
+                  <span className="font-[family-name:var(--font-poster)] text-lg">{c.price}</span>
+                </button>
+              ))}
+            </div>
+            <span className="mt-4 block rounded-[14px] bg-[var(--t-cta-bg)] py-3 text-center text-sm font-semibold text-[var(--t-cta-text)]">
+              Book {LINK_CUTS[picked].name} · {LINK_CUTS[picked].price}
+            </span>
           </div>
         </div>
-
-        <AnimatePresence>
-          {open !== null && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.3, ease: EASE }}
-              className="absolute inset-0 z-20 flex flex-col bg-[#121110] p-4 pt-14"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={CUTS[open].thumb} alt="" className="min-h-0 flex-1 rounded-2xl object-cover" />
-              <p className="mt-3 font-[family-name:var(--font-poster)] text-3xl">
-                {CUTS[open].label} <span className="text-mint">· {CUTS[open].sub}</span>
-              </p>
-              <div className="mt-3 grid grid-cols-[auto_1fr] gap-2">
-                <button type="button" onClick={() => setOpen(null)} aria-label="Close photo" className="grid size-12 place-items-center rounded-[14px] border border-white/15">
-                  <X className="size-5" />
-                </button>
-                <span className="grid place-items-center rounded-[14px] bg-mint text-sm font-semibold text-[var(--accent-fg)]">Book this cut</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </Phone>
     </div>
   );

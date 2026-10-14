@@ -45,15 +45,21 @@ export async function GET(request: Request) {
       .order("booking_time", { ascending: true })
       .limit(400),
     supabase.from("services").select("id, name, price, duration_minutes").eq("user_id", user.id),
-    supabase.from("vip_clients").select("phone_number, first_name, is_opted_in, opted_out_at").eq("user_id", user.id),
+    supabase.from("vip_clients").select("phone_number, first_name").eq("user_id", user.id),
     supabase.from("contacts").select("caller_phone, name").eq("user_id", user.id),
   ]);
+
+  // How each client is paying: a saved card (and what happened to it), or in store.
+  const ids = (bookings || []).map((b) => b.id);
+  const { data: cards } = ids.length
+    ? await supabase.from("booking_payments").select("booking_id, status, amount_cents, card_brand, card_last4").in("booking_id", ids)
+    : { data: [] };
+  const payment = new Map((cards || []).map((c) => [c.booking_id, c]));
 
   const svc = new Map((services || []).map((s) => [s.id, s]));
   const names = new Map<string, string>();
   for (const v of vips || []) if (v.first_name?.trim()) names.set(v.phone_number, v.first_name.trim());
   for (const c of contacts || []) if (c.name?.trim()) names.set(c.caller_phone, c.name.trim());
-  const vipSet = new Set((vips || []).filter((v) => v.is_opted_in && !v.opted_out_at).map((v) => v.phone_number));
 
   const items = (bookings || []).map((b) => {
     const s = svc.get(b.service_id);
@@ -65,12 +71,14 @@ export async function GET(request: Request) {
       status: b.status as "confirmed" | "completed" | "no_show",
       phone: b.customer_phone,
       name: names.get(b.customer_phone) || null,
-      isVip: vipSet.has(b.customer_phone),
       service: s?.name ?? "Service",
       price: Number(s?.price ?? 0),
       minutes: s?.duration_minutes ?? 30,
       groupId: b.group_id,
       source: b.source,
+      payment: payment.has(b.id)
+        ? { status: payment.get(b.id)!.status as string, amountCents: payment.get(b.id)!.amount_cents as number | null, last4: payment.get(b.id)!.card_last4 as string | null, brand: payment.get(b.id)!.card_brand as string | null }
+        : null,
     };
   });
 

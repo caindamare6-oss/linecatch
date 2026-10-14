@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { barberLocalToUTC } from "@/lib/format";
 import { money } from "@/lib/config";
-import { REWARD_CENTS } from "@/lib/loyalty-rules";
+import { LATE_CANCEL_HOURS, noShowFeeCents } from "@/lib/billing-rules";
 import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { applyAppTheme } from "@/lib/themes";
@@ -24,6 +24,7 @@ type BookingData = {
   partySize: number;
   rewardDue: boolean;
   rewardCents: number | null;
+  lateFeePercent: number | null;
 };
 
 export default function ManageBookingPage() {
@@ -86,6 +87,10 @@ export default function ManageBookingPage() {
       cancelled = true;
     };
   }, [selectedDate, booking?.serviceId, booking?.userId, booking?.partySize]);
+
+  function msUntilStart(): number {
+    return booking ? new Date(booking.bookingTime).getTime() - new Date().getTime() : 0;
+  }
 
   function isWithinWindow(): boolean {
     if (!booking) return false;
@@ -233,6 +238,13 @@ export default function ManageBookingPage() {
   const timeLabel = f.time(bt, { hour: "numeric", minute: "2-digit", timeZone: booking.timezone });
   const canModify = booking.status === "confirmed" && isWithinWindow();
   const tooLate = booking.status === "confirmed" && !isWithinWindow();
+  // With a saved card they can still cancel close to the time (fee under 2 hours).
+  const msUntil = msUntilStart();
+  const canCancelLate = tooLate && booking.lateFeePercent !== null && msUntil > 0;
+  const lateFee =
+    booking.lateFeePercent !== null && msUntil > 0 && msUntil < LATE_CANCEL_HOURS * 3_600_000 && booking.service
+      ? noShowFeeCents(Math.round(booking.service.price * 100) * (booking.partySize || 1), booking.lateFeePercent)
+      : 0;
 
   if (view === "done") {
     return (
@@ -264,6 +276,9 @@ export default function ManageBookingPage() {
           <p className="text-white/50 text-sm mb-6">
             {t("manage.cancel_summary", { service: booking.service?.name || "", name: displayName, date: dateLabel, time: timeLabel })}
           </p>
+          {lateFee > 0 && (
+            <p className="text-[var(--app-warn)] text-sm mb-6 -mt-3">{t("pay.late_fee_warning", { amount: money(lateFee, locale), hours: LATE_CANCEL_HOURS })}</p>
+          )}
           {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
           <div className="flex gap-3">
             <button
@@ -348,7 +363,7 @@ export default function ManageBookingPage() {
   }
 
   const statusTone = booking.status === "confirmed" ? "var(--accent-color)" : booking.status === "completed" ? "var(--app-ok)" : "var(--app-danger)";
-  const priceCents = booking.service ? Math.max(Math.round(booking.service.price * 100) * (booking.partySize || 1) - (booking.rewardDue ? booking.rewardCents ?? REWARD_CENTS : 0), 0) : 0;
+  const priceCents = booking.service ? Math.max(Math.round(booking.service.price * 100) * (booking.partySize || 1) - (booking.rewardDue ? booking.rewardCents ?? 0 : 0), 0) : 0;
   const statusLabel = ["confirmed", "completed", "cancelled", "no_show"].includes(booking.status) ? t(`manage.status_${booking.status}`) : booking.status;
 
   return (
@@ -375,7 +390,7 @@ export default function ManageBookingPage() {
 
           <div className="mt-4 rounded-[18px] bg-white/[0.025] border border-white/[0.07] px-5 py-1">
             {booking.service && (
-              <Detail tone="var(--accent-color)" label={t("manage.service")} title={`${booking.service.name}${booking.partySize > 1 ? t("manage.party_suffix", { n: booking.partySize }) : ""}`} sub={`${t("manage.minutes", { n: booking.service.duration_minutes * (booking.partySize || 1) })}${priceCents > 0 ? ` · ${money(priceCents, locale)}` : ""}${booking.rewardDue ? t("manage.reward_applied", { amount: money(booking.rewardCents ?? REWARD_CENTS, locale) }) : ""}`} icon={<><path d="M6 3a3 3 0 100 6 3 3 0 000-6zM6 15a3 3 0 100 6 3 3 0 000-6z" /><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" /></>} />
+              <Detail tone="var(--accent-color)" label={t("manage.service")} title={`${booking.service.name}${booking.partySize > 1 ? t("manage.party_suffix", { n: booking.partySize }) : ""}`} sub={`${t("manage.minutes", { n: booking.service.duration_minutes * (booking.partySize || 1) })}${priceCents > 0 ? ` · ${money(priceCents, locale)}` : ""}${booking.rewardDue ? t("manage.reward_applied", { amount: money(booking.rewardCents ?? 0, locale) }) : ""}`} icon={<><path d="M6 3a3 3 0 100 6 3 3 0 000-6zM6 15a3 3 0 100 6 3 3 0 000-6z" /><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" /></>} />
             )}
             <Detail tone="#8FB8DE" label={t("manage.date")} title={dateLabel} icon={<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>} />
             <Detail tone="var(--app-warn)" label={t("manage.time")} title={timeLabel} icon={<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>} last />
@@ -404,6 +419,15 @@ export default function ManageBookingPage() {
                 ? t("manage.too_late", { hours: CUTOFF_HOURS })
                 : t("manage.window_note", { hours: CUTOFF_HOURS })}
             </p>
+          )}
+
+          {canCancelLate && (
+            <button
+              onClick={() => setView("confirm-cancel")}
+              className="mt-3 w-full h-[52px] rounded-[14px] border-2 border-[var(--app-danger)]/30 text-[var(--app-danger)] font-bold hover:border-[var(--app-danger)]/50 transition-colors"
+            >
+              {t("manage.cancel_booking")}
+            </button>
           )}
 
           {booking.status !== "confirmed" && (

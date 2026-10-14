@@ -20,15 +20,12 @@ async function nameMap(supabase: Awaited<ReturnType<typeof createClient>>, userI
 
 /** Can the barber text this person a one-off message right now? */
 async function canText(admin: ReturnType<typeof createAdminClient>, userId: string, phone: string) {
-  const [{ data: vip }, { data: optOut }, { count: inbound }] = await Promise.all([
-    admin.from("vip_clients").select("is_opted_in, opted_out_at").eq("user_id", userId).eq("phone_number", phone).maybeSingle(),
+  const [{ data: vip }, { data: optOut }] = await Promise.all([
+    admin.from("vip_clients").select("opted_out_at").eq("user_id", userId).eq("phone_number", phone).maybeSingle(),
     admin.from("opt_outs").select("caller_phone").eq("user_id", userId).eq("caller_phone", phone).maybeSingle(),
-    admin.from("sms_log").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("direction", "inbound").eq("from_number", phone),
   ]);
   if (optOut || vip?.opted_out_at) return { ok: false, reason: "opted_out" as const };
-  // Opted in, or they texted first: replying is a conversation, not marketing.
-  if (vip?.is_opted_in || (inbound ?? 0) > 0) return { ok: true, reason: null };
-  return { ok: false, reason: "no_consent" as const };
+  return { ok: true, reason: null };
 }
 
 export async function GET(request: Request) {

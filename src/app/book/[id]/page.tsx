@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Calendar, Check, ChevronLeft, ChevronRight, MessageSquare, Scissors, User, Users, Wallet } from "lucide-react";
 import { normalizePhone } from "@/lib/phone";
 import { barberLocalToUTC } from "@/lib/format";
-import { consentText } from "@/lib/consent";
+import { consentText, offersConsentText } from "@/lib/consent";
 import { DEFAULT_TZ, money } from "@/lib/config";
-import { REWARD_CENTS, type Loyalty } from "@/lib/loyalty-rules";
+import { rewardLabel, type Loyalty } from "@/lib/loyalty-rules";
 import { useT, useFormat, useLocale, LanguageToggle } from "@/lib/i18n";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { saveToken, useClientSession } from "./use-client-session";
 import { applyAppTheme } from "@/lib/themes";
+import { CardOnFile, type CardSaver } from "./card-on-file";
 
 type Service = {
   id: string;
@@ -95,14 +96,18 @@ function BookingContent() {
   const [services, setServices] = useState<Service[]>([]);
   const [pickedService, setService] = useState<Service | null>(null);
   const [partySize, setPartySize] = useState(1);
+  // Everyone after the person booking picks their own cut; `person` is whose cut is being picked.
+  const [others, setOthers] = useState<(Service | null)[]>([]);
+  const [person, setPerson] = useState(0);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
   // Which date/service/party the current `slots` are for; anything else is still loading.
   const [slotsFor, setSlotsFor] = useState("");
+  // The optional "openings and deals" box (who gets broadcasts). Off until they tick it.
+  const [offersOptIn, setOffersOptIn] = useState(false);
   const [firstName, setFirstName] = useState(() => (forBarber ? (searchParams.get("name") || "").slice(0, 40) : ""));
   const [phone, setPhone] = useState(() => (forBarber ? (searchParams.get("phone") || "").replace(/[^\d]/g, "").slice(0, 11) : ""));
-  const [consentChecked, setConsentChecked] = useState(false);
   const [shopName, setShopName] = useState("");
   const [openDays, setOpenDays] = useState<string[]>(DAY_NAMES);
   const [timezone, setTimezone] = useState(DEFAULT_TZ);
@@ -111,8 +116,17 @@ function BookingContent() {
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
   const [rewardDue, setRewardDue] = useState(false);
-  const [rewardCents, setRewardCents] = useState(REWARD_CENTS);
+  const [rewardCents, setRewardCents] = useState(0);
   const [loyalty, setLoyalty] = useState<Loyalty | null>(null);
+  // No-show protection: a card is saved (not charged) before the booking goes through.
+  const [protection, setProtection] = useState<{ account: string; feePercent: number } | null>(null);
+  const saver = useRef<CardSaver | null>(null);
+  // With protection on, the client picks: hold the spot with a card, or pay in store.
+  const [payWith, setPayWith] = useState<"card" | "store">("card");
+  const [heldWithCard, setHeldWithCard] = useState(false);
+  const onSaver = useCallback((fn: CardSaver | null) => {
+    saver.current = fn;
+  }, []);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -120,12 +134,28 @@ function BookingContent() {
 
   // 1-tap rebook: a returning client's last service is preselected until they pick another.
   const service = pickedService ?? services.find((s) => s.id === known?.client.lastServiceId) ?? null;
+  const party = Array.from({ length: partySize }, (_, i) => (i === 0 ? service : others[i - 1] ?? null));
+  const partyReady = party.every(Boolean);
+  const partyServices = party.filter((s): s is Service => !!s);
+  const partyIds = partyServices.map((s) => s.id).join(",");
+  const serviceSummary = partyServices.map((s) => s.name).join(" + ");
+
+  function pickCut(s: Service) {
+    const next = [...party];
+    next[person] = s;
+    if (person === 0) setService(s);
+    else setOthers((o) => Object.assign([...o], { [person - 1]: s }));
+    setSelectedTime("");
+    // Move on to the next person who hasn't picked yet.
+    const open = next.findIndex((x, i) => i > person && !x);
+    if (open > 0) setPerson(open);
+  }
 
   useEffect(() => {
     async function load() {
       const [servicesRes, barberRes] = await Promise.all([
         fetch(`/api/services/${barberId}`),
-        fetch(`/api/vip-optin?barberId=${barberId}`),
+        fetch(`/api/shop?barberId=${barberId}`),
       ]);
       if (servicesRes.ok) {
         const data = await servicesRes.json();
@@ -143,6 +173,7 @@ function BookingContent() {
         if (data.businessName) setShopName(data.businessName);
         if (data.timezone) setTimezone(data.timezone);
         if (data.loyalty) setLoyalty(data.loyalty);
+        if (data.protection?.account) setProtection(data.protection);
         if (Array.isArray(data.openDays) && data.openDays.length) setOpenDays(data.openDays);
         applyAppTheme(data.theme, data.accentColor);
       }
@@ -151,14 +182,14 @@ function BookingContent() {
     load();
   }, [barberId]);
 
-  const slotKey = selectedDate && service ? `${selectedDate}|${service.id}|${partySize}` : "";
+  const slotKey = selectedDate && partyReady ? `${selectedDate}|${partyIds}` : "";
   const slotsLoading = !!slotKey && slotsFor !== slotKey;
 
   useEffect(() => {
-    if (!selectedDate || !service) return;
+    if (!selectedDate || !partyReady) return;
     let cancelled = false;
-    const key = `${selectedDate}|${service.id}|${partySize}`;
-    fetch(`/api/bookings/slots?userId=${barberId}&date=${selectedDate}&serviceId=${service.id}&partySize=${partySize}`)
+    const key = `${selectedDate}|${partyIds}`;
+    fetch(`/api/bookings/slots?userId=${barberId}&date=${selectedDate}&serviceIds=${partyIds}`)
       .then((r) => r.json())
       .then((data) => {
         if (!cancelled) setSlots(data.slots || []);
@@ -172,20 +203,20 @@ function BookingContent() {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate, service, partySize, barberId]);
+  }, [selectedDate, partyReady, partyIds, barberId]);
 
-  const total = service ? service.price * partySize : 0;
-  const totalMinutes = service ? service.duration_minutes * partySize : 0;
+  const total = partyServices.reduce((sum, s) => sum + s.price, 0);
+  const totalMinutes = partyServices.reduce((m, s) => m + s.duration_minutes, 0);
   const bookingDate = selectedDate && selectedTime ? barberLocalToUTC(selectedDate, selectedTime, timezone) : null;
   const dateLabel = bookingDate ? f.date(bookingDate, { weekday: "short", month: "short", day: "numeric", timeZone: timezone }) : "";
   const partyLabel = partySize > 1 ? t("book.party_of", { n: partySize }) : t("book.just_me");
   const shownConsent = consentText(locale);
+  const shownOffers = offersConsentText(locale);
 
   function notMe() {
     forget();
     setFirstName("");
     setPhone("");
-    setConsentChecked(false);
     setService(null);
   }
 
@@ -203,21 +234,50 @@ function BookingContent() {
     }
     setSubmitting(true);
     try {
+      let setupIntentId: string | undefined;
+      const useCard = !!protection && !forBarber && payWith === "card";
+      if (useCard) {
+        const setup = await fetch("/api/bookings/card-setup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: barberId, customerPhone, sessionToken: known?.token }),
+        });
+        const sd = await setup.json().catch(() => ({}));
+        if (!setup.ok) {
+          setError(sd.error || t("pay.card_unavailable"));
+          return;
+        }
+        if (sd.required) {
+          if (!saver.current) {
+            setError(t("pay.card_unavailable"));
+            return;
+          }
+          const saved = await saver.current(sd.clientSecret);
+          if ("error" in saved) {
+            setError(saved.error);
+            return;
+          }
+          setupIntentId = saved.setupIntentId;
+        }
+      }
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: barberId,
           serviceId: service.id,
+          serviceIds: partyServices.map((s) => s.id),
+          offersOptIn: !forBarber && offersOptIn,
           partySize,
           customerPhone,
           sessionToken: known?.token,
           bookingTime: bookingDate.toISOString(),
           firstName: known ? undefined : firstName.trim() || undefined,
-          consentText: consentChecked && !forBarber ? shownConsent : undefined,
           // The client's language for later texts. Not when the barber books for them.
           language: forBarber ? undefined : locale,
           source: bookingSource,
+          setupIntentId,
+          payment: protection && !forBarber ? payWith : undefined,
         }),
       });
       const data = await res.json();
@@ -232,6 +292,7 @@ function BookingContent() {
       }
       if (data.sessionToken && !forBarber) saveToken(barberId, data.sessionToken);
       setBookingId(data.bookingId);
+      setHeldWithCard(useCard);
       setRewardDue(!!data.rewardDue);
       if (typeof data.rewardCents === "number") setRewardCents(data.rewardCents);
       setStep("done");
@@ -242,7 +303,7 @@ function BookingContent() {
     }
   }
 
-  const getsTexts = consentChecked || !!known?.client.smsOptedIn;
+  const getsTexts = !forBarber;
 
   if (loading || session.status === "checking") {
     return (
@@ -267,22 +328,22 @@ function BookingContent() {
             <em className="text-[var(--accent-color)]">{forBarber ? t("book.done_barber_b") : t("book.done_b")}</em>
           </h1>
           <p className="text-sm text-white/45 mt-2 leading-relaxed">
-            {service?.name}{partySize > 1 ? t("book.party_suffix", { n: partySize }) : ""} · {dateLabel}, {formatSlot(selectedTime)}
+            {serviceSummary}{partySize > 1 ? t("book.party_suffix", { n: partySize }) : ""} · {dateLabel}, {formatSlot(selectedTime)}
             {getsTexts && !forBarber && <><br />{t("book.confirmation_coming")}</>}
           </p>
         </div>
 
         <div className="mt-7 w-full max-w-[300px] rounded-2xl bg-white/[0.03] border border-white/[0.06] p-5 text-left" style={fadeUp(500)}>
-          <SummaryRow label={t("book.service")} value={service?.name || ""} />
+          <SummaryRow label={t("book.service")} value={serviceSummary} />
           <SummaryRow label={t("book.party")} value={partyLabel} />
           <SummaryRow label={t("book.date")} value={dateLabel} />
           <SummaryRow label={t("book.time")} value={formatSlot(selectedTime)} />
-          {total > 0 && <SummaryRow label={t("book.total")} value={rewardDue ? money(Math.max(Math.round(total * 100) - rewardCents, 0), locale) : usd(total, locale)} accent last={!rewardDue} />}
-          {rewardDue && <SummaryRow label={t("book.loyalty_reward")} value={t("book.reward_off", { amount: money(rewardCents, locale) })} accent last />}
+          {total > 0 && <SummaryRow label={t("book.total")} value={rewardDue ? money(Math.max(Math.round(total * 100) - rewardCents, 0), locale) : usd(total, locale)} accent last={!(rewardDue && rewardCents > 0)} />}
+          {rewardDue && rewardCents > 0 && <SummaryRow label={t("book.loyalty_reward")} value={t("book.reward_off", { amount: money(rewardCents, locale) })} accent last />}
         </div>
 
         <div className="mt-4 w-full max-w-[300px]" style={fadeUp(500)}>
-          <PayInPerson />
+          {heldWithCard ? <CardHeld /> : <PayInPerson />}
         </div>
 
         {bookingId && (
@@ -361,12 +422,12 @@ function BookingContent() {
           {/* The loyalty offer, for anyone the page doesn't already know (returning clients see their own badge). */}
           {step === "service" && !known && loyalty?.enabled && (
             <p className="mt-2 inline-flex text-[12px] font-semibold px-2.5 py-1 rounded-full bg-[var(--accent-color)]/15 text-[var(--accent-color)]">
-              {t("book.loyalty_note", { amount: money(loyalty.cents, locale) })}
+              {t("book.loyalty_note", { amount: rewardLabel(loyalty, locale) })}
             </p>
           )}
           {step === "time" && service && (
             <p className="text-[13px] text-white/50 mt-1.5">
-              {service.name} · {partyLabel.toLowerCase()} · {t("book.minutes", { n: totalMinutes })}{total > 0 && ` · ${usd(total, locale)}`}
+              {serviceSummary} · {partyLabel.toLowerCase()} · {t("book.minutes", { n: totalMinutes })}{total > 0 && ` · ${usd(total, locale)}`}
               {" · "}
               <button type="button" onClick={() => { setError(""); setStep("service"); }} className="font-semibold text-[var(--accent-color)] hover:underline underline-offset-2 min-h-[44px] -my-3 px-1">
                 {t("book.change")}
@@ -387,6 +448,7 @@ function BookingContent() {
                     aria-pressed={partySize === n}
                     onClick={() => {
                       setPartySize(n);
+                      setPerson((p) => Math.min(p, n - 1));
                       setSelectedTime("");
                     }}
                     className={`tap-spring ${HEADING} h-12 rounded-xl text-[15px] font-semibold border-[1.5px] flex items-center justify-center gap-1.5 ${
@@ -401,24 +463,39 @@ function BookingContent() {
                 ))}
               </div>
               <p className="text-xs text-white/25 mb-6">
-                {partySize > 1 ? t("book.same_service") : t("book.for_yourself")}
+                {partySize > 1 ? t("book.own_cut") : t("book.for_yourself")}
               </p>
 
               <SectionLabel>{t("book.choose_service")}</SectionLabel>
+              {partySize > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 mb-3 -mx-1 px-1" role="tablist" aria-label={t("book.who")}>
+                  {party.map((p, i) => (
+                    <button
+                      key={i}
+                      role="tab"
+                      aria-selected={person === i}
+                      onClick={() => setPerson(i)}
+                      className={`tap-spring shrink-0 min-h-12 px-3.5 py-2 rounded-xl border-[1.5px] text-left ${
+                        person === i ? "border-[var(--accent-color)] bg-[var(--accent-color)]/[0.08]" : "border-white/[0.06] bg-white/[0.02]"
+                      }`}
+                    >
+                      <span className="block text-[13px] font-semibold">{i === 0 ? t("book.person_you") : t("book.person_n", { n: i + 1 })}</span>
+                      <span className={`block text-[11px] mt-0.5 ${p ? "text-[var(--accent-color)]" : "text-white/35"}`}>{p ? p.name : t("book.pick_cut")}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {services.length === 0 ? (
                 <p className="text-white/30 text-sm text-center py-8">{t("book.no_services")}</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {services.map((s) => {
-                    const picked = service?.id === s.id;
+                    const picked = party[person]?.id === s.id;
                     return (
                       <button
                         key={s.id}
                         aria-pressed={picked}
-                        onClick={() => {
-                          setService(s);
-                          setSelectedTime("");
-                        }}
+                        onClick={() => pickCut(s)}
                         className={`tap-spring p-4 rounded-[14px] border-2 flex items-center gap-3.5 text-left ${
                           picked
                             ? "border-[var(--accent-color)]/60 bg-[var(--accent-color)]/[0.07] shadow-[0_0_22px_color-mix(in_srgb,var(--accent-color)_18%,transparent)]"
@@ -440,7 +517,6 @@ function BookingContent() {
                         {s.price > 0 && (
                           <span className={`${HEADING} text-base font-bold text-[var(--accent-color)]`}>
                             {usd(s.price, locale)}
-                            {partySize > 1 && <span className="text-xs text-white/30 font-medium">{t("book.each_short")}</span>}
                           </span>
                         )}
                       </button>
@@ -449,8 +525,16 @@ function BookingContent() {
                 </div>
               )}
             </div>
-            <BottomCta disabled={!service} onClick={() => setStep("time")} note={t("book.pay_note")}>
-              {service ? t("book.pick_time") : t("book.choose_service")} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+            <BottomCta
+              disabled={!partyReady}
+              onClick={() => {
+                const open = party.findIndex((x) => !x);
+                if (open >= 0) setPerson(open);
+                else setStep("time");
+              }}
+              note={t(protection && !forBarber ? "pay.note_choice" : "book.pay_note")}
+            >
+              {partyReady ? t("book.pick_time") : t("book.choose_service")} <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
             </BottomCta>
           </>
         )}
@@ -537,7 +621,9 @@ function BookingContent() {
             <div className="flex-1 px-6 py-5 overflow-y-auto">
               <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-[18px]" style={fadeUp(100)}>
                 <SectionLabel>{t("book.your_appointment")}</SectionLabel>
-                <DetailRow icon={<Scissors className="w-4 h-4" />} title={service.name} sub={`${t("book.minutes", { n: service.duration_minutes })}${service.price > 0 ? ` · ${usd(service.price, locale)}` : ""}${partySize > 1 ? t("book.each") : ""}`} />
+                {partyServices.map((s, i) => (
+                  <DetailRow key={i} icon={<Scissors className="w-4 h-4" />} title={partySize > 1 ? `${i === 0 ? t("book.person_you") : t("book.person_n", { n: i + 1 })}: ${s.name}` : s.name} sub={`${t("book.minutes", { n: s.duration_minutes })}${s.price > 0 ? ` · ${usd(s.price, locale)}` : ""}`} />
+                ))}
                 <Divider />
                 <DetailRow icon={<Users className="w-4 h-4" />} title={partyLabel} sub={partySize > 1 ? t("book.back_to_back", { n: totalMinutes }) : undefined} />
                 <Divider />
@@ -556,7 +642,27 @@ function BookingContent() {
               </div>
 
               <div className="mt-3" style={fadeUp(150)}>
-                <PayInPerson />
+                {protection && !forBarber ? (
+                  <>
+                    <div role="radiogroup" aria-label={t("pay.choose")} className="grid grid-cols-2 gap-2 mb-3">
+                      {(["card", "store"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          role="radio"
+                          aria-checked={payWith === m}
+                          onClick={() => setPayWith(m)}
+                          className={`min-h-12 rounded-xl px-3 text-[13px] font-semibold border-[1.5px] transition-colors ${payWith === m ? "border-[var(--accent-color)] bg-[var(--accent-color)]/10 text-white" : "border-white/[0.08] bg-white/[0.03] text-white/55"}`}
+                        >
+                          {t(m === "card" ? "pay.choice_card" : "pay.choice_store")}
+                        </button>
+                      ))}
+                    </div>
+                    {payWith === "card" ? <CardOnFile account={protection.account} feePercent={protection.feePercent} onSaver={onSaver} /> : <PayInPerson />}
+                  </>
+                ) : (
+                  <PayInPerson />
+                )}
               </div>
 
               <div className="mt-6" style={fadeUp(200)}>
@@ -590,37 +696,27 @@ function BookingContent() {
                 </div>
                 )}
 
-                {!known?.client.smsOptedIn && !forBarber && (
-                <>
-                <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={consentChecked}
-                    onChange={(e) => setConsentChecked(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <span
-                    className={`mt-0.5 w-5 h-5 rounded-[5px] border-2 shrink-0 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent-color)]/40 ${
-                      consentChecked ? "bg-[var(--accent-color)] border-[var(--accent-color)]" : "border-white/15"
-                    }`}
-                  >
-                    {consentChecked && <Check className="w-3 h-3 text-[var(--app-bg-deep,#0C0B0A)]" strokeWidth={3} />}
-                  </span>
-                  <span className="text-xs text-white/30 leading-relaxed">
+                {!forBarber && (
+                  <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
+                    <input type="checkbox" checked={offersOptIn} onChange={(e) => setOffersOptIn(e.target.checked)} className="sr-only peer" />
+                    <span
+                      className={`mt-0.5 w-5 h-5 rounded-[5px] border-2 shrink-0 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent-color)]/40 ${
+                        offersOptIn ? "bg-[var(--accent-color)] border-[var(--accent-color)]" : "border-white/20"
+                      }`}
+                    >
+                      {offersOptIn && <Check className="w-3 h-3 text-[var(--app-bg-deep,#0C0B0A)]" strokeWidth={3} />}
+                    </span>
+                    <span className="text-xs text-white/50 leading-relaxed">{shownOffers}</span>
+                  </label>
+                )}
+
+                {!forBarber && (
+                  <p className="mt-3 text-[11px] text-white/30 leading-relaxed">
                     {shownConsent}{" "}
                     <Link href="/privacy" className="text-[var(--accent-color)]/70 hover:underline">{t("common.privacy")}</Link>
                     {" & "}
                     <Link href="/terms" className="text-[var(--accent-color)]/70 hover:underline">{t("common.terms")}</Link>
-                  </span>
-                </label>
-
-                {consentChecked && (
-                  <div className="mt-4 rounded-xl px-3.5 py-3 flex items-start gap-2 text-xs text-white/35 bg-[var(--accent-color)]/[0.03] border border-[var(--accent-color)]/[0.08]">
-                    <Check className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0 mt-px" />
-                    {t("book.reminder_note")}
-                  </div>
-                )}
-                </>
+                  </p>
                 )}
 
                 {error && <div className="mt-4"><ErrorBox>{error}</ErrorBox></div>}
@@ -629,7 +725,7 @@ function BookingContent() {
             <BottomCta
               disabled={(!known && !phone.trim()) || submitting}
               onClick={handleBook}
-              note={forBarber ? t("book.note_barber") : getsTexts ? t("book.note_gets_texts") : t("book.note_optional")}
+              note={forBarber ? t("book.note_barber") : t("book.note_gets_texts")}
             >
               {submitting ? t("book.booking") : <><Check className="w-4 h-4" strokeWidth={2.5} /> {t("book.confirm")}</>}
             </BottomCta>
@@ -646,6 +742,17 @@ function NotMe({ name, onClick }: { name: string | null; onClick: () => void }) 
     <button onClick={onClick} className="mt-1 text-xs text-white/30 hover:text-white/60 underline underline-offset-2 transition-colors shrink-0">
       {name ? t("book.not_name", { name }) : t("book.not_you")}
     </button>
+  );
+}
+
+/** Done screen after booking with a card: nothing charged yet. */
+function CardHeld() {
+  const t = useT();
+  return (
+    <div className="rounded-xl px-4 py-3 text-left bg-[var(--accent-color)]/10 border-[1.5px] border-[var(--accent-color)]/40">
+      <div className="text-sm font-bold text-white">{t("pay.held_title")}</div>
+      <div className="text-xs text-white/60">{t("pay.held_sub")}</div>
+    </div>
   );
 }
 

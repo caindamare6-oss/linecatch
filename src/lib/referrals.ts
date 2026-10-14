@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { REFERRED_PERCENT_OFF, REFERRER_FREE_MONTHS, appUrl } from "@/lib/config";
+import { appUrl } from "@/lib/config";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -49,7 +49,7 @@ export async function findReferrer(db: Admin, code: string) {
 
 export type ApplyResult = { ok: true; referrerName: string } | { ok: false; error: "not_found" | "own_code" | "already_referred" | "too_late" };
 
-/** Attach a code to a barber who is still signing up. One code per account, never their own. */
+/** Attach a code to a barber who hasn't paid yet (at sign-up or right before checkout). One per account, never their own. */
 export async function applyReferral(db: Admin, referredId: string, rawCode: unknown): Promise<ApplyResult> {
   const code = normalizeCode(rawCode);
   if (!code) return { ok: false, error: "not_found" };
@@ -57,8 +57,8 @@ export async function applyReferral(db: Admin, referredId: string, rawCode: unkn
   if (!referrer) return { ok: false, error: "not_found" };
   if (referrer.user_id === referredId) return { ok: false, error: "own_code" };
 
-  const { data: me } = await db.from("users").select("onboarding_completed, referred_by").eq("user_id", referredId).single();
-  if (me?.onboarding_completed) return { ok: false, error: "too_late" };
+  const { data: me } = await db.from("users").select("stripe_subscription_id, referred_by").eq("user_id", referredId).single();
+  if (me?.stripe_subscription_id) return { ok: false, error: "too_late" };
   if (me?.referred_by && me.referred_by !== referrer.user_id) return { ok: false, error: "already_referred" };
 
   const { error } = await db.from("referrals").upsert(
@@ -68,30 +68,4 @@ export async function applyReferral(db: Admin, referredId: string, rawCode: unkn
   if (error) return { ok: false, error: "already_referred" };
   await db.from("users").update({ referred_by: referrer.user_id }).eq("user_id", referredId);
   return { ok: true, referrerName: referrer.business_name || referrer.first_name || "" };
-}
-
-/**
- * The referred barber finished setup: the referral counts. The referrer gets a free month and the
- * new barber gets their discount. Safe to call more than once (credits are unique per referral).
- */
-export async function qualifyReferral(db: Admin, referredId: string) {
-  const { data: ref } = await db.from("referrals").select("id, referrer_user_id, status").eq("referred_user_id", referredId).maybeSingle();
-  if (!ref) return null;
-  if (ref.status !== "qualified") {
-    await db.from("referrals").update({ status: "qualified", qualified_at: new Date().toISOString() }).eq("id", ref.id);
-  }
-  await db.from("billing_credits").upsert(
-    [
-      { user_id: ref.referrer_user_id, kind: "free_month", amount: REFERRER_FREE_MONTHS, referral_id: ref.id, note: "Referral reward" },
-      { user_id: referredId, kind: "percent_off", amount: REFERRED_PERCENT_OFF, referral_id: ref.id, note: "Referred signup: first month" },
-    ],
-    { onConflict: "referral_id,user_id", ignoreDuplicates: true }
-  );
-  await db.from("activity_feed").insert({
-    user_id: ref.referrer_user_id,
-    event_type: "referral_qualified",
-    description: "A barber you referred finished signing up. You earned a free month.",
-    metadata: { referral_id: ref.id },
-  });
-  return ref.id;
 }

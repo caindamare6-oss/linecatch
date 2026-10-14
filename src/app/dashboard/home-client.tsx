@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { lazy, Suspense, useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 import { Card, SectionLabel, SERIF } from "./ui";
+import ShareCard from "./share-card";
 import { formatPhone } from "@/lib/clients";
 import { useT, useFormat } from "@/lib/i18n";
-import { money as fmtMoney, REWARD_LABEL_CENTS } from "@/lib/config";
+import { money as fmtMoney } from "@/lib/config";
+import { rewardLabel } from "@/lib/loyalty-rules";
+import type { Locale } from "@/lib/i18n";
 
-const QRScanner = lazy(() => import("./qr-scanner").then((m) => ({ default: m.QRScanner })));
 
 type FeedEvent = { id: string; event_type: string; client_name: string | null; description: string; metadata?: Record<string, unknown> | null; created_at: string };
 type Suppressed = { id: string; from_number: string; received_at: string; suppressed_reason: string | null };
@@ -36,10 +37,10 @@ const EVENTS: Record<string, { icon: React.ReactNode; tone: string; tag?: string
   cron_reengagement: { icon: I.bolt, tone: "var(--app-warn)", tag: "home.tag_reengage" },
   loyalty_claimed: { icon: I.gift, tone: "var(--app-warn)", tag: "home.tag_reward" },
   review_sent: { icon: I.star, tone: "var(--app-warn)", tag: "home.tag_review" },
-  qr_scan: { icon: I.qr, tone: "var(--app-ok)", tag: "home.tag_vip" },
+  qr_scan: { icon: I.qr, tone: "var(--app-ok)" },
   referral_qualified: { icon: I.gift, tone: "var(--app-ok)", tag: "home.tag_referral" },
   sticker_request: { icon: I.qr, tone: "var(--accent-color)" },
-  sticker_activated: { icon: I.qr, tone: "var(--app-ok)", tag: "home.tag_vip" },
+  sticker_activated: { icon: I.qr, tone: "var(--app-ok)" },
   number_assigned: { icon: I.phone, tone: "var(--app-ok)" },
 };
 
@@ -58,14 +59,19 @@ function timeAgo(iso: string, t: T, fmt: (d: string, o: Intl.DateTimeFormatOptio
 }
 
 /** Feed rows are rebuilt from their type so they read in the barber's language. */
-function activityText(e: FeedEvent, t: T, reward: string) {
+function activityText(e: FeedEvent, t: T, locale: Locale) {
   const m = (e.metadata || {}) as Record<string, unknown>;
   const name = e.client_name || t(e.event_type === "booking_created" ? "activity.new_client" : "activity.client");
   const service = typeof m.service_name === "string" ? m.service_name : "";
   const known = ["booking_created", "booking_completed", "booking_cancelled", "missed_call_caught", "loyalty_claimed", "review_sent", "cron_reengagement", "qr_scan", "sticker_request", "referral_qualified", "sticker_activated", "number_assigned"];
   if (!known.includes(e.event_type) || ((e.event_type === "booking_created" || e.event_type === "booking_completed") && !service)) return e.description;
-  // The reward the client actually got (barbers can change the amount later).
-  const amount = typeof m.amount_cents === "number" ? fmtMoney(m.amount_cents) : reward;
+  // Rewards from the old dollar-off card keep the sentence they were saved with.
+  if (e.event_type === "loyalty_claimed" && m.reward_type !== "half" && m.reward_type !== "free") return e.description;
+  // The reward the client actually got (barbers can change it later).
+  const amount =
+    m.reward_type === "half" || m.reward_type === "free"
+      ? `${rewardLabel({ reward: m.reward_type }, locale)}${typeof m.amount_cents === "number" && m.amount_cents > 0 ? ` (${fmtMoney(m.amount_cents)})` : ""}`
+      : "";
   return t(`activity.${e.event_type}`, { name, service, reward: amount, code: typeof m.code === "string" ? m.code : "", phone: typeof m.phone === "string" ? formatPhone(m.phone) : "" });
 }
 
@@ -75,28 +81,20 @@ export function HomeClient(props: {
   greeting: string;
   dateLine: string;
   paused: boolean;
-  hasActiveSticker: boolean;
-  bookingLink: string;
+  billing: { banner: "trial" | "add_card" | "past_due" | "paused" | null; daysLeft: number | null };
+  pageUrl: string;
+  shopName: string;
+  coverUrl: string | null;
   revenue: Revenue;
-  vips: number;
   callsCaught: number;
   autotextOn: boolean;
-  marketing: "off" | "on";
-  stickerOrdered: boolean;
-  wednesdayOn: boolean;
-  wednesdayTargeted: number;
-  reviewsOn: boolean;
   feed: FeedEvent[];
   suppressed: Suppressed[];
   timezone: string;
 }) {
-  const router = useRouter();
   const t = useT();
   const f = useFormat();
   const money = (n: number) => fmtMoney(Math.round(n) * 100, f.tag.startsWith("es") ? "es" : "en");
-  const [showScanner, setShowScanner] = useState(false);
-  const [stickerDone, setStickerDone] = useState(false);
-  const [bannerHidden, setBannerHidden] = useState(false);
   const [feed, setFeed] = useState(props.feed);
   const [cursor, setCursor] = useState(props.feed.length >= 20 ? props.feed[props.feed.length - 1].created_at : null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -119,18 +117,6 @@ export function HomeClient(props: {
 
   return (
     <div className="space-y-4">
-      {showScanner && (
-        <Suspense fallback={null}>
-          <QRScanner
-            onClose={() => setShowScanner(false)}
-            onActivated={() => {
-              setStickerDone(true);
-              router.refresh();
-            }}
-          />
-        </Suspense>
-      )}
-
       {/* Header */}
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -166,38 +152,22 @@ export function HomeClient(props: {
         <p className="text-[13px] text-white/40 mt-0.5">{props.dateLine}</p>
       </div>
 
-      {props.paused && (
+      {props.paused ? (
         <Card className="p-4 border-[var(--app-warn)]/25">
           <p className="text-sm font-semibold text-[var(--app-warn)]">{t("home.paused_title")}</p>
-          <p className="text-xs text-white/45 mt-1 leading-relaxed">{t("home.paused_body")}</p>
+          <p className="text-xs text-white/45 mt-1 leading-relaxed">{t(props.billing.banner === "paused" ? "billing.banner_paused" : "home.paused_body")}</p>
+          {props.billing.banner === "paused" && <BillingLink label={t("billing.add_card")} />}
         </Card>
-      )}
-
-      {props.stickerOrdered && !props.hasActiveSticker && !stickerDone && !bannerHidden && (
-        <Card className="relative p-4">
-          <button onClick={() => setBannerHidden(true)} aria-label={t("common.close")} className="absolute top-2.5 right-2.5 w-8 h-8 flex items-center justify-center text-white/30 hover:text-white/60">
-            <Icon d={I.x} size={15} />
-          </button>
-          <div className="flex gap-3.5 pr-6">
-            <div className="w-10 h-10 shrink-0 rounded-xl bg-[var(--accent-color)]/[0.12] text-[var(--accent-color)] flex items-center justify-center">
-              <Icon d={I.qr} size={18} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">{t("home.sticker_title")}</p>
-              <p className="text-xs text-white/45 mt-1 leading-relaxed">{t("home.sticker_body")}</p>
-              <button
-                onClick={() => setShowScanner(true)}
-                className="mt-3 h-9 px-3.5 rounded-[10px] bg-[var(--accent-color)] text-[var(--accent-fg)] text-xs font-semibold"
-              >
-                {t("home.sticker_scan")}
-              </button>
-              <p className="text-[11px] text-white/35 mt-2.5 leading-relaxed">
-                {t("home.sticker_link")} <span className="text-white/55 break-all">{props.bookingLink.replace(/^https?:\/\//, "")}</span>
-              </p>
-            </div>
-          </div>
+      ) : props.billing.banner && props.billing.banner !== "paused" ? (
+        <Card className={`p-4 ${props.billing.banner === "trial" ? "" : "border-[var(--app-warn)]/25"}`}>
+          <p className={`text-sm font-semibold ${props.billing.banner === "trial" ? "text-white/85" : "text-[var(--app-warn)]"}`}>
+            {props.billing.banner === "trial"
+              ? t(props.billing.daysLeft === 1 ? "billing.banner_trial_one" : "billing.banner_trial", { n: props.billing.daysLeft ?? 0 })
+              : t(`billing.banner_${props.billing.banner}`)}
+          </p>
+          <BillingLink label={t(props.billing.banner === "past_due" ? "billing.update_card" : "billing.add_card")} />
         </Card>
-      )}
+      ) : null}
 
       {/* Revenue */}
       <Card className="p-5">
@@ -229,24 +199,18 @@ export function HomeClient(props: {
 
       {/* Tiles */}
       <div className="grid grid-cols-2 gap-2.5">
-        <Tile href="/dashboard/clients?filter=vip" label={t("home.vips")} value={props.vips} sub={t("home.opted_in")} accent />
         <Tile
           href="/dashboard/messages"
           label={t("home.calls_caught")}
           icon={I.phone}
           value={props.callsCaught}
           sub={props.autotextOn ? t("home.calls_sub") : t("home.autotext_off")}
-        />
-        <Tile
-          href="/dashboard/settings#marketing"
-          label={t("home.wed")}
-          icon={I.bolt}
-          value={props.marketing === "on" && props.wednesdayOn ? props.wednesdayTargeted : t("home.off")}
-          sub={props.marketing === "off" ? t("home.wed_marketing_off") : props.wednesdayOn ? t("home.wed_due") : t("home.wed_off")}
-          warm
+          accent
         />
         <Tile href="/dashboard/schedule" label={t("home.bookings")} value={revenue.cuts} sub={t("home.bookings_sub")} />
       </div>
+
+      <ShareCard pageUrl={props.pageUrl} shopName={props.shopName} coverUrl={props.coverUrl} />
 
       <div className="grid grid-cols-2 gap-2.5">
         <Link
@@ -264,16 +228,6 @@ export function HomeClient(props: {
           {t("home.broadcast")}
         </Link>
       </div>
-
-      {!props.reviewsOn && (
-        <Link href="/dashboard/settings#reviews" className="block">
-          <Card className="px-4 py-3.5 flex items-center gap-3 hover:border-[var(--accent-color)]/25 transition-colors">
-            <Icon d={I.star} className="text-[var(--app-warn)]" />
-            <span className="text-[13px] text-white/60 flex-1">{t("home.reviews_prompt")}</span>
-            <span className="text-[var(--accent-color)] text-sm">›</span>
-          </Card>
-        </Link>
-      )}
 
       {props.suppressed.length > 0 && (
         <section>
@@ -311,7 +265,7 @@ export function HomeClient(props: {
                     <Icon d={cfg.icon} size={15} />
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-white/85 truncate">{activityText(e, t, money(REWARD_LABEL_CENTS / 100))}</p>
+                    <p className="text-[13px] font-medium text-white/85 truncate">{activityText(e, t, f.tag.startsWith("es") ? "es" : "en")}</p>
                     <p className="text-[11px] text-white/30">{timeAgo(e.created_at, t, f.date, props.timezone)}</p>
                   </div>
                   {price !== null ? (
@@ -391,5 +345,13 @@ function RevenueChart({ points, current, label, weekLabel }: { points: (number |
         ))}
       </div>
     </div>
+  );
+}
+
+function BillingLink({ label }: { label: string }) {
+  return (
+    <a href="/dashboard/settings#billing" className="mt-2.5 inline-flex min-h-10 items-center rounded-full bg-[var(--accent-color)] px-4 text-[13px] font-semibold text-[var(--accent-fg)]">
+      {label}
+    </a>
   );
 }

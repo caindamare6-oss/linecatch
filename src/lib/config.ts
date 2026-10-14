@@ -13,15 +13,19 @@ export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@l
 /** Used only when a barber hasn't set their own timezone yet. */
 export const DEFAULT_TZ = "America/New_York";
 
-/** Optional QR sticker add-on for the chair or mirror. */
-export const STICKER_PRICE_CENTS = Number(process.env.NEXT_PUBLIC_STICKER_PRICE_CENTS || 700);
+/**
+ * Card on file / no-show protection (clients paying barbers through Stripe). Off for launch:
+ * clients pay in store, Settings has no Payments section. Barbers still pay LineCatch $49/mo.
+ */
+export const CLIENT_PAYMENTS = false;
 
-/** Loyalty reward shown to clients (the loyalty engine uses REWARD_CENTS from loyalty-rules). */
-export { REWARD_CENTS as REWARD_LABEL_CENTS } from "@/lib/loyalty-rules";
 
-/** Referral rewards. */
-export const REFERRER_FREE_MONTHS = 1;
-export const REFERRED_PERCENT_OFF = 50;
+
+/**
+ * Referrals: the new barber gets this much off their first month at checkout, and once they pay,
+ * the barber who sent them gets the same off a month (a credit on their next bill).
+ */
+export const REFERRAL_PERCENT_OFF = 50;
 
 export function money(cents: number, locale: "en" | "es" = "en"): string {
   const whole = cents % 100 === 0;

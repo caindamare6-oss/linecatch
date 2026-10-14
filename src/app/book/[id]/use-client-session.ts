@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 export type KnownClient = {
   firstName: string | null;
   phoneLast4: string;
-  smsOptedIn: boolean;
   stampCount: number | null;
   lastServiceId: string | null;
 };

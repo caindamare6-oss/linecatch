@@ -16,7 +16,6 @@ const NAV_LINKS = [
   { label: "Login", href: "/login" },
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
-  { label: "VIP Page", href: "/vip/demo" },
   { label: "Booking Page", href: "/book/demo" },
   { label: "Manage Page", href: "/manage/demo" },
 ];

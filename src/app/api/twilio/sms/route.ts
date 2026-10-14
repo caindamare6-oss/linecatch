@@ -176,16 +176,8 @@ export async function POST(request: Request) {
       const phones = [...new Set(todayBookings.map((b) => b.customer_phone))];
       let broadcastCount = 0;
 
+      // Everyone booked today (sendSMS skips anyone who replied STOP).
       for (const phone of phones) {
-        const { data: vip } = await supabase
-          .from("vip_clients")
-          .select("is_opted_in, opted_out_at")
-          .eq("user_id", barber.user_id)
-          .eq("phone_number", phone)
-          .single();
-
-        if (!vip || !vip.is_opted_in || vip.opted_out_at) continue;
-
         const sms = await buildSMS({
           userId: barber.user_id,
           templateKey: "morning_late_broadcast",

@@ -5,10 +5,6 @@
       "schedule": "*/15 * * * *"
     },
     {
-      "path": "/api/cron/retention-loop",
-      "schedule": "0 * * * *"
-    },
-    {
       "path": "/api/cron/weekly-report",
       "schedule": "0 * * * *"
     },
@@ -19,6 +15,10 @@
     {
       "path": "/api/cron/auto-complete",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/billing",
+      "schedule": "0 * * * *"
     }
   ]
 }

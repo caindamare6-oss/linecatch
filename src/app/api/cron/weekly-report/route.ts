@@ -53,13 +53,6 @@ export async function GET(request: Request) {
     const prices = new Map((services || []).map((sv) => [sv.id, Number(sv.price)]));
     const revenue = String(Math.round((done || []).reduce((sum, b) => sum + (prices.get(b.service_id) ?? barber.avg_booking_value ?? 35), 0)));
 
-    const { count: newVips } = await supabase
-      .from("vip_clients")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", barber.user_id)
-      .gte("opted_in_at", weekStart.toISOString())
-      .lt("opted_in_at", weekEnd.toISOString());
-
     const { count: missedCaught } = await supabase
       .from("missed_calls_log")
       .select("call_id", { count: "exact", head: true })
@@ -67,13 +60,6 @@ export async function GET(request: Request) {
       .eq("status", "sms_sent")
       .gte("timestamp", weekStart.toISOString())
       .lt("timestamp", weekEnd.toISOString());
-
-    const { count: reviewsSent } = await supabase
-      .from("vip_clients")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", barber.user_id)
-      .gte("last_review_request_at", weekStart.toISOString())
-      .lt("last_review_request_at", weekEnd.toISOString());
 
     const { data: barberProfile } = await supabase
       .from("users")
@@ -89,11 +75,9 @@ export async function GET(request: Request) {
           barber_name: barberName,
           cuts: String(cuts),
           revenue,
-          new_vips: String(newVips || 0),
           missed_caught: String(missedCaught || 0),
-          reviews_sent: String(reviewsSent || 0),
         })
-      : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, ${newVips || 0} new VIPs, ${missedCaught || 0} missed calls caught, ${reviewsSent || 0} review requests sent.`;
+      : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, and ${missedCaught || 0} missed calls caught.`;
 
     try {
       if (!barber.forwarding_number) continue;

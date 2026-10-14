@@ -10,20 +10,22 @@ export async function GET(request: Request) {
   const serviceId = searchParams.get("serviceId");
   const partySize = Math.min(Math.max(parseInt(searchParams.get("partySize") || "1") || 1, 1), MAX_PARTY_SIZE);
 
-  if (!userId || !date || !serviceId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (!userId || !date || (!serviceId && !searchParams.get("serviceIds")) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
   }
 
   const supabase = createAdminClient();
 
-  const { data: service } = await supabase
+  // One cut per person ("serviceIds=a,b"), or the same cut for everyone (older pages).
+  const ids = (searchParams.get("serviceIds") || "").split(",").filter(Boolean).slice(0, MAX_PARTY_SIZE);
+  const party = ids.length ? ids : Array(partySize).fill(serviceId);
+  const { data: found } = await supabase
     .from("services")
-    .select("duration_minutes")
-    .eq("id", serviceId)
-    .eq("user_id", userId)
-    .single();
-
-  if (!service) {
+    .select("id, duration_minutes")
+    .in("id", [...new Set(party)])
+    .eq("user_id", userId);
+  const minutes = new Map((found || []).map((s) => [s.id, s.duration_minutes]));
+  if (party.some((id) => !minutes.has(id))) {
     return NextResponse.json({ error: "Service not found" }, { status: 404 });
   }
 
@@ -34,6 +36,6 @@ export async function GET(request: Request) {
     .single();
 
   const tz = barber?.timezone || "America/New_York";
-  const slots = await daySlots(supabase, { userId, date, totalMinutes: service.duration_minutes * partySize, hours: barber?.business_hours, tz });
+  const slots = await daySlots(supabase, { userId, date, totalMinutes: party.reduce((m, id) => m + (minutes.get(id) ?? 0), 0), hours: barber?.business_hours, tz });
   return NextResponse.json({ slots, timezone: tz });
 }

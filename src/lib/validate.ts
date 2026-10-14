@@ -69,3 +69,4 @@ export function cleanService(raw: unknown): { name: string; price: number; durat
   if (!Number.isInteger(duration) || duration < 5 || duration > 480) return null;
   return { name, price: Math.round(price * 100) / 100, duration, description };
 }
+

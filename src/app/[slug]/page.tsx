@@ -6,12 +6,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getTheme, isAccent, themeVars } from "@/lib/themes";
 import { getT } from "@/lib/i18n-server";
 import { money, DEFAULT_TZ } from "@/lib/config";
-import { toLoyalty } from "@/lib/loyalty-rules";
+import { toLoyalty, rewardLabel } from "@/lib/loyalty-rules";
 import { weekdayInTz } from "@/lib/availability";
 import { checkSlug } from "@/lib/slug";
 import { nextOpenings } from "@/lib/slots";
 import { barberLocalToUTC } from "@/lib/format";
-import { MAX_PORTFOLIO_PHOTOS } from "@/lib/portfolio";
 import PortfolioView, { type PortfolioData } from "./portfolio-view";
 
 // Tall, bold display face for the page's headings (barbershop-poster feel).
@@ -25,18 +24,17 @@ const loadBarber = cache(async (slug: string) => {
   const db = createAdminClient();
   const { data: barber } = await db
     .from("users")
-    .select("user_id, business_name, first_name, cover_url, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_cents")
+    .select("user_id, business_name, first_name, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_type")
     .eq("slug", slug)
     .maybeSingle();
   if (!barber || barber.is_active === false) return null;
 
-  const [{ data: photos }, { data: services }] = await Promise.all([
-    db.from("portfolio_photos").select("id, url, thumb_url, width, height, service_id").eq("user_id", barber.user_id).order("sort_order").limit(MAX_PORTFOLIO_PHOTOS),
+  const [{ data: services }] = await Promise.all([
     db.from("services").select("id, name, description, price, duration_minutes").eq("user_id", barber.user_id).eq("is_active", true).order("sort_order"),
   ]);
 
   const shopName = barber.business_name?.trim() || barber.first_name?.trim() || "LineCatch";
-  return { db, barber, shopName, photos: photos || [], services: (services || []).map((s) => ({ ...s, price: Number(s.price) })) };
+  return { db, barber, shopName, services: (services || []).map((s) => ({ ...s, price: Number(s.price) })) };
 });
 
 /** "09:30" → "9:30 AM" / "9:30 a. m." in the visitor's language (wall-clock time, no timezone math). */
@@ -54,11 +52,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const data = await loadBarber(slug.toLowerCase());
   if (!data) return { title: "LineCatch" };
   const { t } = await getT();
-  const image = data.barber.cover_url || data.photos[0]?.url;
   return {
     title: t("shop.meta_title", { shop: data.shopName }),
     description: t("shop.meta_desc", { shop: data.shopName }),
-    openGraph: image ? { images: [image] } : undefined,
   };
 }
 
@@ -74,7 +70,7 @@ export default async function PortfolioPage({
   const data = await loadBarber(slug.toLowerCase());
   if (!data) notFound();
 
-  const { db, barber, shopName, photos, services } = data;
+  const { db, barber, shopName, services } = data;
   const { t, locale, tag } = await getT();
   const loyalty = toLoyalty(barber);
   const tz = barber.timezone || DEFAULT_TZ;
@@ -130,15 +126,13 @@ export default async function PortfolioPage({
     barberId: barber.user_id,
     shopName,
     firstName: barber.business_name && barber.first_name ? barber.first_name.trim() : null,
-    coverUrl: barber.cover_url,
     status,
     openNow,
     lowestPrice: services.some((s) => s.price > 0) ? money(Math.round(Math.min(...services.filter((s) => s.price > 0).map((s) => s.price)) * 100), locale) : null,
     services: services.map((s) => ({ id: s.id, name: s.name, description: s.description, price: s.price, minutes: s.duration_minutes, priceLabel: s.price > 0 ? money(Math.round(s.price * 100), locale) : null })),
-    photos: photos.map((p) => ({ id: p.id, url: p.url, thumb: p.thumb_url ?? p.url, width: p.width, height: p.height, serviceId: p.service_id })),
     next,
     week,
-    loyalty: loyalty.enabled ? { amount: money(loyalty.cents, locale) } : null,
+    loyalty: loyalty.enabled ? { amount: rewardLabel(loyalty, locale) } : null,
     src,
   };
 

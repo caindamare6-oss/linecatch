@@ -159,7 +159,6 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
   const t = useT();
   const [text, setText] = useState("");
   const [count, setCount] = useState<number | null>(null);
-  const [blocked, setBlocked] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "confirm" | "sending" | "done">("idle");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -167,12 +166,9 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     fetch("/api/broadcast")
       .then((r) => r.json())
-      .then((d) => {
-        setCount(typeof d.total === "number" ? d.total : 0);
-        setBlocked(d.blockedReason ? t("messages.bc_blocked") : null);
-      })
+      .then((d) => setCount(typeof d.total === "number" ? d.total : 0))
       .catch(() => setCount(0));
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && state !== "sending" && onClose();
@@ -186,7 +182,7 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
     try {
       const res = await fetch("/api/broadcast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) });
       const d = await res.json();
-      if (!res.ok) throw new Error(res.status === 403 ? t("messages.bc_blocked") : d.error ? t(d.error) : t("messages.bc_failed"));
+      if (!res.ok) throw new Error(d.error ? t(d.error) : t("messages.bc_failed"));
       setResult(t("messages.bc_result", { sent: d.sent, total: d.total }));
       setState("done");
     } catch (e) {
@@ -205,18 +201,11 @@ function BroadcastSheet({ onClose }: { onClose: () => void }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
-        <p className={`text-[13px] text-white/45 mb-4 ${blocked ? "hidden" : ""}`}>
+        <p className="text-[13px] text-white/45 mb-4">
           {count === null ? t("messages.bc_counting") : count === 0 ? t("messages.bc_none") : count === 1 ? t("messages.bc_goes_to_one") : t("messages.bc_goes_to", { n: count })}
         </p>
 
-        {blocked ? (
-          <>
-            <p className="text-sm text-[var(--app-warn)] leading-relaxed">{blocked}</p>
-            <Link href="/dashboard/settings#marketing" className="mt-4 w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold flex items-center justify-center">
-              {t("messages.bc_open_settings")}
-            </Link>
-          </>
-        ) : state === "done" ? (
+        {state === "done" ? (
           <>
             <p className="text-sm text-[var(--app-ok)] font-medium">{result}</p>
             <button onClick={onClose} className="mt-4 w-full h-12 rounded-xl bg-[var(--accent-color)] text-[var(--accent-fg)] font-semibold">{t("common.done")}</button>
