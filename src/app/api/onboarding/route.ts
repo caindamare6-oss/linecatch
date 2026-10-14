@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { cookies } from "next/headers";
 import { applyReferral, ensureReferralCode, HEARD_FROM, REF_COOKIE, normalizeCode } from "@/lib/referrals";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
 import { assignNumberSoon } from "@/lib/phone-numbers";
+import { addBarberToNewsletter } from "@/lib/newsletter";
 import { THEME_IDS } from "@/lib/themes";
 
 export async function POST(request: Request) {
@@ -59,6 +60,8 @@ export async function POST(request: Request) {
     }
     await ensureReferralCode(admin, user.id);
     assignNumberSoon(user.id);
+    // Newsletter list (Resend), after the response so sign-up never waits on it.
+    after(() => addBarberToNewsletter({ email: user.email }));
     return NextResponse.json({ ok: true });
   }
 
@@ -216,6 +219,7 @@ export async function POST(request: Request) {
     await ensureReferralCode(admin, user.id);
 
     assignNumberSoon(user.id);
+    after(() => addBarberToNewsletter({ email: user.email }));
     return NextResponse.json({ ok: true });
   }
 
