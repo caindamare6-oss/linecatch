@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CLIENT_PAYMENTS } from "@/lib/config";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -28,7 +29,6 @@ type Settings = {
   call_mode: "forwarded" | "direct";
   numberMissing: string[];
   forwarding_number: string | null;
-  instagram_handle: string | null;
   booking_link: string | null;
   custom_message: string | null;
   missed_call_style: string | null;
@@ -130,17 +130,6 @@ export default function SettingsPage() {
               return err;
             }}
           />
-          <EditRow
-            label={t("settings.instagram")}
-            hint={t("settings.social_hint")}
-            value={s.instagram_handle ? `@${s.instagram_handle}` : ""}
-            placeholder="@yourshop"
-            onSave={async (v) => {
-              const err = await patch({ instagram_handle: v });
-              if (!err) set({ instagram_handle: (await fetch("/api/settings").then((r) => r.json())).instagram_handle });
-              return err;
-            }}
-          />
           <CopyRow label={t("settings.booking_link")} url={bookingUrl} />
           <EditRow
             label={t("settings.outside")}
@@ -190,7 +179,7 @@ export default function SettingsPage() {
 
       <BillingSection s={pay} />
 
-      <PaymentsSection s={pay} reload={reloadPay} patch={patch} />
+      {CLIENT_PAYMENTS && <PaymentsSection s={pay} reload={reloadPay} patch={patch} />}
 
       <section id="loyalty">
         <SectionLabel>{t("loyalty_settings.section")}</SectionLabel>

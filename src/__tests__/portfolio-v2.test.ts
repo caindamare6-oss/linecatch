@@ -91,17 +91,3 @@ describe("Next opening", () => {
   });
 });
 
-describe("Instagram username", () => {
-  it("accepts @name, name or a profile link, and stores just the username", async () => {
-    const { cleanHandle } = await import("@/lib/validate");
-    expect(cleanHandle("@Fresh.Fades")).toEqual({ ok: true, value: "fresh.fades" });
-    expect(cleanHandle("https://www.instagram.com/freshfades/?hl=en")).toEqual({ ok: true, value: "freshfades" });
-    expect(cleanHandle("")).toEqual({ ok: true, value: null });
-  });
-
-  it("rejects things that aren't usernames", async () => {
-    const { cleanHandle } = await import("@/lib/validate");
-    expect(cleanHandle("fresh fades").ok).toBe(false);
-    expect(cleanHandle("x".repeat(31)).ok).toBe(false);
-  });
-});

@@ -7,7 +7,6 @@ export type PortfolioData = {
   barberId: string;
   shopName: string;
   firstName: string | null;
-  instagram: string | null;
   status: string;
   openNow: boolean;
   lowestPrice: string | null;
@@ -40,7 +39,7 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
 
   return (
     <>
-      {/* Shop name, open status and their Instagram */}
+      {/* Shop name and open status */}
       <header className="relative overflow-hidden rounded-b-[34px] border-b px-5 pt-[max(16px,env(safe-area-inset-top))] pb-7" style={{ borderColor: "color-mix(in srgb, var(--t-accent) 30%, transparent)", background: "radial-gradient(120% 90% at 20% 0%, color-mix(in srgb, var(--t-accent) 18%, var(--t-bg)), var(--t-bg) 70%)" }}>
         <div className="mx-auto max-w-[520px]">
           <div className="flex items-center justify-between gap-3">
@@ -65,11 +64,6 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
             {[data.firstName && t("shop.with", { name: data.shopName }), data.lowestPrice && t("shop.from", { price: data.lowestPrice })].filter(Boolean).join(" · ")}
           </p>
 
-          {data.instagram && (
-            <div className="pf2-rise mt-5 flex flex-wrap gap-2" style={{ animationDelay: "0.45s" }}>
-              <InstagramLink href={`https://www.instagram.com/${data.instagram}/`} label={t("shop.see_instagram", { handle: data.instagram })} text={`@${data.instagram}`} />
-            </div>
-          )}
         </div>
       </header>
 
@@ -248,21 +242,5 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
       </div>
 
     </>
-  );
-}
-
-/** A button out to the barber's Instagram (their photos live there). */
-function InstagramLink({ href, label, text }: { href: string; label: string; text: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={label}
-      className="min-h-11 px-3.5 rounded-full inline-flex items-center gap-2 border border-[var(--t-border)] bg-[var(--t-surface)] text-sm font-semibold active:scale-[0.97] transition-transform focus-visible:outline-2 focus-visible:outline-[var(--t-accent)]"
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" /></svg>
-      {text}
-    </a>
   );
 }

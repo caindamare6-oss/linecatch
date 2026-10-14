@@ -6,7 +6,7 @@ import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { normalizePhone } from "@/lib/phone";
 import { consentText } from "@/lib/consent";
 import { getT } from "@/lib/i18n-server";
-import { DEFAULT_TZ, appUrl } from "@/lib/config";
+import { CLIENT_PAYMENTS, DEFAULT_TZ, appUrl } from "@/lib/config";
 import { isLocale, translate } from "@/lib/i18n-shared";
 import { formatCasualDate, formatCasualTime } from "@/lib/format";
 import { isSlotFree, withinBusinessHours, MAX_PARTY_SIZE } from "@/lib/availability";
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
 
   // No-show protection: clients booking themselves save a card first (charged only when the cut is done).
   // The client can choose to pay in store instead.
-  const needsCard = source !== "barber" && body.payment !== "store" && !!barberHours?.protection_enabled && !!barberHours?.stripe_charges_enabled && !!barberHours?.stripe_account_id;
+  const needsCard = CLIENT_PAYMENTS && source !== "barber" && body.payment !== "store" && !!barberHours?.protection_enabled && !!barberHours?.stripe_charges_enabled && !!barberHours?.stripe_account_id;
   const setupIntentId = typeof body.setupIntentId === "string" ? body.setupIntentId : "";
   if (needsCard && !setupIntentId) {
     return NextResponse.json({ error: t("pay.card_required"), cardRequired: true }, { status: 402 });

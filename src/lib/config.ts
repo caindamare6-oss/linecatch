@@ -13,6 +13,12 @@ export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@l
 /** Used only when a barber hasn't set their own timezone yet. */
 export const DEFAULT_TZ = "America/New_York";
 
+/**
+ * Card on file / no-show protection (clients paying barbers through Stripe). Off for launch:
+ * clients pay in store, Settings has no Payments section. Barbers still pay LineCatch $49/mo.
+ */
+export const CLIENT_PAYMENTS = false;
+
 
 
 /** Referral rewards. */

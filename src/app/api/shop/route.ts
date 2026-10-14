@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { toLoyalty } from "@/lib/loyalty-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { DEFAULT_TZ } from "@/lib/config";
+import { CLIENT_PAYMENTS, DEFAULT_TZ } from "@/lib/config";
 
 /** Shop details for the booking page (name, colors, hours, loyalty). */
 export async function GET(request: Request) {
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     loyalty,
     // No-show protection: the booking page saves a card on the barber's Stripe account.
     protection:
-      barber?.protection_enabled && barber.stripe_charges_enabled && barber.stripe_account_id
+      CLIENT_PAYMENTS && barber?.protection_enabled && barber.stripe_charges_enabled && barber.stripe_account_id
         ? { account: barber.stripe_account_id, feePercent: barber.no_show_fee_percent ?? 50 }
         : null,
   });

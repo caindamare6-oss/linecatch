@@ -24,7 +24,7 @@ const loadBarber = cache(async (slug: string) => {
   const db = createAdminClient();
   const { data: barber } = await db
     .from("users")
-    .select("user_id, business_name, first_name, instagram_handle, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_type")
+    .select("user_id, business_name, first_name, theme, accent_color, timezone, business_hours, is_active, loyalty_enabled, loyalty_reward_type")
     .eq("slug", slug)
     .maybeSingle();
   if (!barber || barber.is_active === false) return null;
@@ -126,7 +126,6 @@ export default async function PortfolioPage({
     barberId: barber.user_id,
     shopName,
     firstName: barber.business_name && barber.first_name ? barber.first_name.trim() : null,
-    instagram: barber.instagram_handle ?? null,
     status,
     openNow,
     lowestPrice: services.some((s) => s.price > 0) ? money(Math.round(Math.min(...services.filter((s) => s.price > 0).map((s) => s.price)) * 100), locale) : null,

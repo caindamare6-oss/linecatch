@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/admin";
-import { cleanHandle, cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
+import { cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
 import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
 import { isCallMode, isCarrier } from "@/lib/call-mode";
 import { detectCarrier } from "@/lib/carrier";
@@ -12,7 +12,7 @@ import { REWARD_TYPES, type RewardType } from "@/lib/loyalty-rules";
 import { MIN_FEE_PERCENT, MAX_FEE_PERCENT } from "@/lib/billing-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
+  "first_name, email, business_name, phone_number, forwarding_number, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
 
 export async function GET() {
   const supabase = await createClient();
@@ -64,12 +64,6 @@ export async function PATCH(request: Request) {
   if ("carrier" in body) {
     if (body.carrier !== null && !isCarrier(body.carrier)) return bad("Invalid carrier");
     update.carrier = body.carrier;
-  }
-  // Their Instagram: the button on their booking page.
-  if ("instagram_handle" in body) {
-    const h = cleanHandle(body.instagram_handle);
-    if (!h.ok) return bad(h.error);
-    update.instagram_handle = h.value;
   }
   if ("booking_link" in body) {
     const u = cleanUrl(body.booking_link);

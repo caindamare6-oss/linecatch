@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CLIENT_PAYMENTS } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/phone";
 import { findToken } from "@/lib/client-session";
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
 
   const db = createAdminClient();
   const { data: barber } = await db.from("users").select("stripe_account_id, protection_enabled, stripe_charges_enabled").eq("user_id", userId).maybeSingle();
-  if (!barber?.stripe_account_id || !barber.protection_enabled || !barber.stripe_charges_enabled) {
+  if (!CLIENT_PAYMENTS || !barber?.stripe_account_id || !barber.protection_enabled || !barber.stripe_charges_enabled) {
     return NextResponse.json({ required: false });
   }
 
