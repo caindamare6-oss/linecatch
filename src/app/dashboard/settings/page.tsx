@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CLIENT_PAYMENTS } from "@/lib/config";
+import { PhotoRow } from "./photo-row";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -107,6 +108,7 @@ export default function SettingsPage() {
             return err;
           }}
         />
+        <PhotoRow url={s.cover_url} onChange={(u) => set({ cover_url: u })} />
         <CopyRow label={t("settings.booking_link")} url={s.slug ? `${s.appUrl}/${s.slug}` : bookingUrl} />
         <NavRow href="/dashboard/services" label={t("settings.services")} />
         <NavRow href="/dashboard/portfolio" label={t("settings.portfolio")} />
