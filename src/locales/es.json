@@ -460,6 +460,8 @@
     "language": "Idioma",
     "language_hint": "Solo cambia la app. Los textos a clientes salen en inglés, o en español si reservaron en español.",
     "g_shop": "Barbería",
+    "weekly_email": "Resumen semanal por email",
+    "weekly_email_hint": "Los lunes: llamadas perdidas que LineCatch atrapó, cuántas reservaron y el dinero que salvaste.",
     "photo": "Foto",
     "photo_hint": "Opcional. Sale en tu imagen para historias.",
     "photo_add": "Agregar foto",
