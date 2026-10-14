@@ -74,8 +74,7 @@ export function BillingSection({ s, reload }: { s: Status | null; reload: () => 
 
   const managed = b.status === "active" || b.status === "past_due" || b.hasCard;
   return (
-    <section id="billing">
-      <SectionLabel>{t("billing.section")}</SectionLabel>
+    <section>
       <Card className="p-4">
         <p className="text-[14px] text-white/85">{t("billing.plan", { price })}</p>
         <p className={`text-[12px] mt-0.5 leading-snug ${b.status === "past_due" || b.status === "paused" ? "text-[var(--app-danger)]" : "text-white/45"}`}>{line}</p>

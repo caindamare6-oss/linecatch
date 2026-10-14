@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PageSkeleton } from "@/components/ui/skeleton";
-import { PageHeader, SectionLabel, Card, SERIF } from "../ui";
+import { PageHeader, Card, SERIF } from "../ui";
 import { formatPhone } from "@/lib/clients";
 import { DAY_KEYS, type Hours } from "@/lib/validate";
 import { useT, useLocale, LanguageToggle, type Locale } from "@/lib/i18n";
@@ -14,7 +14,6 @@ import { SUPPORT_EMAIL } from "@/lib/config";
 import { REWARD_TYPES, rewardLabel, toLoyalty, type RewardType } from "@/lib/loyalty-rules";
 import { type Carrier } from "@/lib/call-mode";
 import ForwardSetup from "./forward-setup";
-import ShareCard from "../share-card";
 import { BillingSection, PaymentsSection, useStripeStatus } from "./payments-section";
 import { MISSED_CALL_PRESETS, MISSED_CALL_STYLES, isMissedCallStyle, missedCallTemplate, withShopName, type MissedCallStyle } from "@/lib/missed-call-text";
 
@@ -72,7 +71,10 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!s || !window.location.hash) return;
     const el = document.querySelector(window.location.hash);
-    if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    if (!el) return;
+    const group = el.closest("details");
+    if (group) group.open = true;
+    setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
   }, [s]);
 
   if (error) return <p className="py-10 text-center text-sm text-white/50">{error}</p>;
@@ -81,12 +83,78 @@ export default function SettingsPage() {
   const set = (patchObj: Partial<Settings>) => setS((prev) => (prev ? { ...prev, ...patchObj } : prev));
   const bookingUrl = `${s.appUrl}/book/${s.user_id}`;
 
+  const billingLine = !pay ? "" : pay.billing.status === "active" ? t("settings.sum_billing_active") : pay.billing.status === "past_due" ? t("settings.sum_billing_due") : pay.billing.daysLeft && pay.billing.daysLeft > 0 ? t("settings.sum_billing_trial", { n: pay.billing.daysLeft }) : t("settings.sum_billing_add");
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       <PageHeader title={t("settings.title")} back="/dashboard" />
 
-      <section id="language">
-        <SectionLabel>{t("settings.language")}</SectionLabel>
+      <Group id="shop" title={t("settings.g_shop")} summary={s.business_name || t("settings.business_placeholder")}>
+        <EditRow label={t("settings.business_name")} value={s.business_name || ""} placeholder={t("settings.business_placeholder")} onSave={async (v) => (await patch({ business_name: v })) ?? (set({ business_name: v }), null)} />
+        <EditRow label={t("settings.your_name")} value={s.first_name || ""} placeholder={t("settings.add_your_name")} onSave={async (v) => (await patch({ first_name: v })) ?? (set({ first_name: v }), null)} />
+        <EditRow
+          label={t("settings.cell")}
+          hint={t("settings.cell_hint")}
+          value={s.forwarding_number ? formatPhone(s.forwarding_number) : ""}
+          placeholder="(555) 234-5678"
+          type="tel"
+          onSave={async (v) => {
+            const err = await patch({ forwarding_number: v });
+            if (!err) {
+              const r = await fetch("/api/settings").then((x) => x.json());
+              set({ forwarding_number: r.forwarding_number });
+            }
+            return err;
+          }}
+        />
+        <CopyRow label={t("settings.booking_link")} url={s.slug ? `${s.appUrl}/${s.slug}` : bookingUrl} />
+        <NavRow href="/dashboard/services" label={t("settings.services")} />
+        <NavRow href="/dashboard/portfolio" label={t("settings.portfolio")} />
+        <div id="hours">
+          <HoursEditor initial={s.business_hours} timezone={s.timezone} onSaved={(h) => set({ business_hours: h })} />
+        </div>
+      </Group>
+
+      <Group id="missed-calls" title={t("settings.g_missed")} summary={s.feature_autotext !== false ? t("settings.sum_on") : t("settings.sum_off")}>
+        <Toggle
+          label={t("settings.autotext")}
+          hint={t("settings.autotext_hint")}
+          on={s.feature_autotext !== false}
+          onChange={async (v) => (await patch({ feature_autotext: v })) ?? (set({ feature_autotext: v }), null)}
+        />
+        <MissedCallText s={s} onSaved={(v) => set(v)} />
+        <ForwardingCard
+          s={s}
+          onMode={async (m) => (await patch({ call_mode: m })) ?? (set({ call_mode: m }), null)}
+          onCarrier={async (c) => (await patch({ carrier: c })) ?? (set({ carrier: c }), null)}
+        />
+      </Group>
+
+      <Group id="loyalty" title={t("loyalty_settings.section")} summary={s.loyalty_enabled !== false ? rewardLabel(toLoyalty(s), locale) : t("settings.sum_off")}>
+        <Toggle
+          label={t("loyalty_settings.toggle")}
+          hint={t("loyalty_settings.hint", { amount: rewardLabel(toLoyalty(s), locale) })}
+          on={s.loyalty_enabled !== false}
+          onChange={async (v) => (await patch({ loyalty_enabled: v })) ?? (set({ loyalty_enabled: v }), null)}
+        />
+        {s.loyalty_enabled !== false && (
+          <RewardPicker
+            value={toLoyalty(s).reward}
+            onChange={async (v) => (await patch({ loyalty_reward_type: v })) ?? (set({ loyalty_reward_type: v }), null)}
+          />
+        )}
+      </Group>
+
+      <Group id="billing" title={t("billing.section")} summary={billingLine}>
+        <BillingSection s={pay} reload={reloadPay} />
+        {CLIENT_PAYMENTS && <PaymentsSection s={pay} reload={reloadPay} patch={patch} />}
+      </Group>
+
+      <Group id="refer" title={t("settings.refer")} summary={t("settings.sum_refer")}>
+        <ReferCard />
+      </Group>
+
+      <Group id="account" title={t("settings.account")} summary={s.email || ""}>
         <Card className="px-4 py-3.5 flex items-center gap-3">
           <p className="flex-1 text-[12px] text-white/45 leading-snug">{t("settings.language_hint")}</p>
           <LanguageToggle
@@ -96,153 +164,46 @@ export default function SettingsPage() {
             }}
           />
         </Card>
-      </section>
-
-      <section>
-        <SectionLabel>{t("settings.profile")}</SectionLabel>
-        <Card className="p-4 flex items-center gap-3.5">
-          <span className={`${SERIF} w-12 h-12 rounded-[14px] bg-gradient-to-br from-[var(--accent-color)] to-[color-mix(in_srgb,var(--accent-color)_78%,#000)] text-[var(--accent-fg)] flex items-center justify-center text-xl font-bold`} aria-hidden>
-            {(s.first_name?.[0] || "L").toUpperCase()}
-          </span>
-          <div className="min-w-0 flex-1">
-            <EditInline label={t("settings.your_name")} value={s.first_name || ""} placeholder={t("settings.add_your_name")} big onSave={async (v) => (await patch({ first_name: v })) ?? (set({ first_name: v }), null)} />
-            <p className="text-[13px] text-white/40 truncate">{s.email}</p>
-          </div>
-        </Card>
-      </section>
-
-      <section id="business">
-        <SectionLabel>{t("settings.business")}</SectionLabel>
-        <div className="space-y-2">
-          <EditRow label={t("settings.business_name")} value={s.business_name || ""} placeholder={t("settings.business_placeholder")} onSave={async (v) => (await patch({ business_name: v })) ?? (set({ business_name: v }), null)} />
-          <EditRow
-            label={t("settings.cell")}
-            hint={t("settings.cell_hint")}
-            value={s.forwarding_number ? formatPhone(s.forwarding_number) : ""}
-            placeholder="(555) 234-5678"
-            type="tel"
-            onSave={async (v) => {
-              const err = await patch({ forwarding_number: v });
-              if (!err) {
-                const r = await fetch("/api/settings").then((x) => x.json());
-                set({ forwarding_number: r.forwarding_number });
-              }
-              return err;
-            }}
-          />
-          <CopyRow label={t("settings.booking_link")} url={bookingUrl} />
-          <EditRow
-            label={t("settings.outside")}
-            hint={t("settings.outside_hint")}
-            value={s.booking_link || ""}
-            placeholder={t("settings.outside_placeholder")}
-            type="url"
-            onSave={async (v) => (await patch({ booking_link: v })) ?? (set({ booking_link: v || null }), null)}
-          />
-        </div>
-      </section>
-
-      <section id="share">
-        <ShareCard
-          pageUrl={s.slug ? `${s.appUrl}/${s.slug}` : bookingUrl}
-          shopName={s.business_name?.trim() || s.first_name?.trim() || "LineCatch"}
-          coverUrl={s.cover_url}
-        />
-      </section>
-
-      <section id="missed-calls">
-        <SectionLabel>{t("forward.section")}</SectionLabel>
-        <ForwardingCard
-          s={s}
-          onMode={async (m) => (await patch({ call_mode: m })) ?? (set({ call_mode: m }), null)}
-          onCarrier={async (c) => (await patch({ carrier: c })) ?? (set({ carrier: c }), null)}
-        />
-      </section>
-
-
-      <section id="features">
-        <SectionLabel>{t("settings.included")}</SectionLabel>
-        <div className="space-y-2">
-          <Toggle
-            label={t("settings.autotext")}
-            hint={t("settings.autotext_hint")}
-            on={s.feature_autotext !== false}
-            onChange={async (v) => (await patch({ feature_autotext: v })) ?? (set({ feature_autotext: v }), null)}
-          />
-          <Card className="px-4 py-3.5">
-            <p className="text-[14px] text-white/85">{t("settings.service")}</p>
-            <p className="text-[12px] text-white/40 mt-0.5">{t("settings.service_hint")}</p>
+        {s.isAdmin && <NavRow href="/dashboard/admin/twilio" label={t("settings.admin_twilio")} />}
+        {s.isAdmin && <NavRow href="/dashboard/admin/texts" label={t("settings.admin_texts")} />}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="block">
+          <Card className="px-4 py-3.5 flex items-center justify-between hover:border-white/15">
+            <span className="text-[14px] text-white/85">{t("settings.support")}</span>
+            <span className="text-white/25">›</span>
           </Card>
-        </div>
-      </section>
-
-      <BillingSection s={pay} reload={reloadPay} />
-
-      {CLIENT_PAYMENTS && <PaymentsSection s={pay} reload={reloadPay} patch={patch} />}
-
-      <section id="loyalty">
-        <SectionLabel>{t("loyalty_settings.section")}</SectionLabel>
-        <div className="space-y-2">
-          <Toggle
-            label={t("loyalty_settings.toggle")}
-            hint={t("loyalty_settings.hint", { amount: rewardLabel(toLoyalty(s), locale) })}
-            on={s.loyalty_enabled !== false}
-            onChange={async (v) => (await patch({ loyalty_enabled: v })) ?? (set({ loyalty_enabled: v }), null)}
-          />
-          {s.loyalty_enabled !== false && (
-            <RewardPicker
-              value={toLoyalty(s).reward}
-              onChange={async (v) => (await patch({ loyalty_reward_type: v })) ?? (set({ loyalty_reward_type: v }), null)}
-            />
-          )}
-        </div>
-      </section>
-
-      <section>
-        <SectionLabel>{t("settings.missed_text")}</SectionLabel>
-        <MissedCallText s={s} onSaved={(v) => set(v)} />
-      </section>
-
-      <section id="hours">
-        <SectionLabel>{t("settings.hours")}</SectionLabel>
-        <HoursEditor initial={s.business_hours} timezone={s.timezone} onSaved={(h) => set({ business_hours: h })} />
-      </section>
-
-      <section>
-        <SectionLabel>{t("settings.shop")}</SectionLabel>
-        <div className="space-y-2">
-          <NavRow href="/dashboard/services" label={t("settings.services")} />
-          <NavRow href="/dashboard/portfolio" label={t("settings.portfolio")} />
-        </div>
-      </section>
-
-      <ReferCard />
-
-      <section>
-        <SectionLabel>{t("settings.account")}</SectionLabel>
-        <div className="space-y-2">
-          {s.isAdmin && <NavRow href="/dashboard/admin/twilio" label={t("settings.admin_twilio")} />}
-          {s.isAdmin && <NavRow href="/dashboard/admin/texts" label={t("settings.admin_texts")} />}
-          <NavRow href="/privacy" label={t("settings.privacy")} />
-          <NavRow href="/terms" label={t("settings.terms")} />
-          <a href={`mailto:${SUPPORT_EMAIL}`} className="block">
-            <Card className="px-4 py-3.5 flex items-center justify-between hover:border-white/15">
-              <span className="text-[14px] text-white/85">{t("settings.support")}</span>
-              <span className="text-white/25">›</span>
-            </Card>
-          </a>
-          <button
-            onClick={async () => {
-              await createClient().auth.signOut();
-              router.push("/login");
-            }}
-            className="w-full h-12 rounded-[14px] border border-[var(--app-danger)]/25 text-[var(--app-danger)] text-sm font-semibold hover:bg-[var(--app-danger)]/5"
-          >
-            {t("settings.sign_out")}
-          </button>
-        </div>
-      </section>
+        </a>
+        <p className="px-1 pt-1 text-[12px] text-white/35">
+          <Link href="/privacy" className="hover:text-white/60">{t("settings.privacy")}</Link>
+          {" · "}
+          <Link href="/terms" className="hover:text-white/60">{t("settings.terms")}</Link>
+        </p>
+        <button
+          onClick={async () => {
+            await createClient().auth.signOut();
+            router.push("/login");
+          }}
+          className="w-full h-12 rounded-[14px] border border-[var(--app-danger)]/25 text-[var(--app-danger)] text-sm font-semibold hover:bg-[var(--app-danger)]/5"
+        >
+          {t("settings.sign_out")}
+        </button>
+      </Group>
     </div>
+  );
+}
+
+/** One settings group: a single row (title + current state) that opens to its settings. */
+function Group({ id, title, summary, children }: { id: string; title: string; summary: string; children: React.ReactNode }) {
+  return (
+    <details id={id} className="group scroll-mt-4 rounded-[14px] border border-white/[0.06] bg-[var(--app-card)] open:bg-transparent open:border-transparent">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden group-open:px-1">
+        <span className="flex-1 min-w-0">
+          <span className="block text-[15px] font-semibold text-white/90">{title}</span>
+          {summary && <span className="block truncate text-[12px] text-white/40 group-open:hidden">{summary}</span>}
+        </span>
+        <span className="text-white/30 transition-transform group-open:rotate-90" aria-hidden>›</span>
+      </summary>
+      <div className="space-y-2 pb-4">{children}</div>
+    </details>
   );
 }
 
@@ -367,36 +328,6 @@ function CopyRow({ label, url }: { label: string; url: string }) {
         {copied ? t("common.copied") : t("common.copy")}
       </button>
     </Card>
-  );
-}
-
-function EditInline({ label, value, placeholder, onSave, big }: { label: string; value: string; placeholder: string; onSave: (v: string) => Promise<string | null>; big?: boolean }) {
-  const t = useT();
-  const [editing, setEditing] = useState(false);
-  const [v, setV] = useState(value);
-  const [err, setErr] = useState("");
-  if (!editing) {
-    return (
-      <button onClick={() => { setV(value); setEditing(true); }} className={`${big ? "text-[16px] font-semibold" : "text-[14px]"} text-left hover:text-[var(--accent-color)] transition-colors`}>
-        {value || <span className="text-white/40">{placeholder}</span>}
-      </button>
-    );
-  }
-  return (
-    <form
-      className="flex gap-2"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const er = await onSave(v.trim());
-        if (er) setErr(er);
-        else setEditing(false);
-      }}
-    >
-      <label className="sr-only" htmlFor={`f-${label}`}>{label}</label>
-      <input id={`f-${label}`} autoFocus value={v} onChange={(e) => setV(e.target.value)} className="flex-1 min-w-0 h-9 rounded-lg bg-white/[0.05] border border-white/[0.12] px-2.5 text-[14px] outline-none focus:border-[var(--accent-color)]/50" />
-      <button className="h-9 px-3 rounded-lg bg-[var(--accent-color)] text-[var(--accent-fg)] text-[13px] font-semibold">{t("common.save")}</button>
-      {err && <span className="sr-only" role="alert">{t(err)}</span>}
-    </form>
   );
 }
 
@@ -707,8 +638,7 @@ function ReferCard() {
   }
 
   return (
-    <section id="refer">
-      <SectionLabel>{t("settings.refer")}</SectionLabel>
+    <section>
       <Card className="p-4">
         <p className="text-[12px] text-white/50 leading-relaxed">{t("settings.refer_pitch", { percent })}</p>
         <div className="mt-3 flex items-center gap-3">
