@@ -5,7 +5,7 @@ import { getT } from "@/lib/i18n-server";
 import { LanguageToggle, type Locale } from "@/lib/i18n";
 import { SUPPORT_EMAIL } from "@/lib/config";
 
-const UPDATED = new Date("2026-09-18T12:00:00Z");
+const UPDATED = new Date("2026-10-14T12:00:00Z");
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
@@ -59,7 +59,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <section>
         <H>4. SMS Consent (Customers)</H>
         <p>
-          By calling a LineCatch-enabled phone number or opting in through a VIP sign-up form, you consent to receive automated SMS messages from the associated business. This consent is not a condition of any purchase.
+          By calling a LineCatch-enabled phone number that doesn&apos;t answer, you may receive one text with a booking link. By booking, you agree to receive appointment texts (a confirmation and reminders) from that business. Openings and deals are sent only if you tick the optional box when booking; that consent is not a condition of any purchase.
         </p>
         <ul className="list-disc pl-5 mt-2 space-y-1">
           <li>Message frequency varies based on your interactions.</li>
@@ -148,7 +148,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <section>
         <H>4. Consentimiento para SMS (clientes)</H>
         <p>
-          Al llamar a un número de teléfono que usa LineCatch o al inscribirte mediante un formulario VIP, das tu consentimiento para recibir mensajes SMS automáticos del negocio correspondiente. Este consentimiento no es una condición para ninguna compra.
+          Si llamas a un número que usa LineCatch y no contestan, puedes recibir un texto con un enlace para reservar. Al reservar, aceptas recibir textos de tu cita (una confirmación y recordatorios) de ese negocio. Los horarios libres y ofertas solo se envían si marcas la casilla opcional al reservar; ese consentimiento no es una condición para ninguna compra.
         </p>
         <ul className="list-disc pl-5 mt-2 space-y-1">
           <li>La frecuencia de los mensajes varía según tus interacciones.</li>

@@ -5,7 +5,7 @@ import { getT } from "@/lib/i18n-server";
 import { LanguageToggle, type Locale } from "@/lib/i18n";
 import { SUPPORT_EMAIL } from "@/lib/config";
 
-const UPDATED = new Date("2026-09-18T12:00:00Z");
+const UPDATED = new Date("2026-10-14T12:00:00Z");
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getT();
@@ -30,7 +30,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         <ul className="list-disc pl-5 mt-2 space-y-1">
           <li><B>Business owners (barbers):</B> Email address, phone number, business name, booking link, business hours, and messaging preferences.</li>
           <li><B>Customers:</B> Phone numbers from incoming calls, SMS opt-in consent, and interaction data (call timestamps, message delivery status, link clicks).</li>
-          <li><B>VIP opt-in subscribers:</B> Phone number and consent confirmation provided through our opt-in form.</li>
+          <li><B>Customers who book:</B> Name, phone number, the appointment, and whether they ticked the optional box to get openings and deals.</li>
         </ul>
       </section>
 
@@ -40,7 +40,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           <li>To send automated SMS messages on behalf of business owners when calls are missed.</li>
           <li>To process opt-out and opt-in requests for SMS communications.</li>
           <li>To provide business owners with analytics and reporting on missed calls and message delivery.</li>
-          <li>To send follow-up messages and promotional texts to customers who have opted in.</li>
+          <li>To send appointment confirmations and reminders to customers who book.</li>
+          <li>To send openings and deals only to customers who ticked the optional box when booking.</li>
           <li>To improve and maintain the LineCatch service.</li>
         </ul>
       </section>
@@ -48,15 +49,18 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <section>
         <H>3. SMS Messaging</H>
         <p>
-          LineCatch sends SMS messages through Twilio on behalf of business owners. By opting in to receive messages (via the VIP sign-up form or by calling a LineCatch-enabled number), you consent to receive:
+          LineCatch sends SMS messages through Twilio on behalf of business owners. You may receive:
         </p>
         <ul className="list-disc pl-5 mt-2 space-y-1">
-          <li>Missed call auto-reply texts with booking information.</li>
-          <li>Follow-up appointment reminders.</li>
-          <li>Promotional offers from the business you opted in with.</li>
+          <li><B>Missed-call text:</B> one text with a booking link when you call a business that uses LineCatch and they can&apos;t answer.</li>
+          <li><B>Appointment texts:</B> a confirmation and reminders when you book. Booking is agreeing to these, as stated next to the Book button.</li>
+          <li><B>Openings and deals (optional):</B> only if you tick the box for them when booking. It is never pre-ticked and is not required to book.</li>
         </ul>
         <p className="mt-2">
-          <B>Message frequency varies.</B> Message and data rates may apply. You can opt out at any time by replying <B>STOP</B> to any message. Reply <B>HELP</B> for assistance.
+          <B>Message frequency varies.</B> Message and data rates may apply. You can opt out at any time by replying <B>STOP</B> to any message. Reply <B>HELP</B> for assistance. Replying STOP stops all texts from that business.
+        </p>
+        <p className="mt-2">
+          No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. Text messaging opt-in data and consent are not shared with any third parties.
         </p>
       </section>
 
@@ -66,6 +70,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         <ul className="list-disc pl-5 mt-2 space-y-1">
           <li><B>Twilio:</B> Our SMS delivery provider, which processes phone numbers and message content to deliver texts.</li>
           <li><B>Supabase:</B> Our database provider, which stores account and interaction data securely.</li>
+          <li><B>Stripe:</B> Our payment provider, which handles business owners&apos; subscription payments. LineCatch never sees or stores card numbers.</li>
           <li><B>Business owners:</B> The barber or business you interacted with can see your phone number and interaction history.</li>
         </ul>
       </section>
@@ -110,7 +115,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         <ul className="list-disc pl-5 mt-2 space-y-1">
           <li><B>Dueños de negocios (barberos):</B> correo electrónico, número de teléfono, nombre del negocio, enlace de reservas, horario de atención y preferencias de mensajería.</li>
           <li><B>Clientes:</B> números de teléfono de las llamadas entrantes, consentimiento para recibir SMS y datos de interacción (hora de las llamadas, estado de entrega de los mensajes, clics en enlaces).</li>
-          <li><B>Suscriptores de la lista VIP:</B> número de teléfono y confirmación de consentimiento dados a través de nuestro formulario de inscripción.</li>
+          <li><B>Clientes que reservan:</B> nombre, número de teléfono, la cita y si marcaron la casilla opcional para recibir horarios libres y ofertas.</li>
         </ul>
       </section>
 
@@ -120,7 +125,8 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           <li>Para enviar mensajes SMS automáticos en nombre de los dueños de negocios cuando no contestan una llamada.</li>
           <li>Para procesar solicitudes de alta y de baja de las comunicaciones por SMS.</li>
           <li>Para dar a los dueños de negocios estadísticas e informes sobre llamadas perdidas y entrega de mensajes.</li>
-          <li>Para enviar mensajes de seguimiento y textos promocionales a los clientes que dieron su consentimiento.</li>
+          <li>Para enviar confirmaciones y recordatorios de citas a los clientes que reservan.</li>
+          <li>Para enviar horarios libres y ofertas solo a los clientes que marcaron la casilla opcional al reservar.</li>
           <li>Para mejorar y mantener el servicio de LineCatch.</li>
         </ul>
       </section>
@@ -128,15 +134,18 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       <section>
         <H>3. Mensajes SMS</H>
         <p>
-          LineCatch envía mensajes SMS a través de Twilio en nombre de los dueños de negocios. Al aceptar recibir mensajes (mediante el formulario de inscripción VIP o al llamar a un número que usa LineCatch), das tu consentimiento para recibir:
+          LineCatch envía mensajes SMS a través de Twilio en nombre de los dueños de negocios. Puedes recibir:
         </p>
         <ul className="list-disc pl-5 mt-2 space-y-1">
-          <li>Respuestas automáticas por llamada perdida con información para reservar.</li>
-          <li>Recordatorios y seguimientos de tus citas.</li>
-          <li>Ofertas promocionales del negocio con el que te inscribiste.</li>
+          <li><B>Texto por llamada perdida:</B> un mensaje con un enlace para reservar cuando llamas a un negocio que usa LineCatch y no puede contestar.</li>
+          <li><B>Textos de tu cita:</B> una confirmación y recordatorios cuando reservas. Al reservar aceptas recibirlos, como se indica junto al botón de reservar.</li>
+          <li><B>Horarios libres y ofertas (opcional):</B> solo si marcas la casilla al reservar. Nunca viene marcada y no es necesaria para reservar.</li>
         </ul>
         <p className="mt-2">
-          <B>La frecuencia de los mensajes varía.</B> Pueden aplicarse tarifas de mensajes y datos. Puedes darte de baja en cualquier momento respondiendo <B>STOP</B> a cualquier mensaje. Responde <B>HELP</B> para obtener ayuda.
+          <B>La frecuencia de los mensajes varía.</B> Pueden aplicarse tarifas de mensajes y datos. Puedes darte de baja en cualquier momento respondiendo <B>STOP</B> a cualquier mensaje. Responde <B>HELP</B> para obtener ayuda. Responder STOP detiene todos los textos de ese negocio.
+        </p>
+        <p className="mt-2">
+          No compartiremos información móvil con terceros ni afiliados con fines de marketing o promoción. Los datos de consentimiento para recibir mensajes no se comparten con terceros.
         </p>
       </section>
 
@@ -146,6 +155,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         <ul className="list-disc pl-5 mt-2 space-y-1">
           <li><B>Twilio:</B> nuestro proveedor de envío de SMS, que procesa números de teléfono y el contenido de los mensajes para entregarlos.</li>
           <li><B>Supabase:</B> nuestro proveedor de base de datos, que guarda de forma segura los datos de las cuentas y de las interacciones.</li>
+          <li><B>Stripe:</B> nuestro proveedor de pagos, que procesa las suscripciones de los dueños de negocios. LineCatch nunca ve ni guarda números de tarjeta.</li>
           <li><B>Dueños de negocios:</B> el barbero o negocio con el que interactuaste puede ver tu número de teléfono y tu historial de interacciones.</li>
         </ul>
       </section>
