@@ -1,20 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { assertTestKey } from "@/lib/stripe";
+import { assertStripeKey } from "@/lib/stripe";
 
-describe("Stripe test-mode lock", () => {
-  it("accepts secret and restricted test keys", () => {
-    expect(assertTestKey("sk_test_abc")).toBe("sk_test_abc");
-    expect(assertTestKey("rk_test_abc")).toBe("rk_test_abc");
+describe("Stripe key check", () => {
+  it("accepts test keys everywhere", () => {
+    expect(assertStripeKey("sk_test_abc", false)).toBe("sk_test_abc");
+    expect(assertStripeKey("rk_test_abc", true)).toBe("rk_test_abc");
   });
 
-  it("refuses live keys and anything else", () => {
-    for (const key of ["sk_live_abc", "rk_live_abc", "pk_test_abc", "whsec_abc", "abc"]) {
-      expect(() => assertTestKey(key)).toThrow(/not a Stripe test key/);
+  it("accepts live keys only on the live site", () => {
+    expect(assertStripeKey("sk_live_abc", true)).toBe("sk_live_abc");
+    expect(assertStripeKey("rk_live_abc", true)).toBe("rk_live_abc");
+    expect(() => assertStripeKey("sk_live_abc", false)).toThrow(/only allowed on the live site/);
+  });
+
+  it("refuses anything that isn't a secret key", () => {
+    for (const key of ["pk_test_abc", "pk_live_abc", "whsec_abc", "abc"]) {
+      expect(() => assertStripeKey(key, true)).toThrow(/not a Stripe secret key/);
     }
   });
 
   it("refuses a missing key", () => {
-    expect(() => assertTestKey(undefined)).toThrow(/not set/);
-    expect(() => assertTestKey("")).toThrow(/not set/);
+    expect(() => assertStripeKey(undefined)).toThrow(/not set/);
+    expect(() => assertStripeKey("")).toThrow(/not set/);
   });
 });
