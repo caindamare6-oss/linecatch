@@ -8,7 +8,6 @@ export type PortfolioData = {
   shopName: string;
   firstName: string | null;
   instagram: string | null;
-  tiktok: string | null;
   status: string;
   openNow: boolean;
   lowestPrice: string | null;
@@ -41,7 +40,7 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
 
   return (
     <>
-      {/* Shop name, open status and their Instagram / TikTok */}
+      {/* Shop name, open status and their Instagram */}
       <header className="relative overflow-hidden rounded-b-[34px] border-b px-5 pt-[max(16px,env(safe-area-inset-top))] pb-7" style={{ borderColor: "color-mix(in srgb, var(--t-accent) 30%, transparent)", background: "radial-gradient(120% 90% at 20% 0%, color-mix(in srgb, var(--t-accent) 18%, var(--t-bg)), var(--t-bg) 70%)" }}>
         <div className="mx-auto max-w-[520px]">
           <div className="flex items-center justify-between gap-3">
@@ -68,10 +67,9 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
             {[data.firstName && t("shop.with", { name: data.firstName }), data.lowestPrice && t("shop.from", { price: data.lowestPrice })].filter(Boolean).join(" · ")}
           </p>
 
-          {(data.instagram || data.tiktok) && (
+          {data.instagram && (
             <div className="pf2-rise mt-5 flex flex-wrap gap-2" style={{ animationDelay: "0.45s" }}>
-              {data.instagram && <SocialLink href={`https://www.instagram.com/${data.instagram}/`} label={t("shop.see_instagram", { handle: data.instagram })} icon="instagram" text={`@${data.instagram}`} />}
-              {data.tiktok && <SocialLink href={`https://www.tiktok.com/@${data.tiktok}`} label={t("shop.see_tiktok", { handle: data.tiktok })} icon="tiktok" text={`@${data.tiktok}`} />}
+              <InstagramLink href={`https://www.instagram.com/${data.instagram}/`} label={t("shop.see_instagram", { handle: data.instagram })} text={`@${data.instagram}`} />
             </div>
           )}
         </div>
@@ -255,8 +253,8 @@ export default function PortfolioView({ data }: { data: PortfolioData }) {
   );
 }
 
-/** A button out to the barber's Instagram or TikTok (their photos live there). */
-function SocialLink({ href, label, icon, text }: { href: string; label: string; icon: "instagram" | "tiktok"; text: string }) {
+/** A button out to the barber's Instagram (their photos live there). */
+function InstagramLink({ href, label, text }: { href: string; label: string; text: string }) {
   return (
     <a
       href={href}
@@ -265,11 +263,7 @@ function SocialLink({ href, label, icon, text }: { href: string; label: string; 
       aria-label={label}
       className="min-h-11 px-3.5 rounded-full inline-flex items-center gap-2 border border-[var(--t-border)] bg-[var(--t-surface)] text-sm font-semibold active:scale-[0.97] transition-transform focus-visible:outline-2 focus-visible:outline-[var(--t-accent)]"
     >
-      {icon === "instagram" ? (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" /></svg>
-      ) : (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5" /><path d="M14 3c.6 2.6 2.4 4.2 5 4.5" /></svg>
-      )}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" /></svg>
       {text}
     </a>
   );

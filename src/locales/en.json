@@ -544,8 +544,7 @@
     "add_shop_name": "Add your shop name so callers know who’s texting →",
     "admin_texts": "Admin: Texts",
     "instagram": "Instagram",
-    "tiktok": "TikTok",
-    "social_hint": "Buttons on your booking page. Your photos live there."
+    "social_hint": "A button on your booking page. Your photos live there."
   },
   "login": {
     "tagline": "Never lose a customer to a missed call",
@@ -1122,8 +1121,7 @@
     "book_this_cut": "Book this cut · {price}",
     "swipe_close": "Swipe down to close",
     "intro_fast": "Pick a cut and a time. You're booked in seconds, no app or account needed.",
-    "see_instagram": "See @{handle} on Instagram",
-    "see_tiktok": "See @{handle} on TikTok"
+    "see_instagram": "See @{handle} on Instagram"
   },
   "legal": {
     "privacy_title": "Privacy Policy",
@@ -1205,7 +1203,7 @@
   },
   "share": {
     "title": "Share your page",
-    "body": "Put your link in your Instagram and TikTok bio, post it on your story, and text it to clients.",
+    "body": "Put your link in your Instagram bio, post it on your story, and text it to clients.",
     "share": "Share",
     "share_text": "Book your next cut with {shop}",
     "copy_failed": "Couldn't copy. Press and hold the link to copy it.",
@@ -1218,7 +1216,7 @@
     "story_book": "Book your next cut",
     "story_tap": "Tap the link to book",
     "tip_bio_title": "Bio:",
-    "tip_bio": "Instagram → Edit profile → Links → Add link. TikTok → Edit profile → Website.",
+    "tip_bio": "Instagram → Edit profile → Links → Add link.",
     "tip_story_title": "Story:",
     "tip_story": "Post the story image and add a Link sticker with your page.",
     "tip_text_title": "Texts:",

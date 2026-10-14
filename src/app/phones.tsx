@@ -419,7 +419,6 @@ export function LinkPhone() {
             </p>
             <div className="mt-3 flex gap-1.5">
               <span className="rounded-full border border-[var(--t-border)] bg-[var(--t-surface)] px-2.5 py-1 text-[11px] font-semibold">@freshfades · Instagram</span>
-              <span className="rounded-full border border-[var(--t-border)] bg-[var(--t-surface)] px-2.5 py-1 text-[11px] font-semibold">TikTok</span>
             </div>
           </header>
           <div className="px-5 pb-8 pt-4">

@@ -237,10 +237,10 @@ function BookingLink() {
           <p className={EYEBROW}>Your booking link</p>
           <h2 className={`mt-3 ${H2}`}>One link for everywhere clients find you.</h2>
           <p className="mt-5 text-lg leading-relaxed text-[var(--app-muted)]">
-            Put it in your Instagram bio, on TikTok and Google Maps, and in every text. Clients pick a cut and a time in under 10 seconds. Your work stays on your Instagram and TikTok, one tap away.
+            Put it in your Instagram bio, on Google Maps and in every text. Clients pick a cut and a time in under 10 seconds. Your work stays on your Instagram, one tap away.
           </p>
           <ul className="mt-8 space-y-3">
-            {["linecatch.app/your-shop", "No app download, no account to make", "Your next opening, one tap away", "Buttons to your Instagram and TikTok", "In English and Spanish"].map((t) => (
+            {["linecatch.app/your-shop", "No app download, no account to make", "Your next opening, one tap away", "A button to your Instagram", "In English and Spanish"].map((t) => (
               <li key={t} className="flex gap-3"><Check className="mt-0.5 size-5 shrink-0 text-mint" />{t}</li>
             ))}
           </ul>
@@ -297,7 +297,7 @@ function Share() {
           <p className={EYEBROW}>Share your page</p>
           <h2 className={`mt-3 ${H2}`}>One link. Everywhere your clients scroll.</h2>
           <p className="mt-5 text-lg leading-relaxed text-[var(--app-muted)]">
-            Put your link in your Instagram and TikTok bio, post it on your story, text it to clients. LineCatch even makes the story image for you.
+            Put your link in your Instagram bio, post it on your story, text it to clients. LineCatch even makes the story image for you.
           </p>
           <ul className="mt-8 space-y-3">
             {["A short link to your page: linecatch.app/your-shop", "A ready-made Instagram story with your shop name and link", "Clients join your texts list when they book", "A punch card with every plan: every 10th cut is 50% off or free, your pick"].map((t) => (
@@ -382,7 +382,7 @@ function Quotes() {
   );
 }
 
-const BARBER = ["Missed-call text back, in English and Spanish", "Your booking link for Instagram, TikTok and Google Maps", "Reminder texts 24 hours and 2 hours before", "Share kit: your link + Instagram story image", "Loyalty punch card: every 10th cut 50% off or free", "No-show protection & instant cash-out (coming soon)"];
+const BARBER = ["Missed-call text back, in English and Spanish", "Your booking link for Instagram and Google Maps", "Reminder texts 24 hours and 2 hours before", "Share kit: your link + Instagram story image", "Loyalty punch card: every 10th cut 50% off or free", "No-show protection & instant cash-out (coming soon)"];
 const SHOP = ["Everything in Solo Barber", "Every barber in the shop gets their own number & booking link", "Owner dashboard across every chair", "Priority support & help with setup"];
 
 function Pricing() {

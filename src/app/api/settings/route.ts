@@ -13,7 +13,7 @@ import { REWARD_TYPES, type RewardType } from "@/lib/loyalty-rules";
 import { MIN_FEE_PERCENT, MAX_FEE_PERCENT } from "@/lib/billing-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, tiktok_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
+  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
 
 export async function GET() {
   const supabase = await createClient();
@@ -66,13 +66,11 @@ export async function PATCH(request: Request) {
     if (body.carrier !== null && !isCarrier(body.carrier)) return bad("Invalid carrier");
     update.carrier = body.carrier;
   }
-  // Their Instagram and TikTok: the buttons on their booking page.
-  for (const [key, site] of [["instagram_handle", "instagram"], ["tiktok_handle", "tiktok"]] as const) {
-    if (key in body) {
-      const h = cleanHandle(body[key], site);
-      if (!h.ok) return bad(h.error);
-      update[key] = h.value;
-    }
+  // Their Instagram: the button on their booking page.
+  if ("instagram_handle" in body) {
+    const h = cleanHandle(body.instagram_handle);
+    if (!h.ok) return bad(h.error);
+    update.instagram_handle = h.value;
   }
   if ("booking_link" in body) {
     const u = cleanUrl(body.booking_link);

@@ -544,8 +544,7 @@
     "add_shop_name": "Agrega el nombre de tu barbería para que sepan quién les escribe →",
     "admin_texts": "Admin: Mensajes",
     "instagram": "Instagram",
-    "tiktok": "TikTok",
-    "social_hint": "Botones en tu página de reservas. Tus fotos viven allí."
+    "social_hint": "Un botón en tu página de reservas. Tus fotos viven allí."
   },
   "login": {
     "tagline": "No pierdas otro cliente por una llamada perdida",
@@ -1181,8 +1180,7 @@
     "book_this_cut": "Reservar este corte · {price}",
     "swipe_close": "Desliza hacia abajo para cerrar",
     "intro_fast": "Elige un corte y una hora. Reservas en segundos, sin app ni cuenta.",
-    "see_instagram": "Ver @{handle} en Instagram",
-    "see_tiktok": "Ver @{handle} en TikTok"
+    "see_instagram": "Ver @{handle} en Instagram"
   },
   "legal": {
     "privacy_title": "Política de privacidad",
@@ -1264,7 +1262,7 @@
   },
   "share": {
     "title": "Comparte tu página",
-    "body": "Pon tu enlace en tu bio de Instagram y TikTok, publícalo en tu historia y mándalo a tus clientes.",
+    "body": "Pon tu enlace en tu bio de Instagram, publícalo en tu historia y mándalo a tus clientes.",
     "share": "Compartir",
     "share_text": "Reserva tu próximo corte con {shop}",
     "copy_failed": "No se pudo copiar. Mantén pulsado el enlace para copiarlo.",
@@ -1277,7 +1275,7 @@
     "story_book": "Reserva tu próximo corte",
     "story_tap": "Toca el enlace para reservar",
     "tip_bio_title": "Bio:",
-    "tip_bio": "Instagram → Editar perfil → Enlaces → Añadir enlace. TikTok → Editar perfil → Sitio web.",
+    "tip_bio": "Instagram → Editar perfil → Enlaces → Añadir enlace.",
     "tip_story_title": "Historia:",
     "tip_story": "Publica la imagen y añade un sticker de enlace con tu página.",
     "tip_text_title": "Mensajes:",

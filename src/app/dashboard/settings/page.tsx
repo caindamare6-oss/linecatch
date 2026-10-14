@@ -29,7 +29,6 @@ type Settings = {
   numberMissing: string[];
   forwarding_number: string | null;
   instagram_handle: string | null;
-  tiktok_handle: string | null;
   booking_link: string | null;
   custom_message: string | null;
   missed_call_style: string | null;
@@ -141,16 +140,6 @@ export default function SettingsPage() {
             onSave={async (v) => {
               const err = await patch({ instagram_handle: v });
               if (!err) set({ instagram_handle: (await fetch("/api/settings").then((r) => r.json())).instagram_handle });
-              return err;
-            }}
-          />
-          <EditRow
-            label={t("settings.tiktok")}
-            value={s.tiktok_handle ? `@${s.tiktok_handle}` : ""}
-            placeholder="@yourshop"
-            onSave={async (v) => {
-              const err = await patch({ tiktok_handle: v });
-              if (!err) set({ tiktok_handle: (await fetch("/api/settings").then((r) => r.json())).tiktok_handle });
               return err;
             }}
           />
