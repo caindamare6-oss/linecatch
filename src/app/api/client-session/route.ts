@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
   const { data: vip } = await supabase
     .from("vip_clients")
-    .select("first_name, cut_count, is_opted_in, opted_out_at")
+    .select("first_name, cut_count")
     .eq("user_id", barberId)
     .eq("phone_number", row.phone_number)
     .maybeSingle();
@@ -59,7 +59,6 @@ export async function POST(request: Request) {
     client: {
       firstName: firstName || null,
       phoneLast4: row.phone_number.slice(-4),
-      smsOptedIn: !!vip?.is_opted_in && !vip?.opted_out_at,
       stampCount: row.verified ? vip?.cut_count ?? 0 : null,
       lastServiceId,
     },

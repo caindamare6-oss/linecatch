@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { monthBounds, monthRevenue, greetingFor } from "@/lib/revenue";
 import { HomeClient } from "@/app/dashboard/home-client";
-import { marketingState } from "@/lib/marketing";
 import { getT } from "@/lib/i18n-server";
 import { appUrl, DEFAULT_TZ } from "@/lib/config";
 import { assignNumberSoon } from "@/lib/phone-numbers";
@@ -18,7 +17,7 @@ export default async function DashboardPage() {
 
   const { data: barber } = await supabase
     .from("users")
-    .select("first_name, business_name, timezone, feature_autotext, feature_marketing, is_locked_out, phone_number, cover_url, billing_status, trial_ends_at, billing_grace_until, stripe_subscription_id")
+    .select("first_name, business_name, timezone, feature_autotext, is_locked_out, phone_number, cover_url, billing_status, trial_ends_at, billing_grace_until, stripe_subscription_id")
     .eq("user_id", user.id)
     .single();
   // No LineCatch number yet: assign one as soon as their setup is complete (checked after the page renders).
@@ -30,7 +29,7 @@ export default async function DashboardPage() {
   const bounds = monthBounds(now, tz);
   const weekAgo = new Date(now.getTime() - 7 * 86_400_000).toISOString();
 
-  const [slug, services, completed, vipCount, caughtThisWeek, feed, suppressed] = await Promise.all([
+  const [slug, services, completed, caughtThisWeek, feed, suppressed] = await Promise.all([
     // Their page link, for "Share your page".
     ensureSlug(createAdminClient(), user.id),
     supabase.from("services").select("id, price").eq("user_id", user.id),
@@ -41,7 +40,6 @@ export default async function DashboardPage() {
       .eq("status", "completed")
       .gte("booking_time", bounds.prevStart.toISOString())
       .lt("booking_time", bounds.end.toISOString()),
-    supabase.from("vip_clients").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_opted_in", true).is("opted_out_at", null),
     supabase.from("missed_calls").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("sms_dispatched", true).gte("received_at", weekAgo),
     supabase
       .from("activity_feed")
@@ -81,10 +79,8 @@ export default async function DashboardPage() {
       shopName={barber?.business_name?.trim() || barber?.first_name?.trim() || "LineCatch"}
       coverUrl={barber?.cover_url ?? null}
       revenue={revenue}
-      vips={vipCount.count || 0}
       callsCaught={caughtThisWeek.count || 0}
       autotextOn={barber?.feature_autotext !== false}
-      marketing={marketingState(barber?.feature_marketing)}
       feed={feed.data || []}
       suppressed={suppressed.data || []}
       timezone={tz}

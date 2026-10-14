@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/admin";
 import { cleanHandle, cleanHours, cleanOptionalPhone, cleanText, cleanUrl } from "@/lib/validate";
-import { marketingState } from "@/lib/marketing";
 import { assignNumberSoon, missingSteps } from "@/lib/phone-numbers";
 import { isCallMode, isCarrier } from "@/lib/call-mode";
 import { detectCarrier } from "@/lib/carrier";
@@ -13,7 +12,7 @@ import { REWARD_TYPES, type RewardType } from "@/lib/loyalty-rules";
 import { MIN_FEE_PERCENT, MAX_FEE_PERCENT } from "@/lib/billing-rules";
 
 const FIELDS =
-  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, feature_marketing, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
+  "first_name, email, business_name, phone_number, forwarding_number, instagram_handle, booking_link, custom_message, business_hours, timezone, feature_autotext, barber_language, accent_color, slug, cover_url, plan, is_locked_out, call_mode, missed_call_style, carrier, loyalty_enabled, loyalty_reward_type, protection_enabled, no_show_fee_percent";
 
 export async function GET() {
   const supabase = await createClient();
@@ -37,7 +36,7 @@ export async function GET() {
   // Casual and Professional wording as the founder set it on Admin → Texts, for the Settings preview.
   const { data: presetRows } = await admin.from("message_templates").select("template_key, custom_message, custom_message_es").is("user_id", null).in("template_key", ["missed_call_casual", "missed_call_professional"]);
   const missedCallPresets = Object.fromEntries((presetRows || []).map((r) => [r.template_key.replace("missed_call_", ""), { en: r.custom_message, es: r.custom_message_es || r.custom_message }]));
-  return NextResponse.json({ ...data, numberMissing, missedCallPresets, lastMissedCallAt: last?.received_at ?? null, marketing: marketingState(data.feature_marketing), user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
+  return NextResponse.json({ ...data, numberMissing, missedCallPresets, lastMissedCallAt: last?.received_at ?? null, user_id: user.id, email: data.email || user.email, isAdmin: isAdmin(user.id), appUrl: appUrl() });
 }
 
 /** Partial update: only the keys sent are validated and saved. */
@@ -129,10 +128,6 @@ export async function PATCH(request: Request) {
     update.barber_language = body.barber_language;
   }
   // SMS marketing is the barber's call; texts still only reach clients who opted in.
-  if ("feature_marketing" in body) {
-    if (typeof body.feature_marketing !== "boolean") return bad("Invalid toggle");
-    update.feature_marketing = body.feature_marketing;
-  }
   if (Object.keys(update).length === 0) return bad("Nothing to save");
 
   const admin = createAdminClient();

@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     const { clients, loyalty } = await loadAll(supabase, user.id);
     // Clients join the texts list when they book, so the link to share is their page.
     const slug = await ensureSlug(createAdminClient(), user.id);
-    return NextResponse.json({ clients, loyalty, vipLink: slug ? `${appUrl()}/${slug}` : `${appUrl()}/book/${user.id}` });
+    return NextResponse.json({ clients, loyalty, pageUrl: slug ? `${appUrl()}/${slug}` : `${appUrl()}/book/${user.id}` });
   }
 
   const p = normalizePhone(raw);

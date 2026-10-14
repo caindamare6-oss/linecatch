@@ -71,17 +71,7 @@ export async function GET(request: Request) {
 
     if (existing) continue;
 
-    // Check vip_clients consent
-    const { data: vipClient } = await supabase
-      .from("vip_clients")
-      .select("is_opted_in, opted_out_at")
-      .eq("user_id", booking.user_id)
-      .eq("phone_number", booking.customer_phone)
-      .single();
-
-    if (!vipClient || !vipClient.is_opted_in || vipClient.opted_out_at) continue;
-
-    // Check opt_outs table
+    // Every client gets reminders unless they replied STOP
     const { data: optOut } = await supabase
       .from("opt_outs")
       .select("caller_phone")

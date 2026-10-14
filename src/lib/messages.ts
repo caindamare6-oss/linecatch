@@ -106,10 +106,9 @@ export async function buildSMS(opts: {
 
   const isBarberFacing = BARBER_FACING_TEMPLATES.has(opts.templateKey);
   const isMissedCall = opts.templateKey === "missed_call";
-  // A first-time caller's language isn't known yet: write to them in the barber's.
-  const language = isBarberFacing || (isMissedCall && !client?.client_language)
-    ? (barberProfile?.barber_language || "en")
-    : (client?.client_language || "en");
+  // The barber's app language is for the app (and their own alerts). Clients get texts in the
+  // language they booked in, or English until we know it.
+  const language = isBarberFacing ? (barberProfile?.barber_language || "en") : (client?.client_language || "en");
 
   const firstName = client?.first_name || "";
   const barberName = barberProfile?.first_name || "";

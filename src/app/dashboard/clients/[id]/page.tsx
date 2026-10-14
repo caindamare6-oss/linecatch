@@ -64,8 +64,7 @@ export default function ClientDetailPage() {
         <NameEditor phone={c.phone} initial={c.name} />
         <a href={`tel:${c.phone}`} className="block text-[13px] text-white/40 mt-1">{formatPhone(c.phone)}</a>
         <div className="flex gap-1.5 justify-center mt-2.5">
-          {c.isVip && <Badge tone="vip">{t("clients.badge_vip")}</Badge>}
-          {c.optedOut ? <Badge tone="danger">{t("clients.badge_optout")}</Badge> : c.isVip ? <Badge tone="gold">{t("client.opted_in")}</Badge> : <Badge tone="muted">{t("clients.badge_notexts")}</Badge>}
+          {c.optedOut && <Badge tone="danger">{t("clients.badge_optout")}</Badge>}
           {c.rewardDue && c.visits > 0 && <Badge tone="due">{t("client.reward_next", { reward })}</Badge>}
         </div>
       </section>

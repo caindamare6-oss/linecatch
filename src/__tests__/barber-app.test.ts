@@ -38,12 +38,11 @@ describe("summarizeClients", () => {
     expect(out.map((c) => c.phone)).toContain("+16175550004");
   });
 
-  it("an opted-out client is never a VIP", () => {
+  it("marks clients who replied STOP as opted out", () => {
     const bo = summarizeClients(base).find((c) => c.phone === "+16175550002")!;
-    expect(bo.isVip).toBe(false);
     expect(bo.optedOut).toBe(true);
     const viaTable = summarizeClients({ ...base, optOuts: ["+16175550001"] }).find((c) => c.phone === "+16175550001")!;
-    expect(viaTable.isVip).toBe(false);
+    expect(viaTable.optedOut).toBe(true);
   });
 
   it("loyalty: after 9 cuts the 10th is the reward; after 7, it's 3 away; off means never due", () => {

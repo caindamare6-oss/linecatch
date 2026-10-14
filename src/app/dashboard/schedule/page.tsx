@@ -18,7 +18,6 @@ type Booking = {
   status: "confirmed" | "completed" | "no_show";
   phone: string;
   name: string | null;
-  isVip: boolean;
   service: string;
   price: number;
   minutes: number;

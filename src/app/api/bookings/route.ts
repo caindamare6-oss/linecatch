@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
 import { buildSMS, markFirstMessageSent } from "@/lib/messages";
 import { normalizePhone } from "@/lib/phone";
-import { recordedConsentText } from "@/lib/consent";
+import { consentText } from "@/lib/consent";
 import { getT } from "@/lib/i18n-server";
 import { DEFAULT_TZ, appUrl } from "@/lib/config";
 import { isLocale, translate } from "@/lib/i18n-shared";
@@ -16,12 +16,11 @@ import { attachCardToBookings } from "@/lib/stripe-connect";
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { userId, serviceId, customerPhone, bookingTime, consentText, source, sessionToken } = body;
+  const { userId, serviceId, customerPhone, bookingTime, source, sessionToken } = body;
   const partySize = Number(body.partySize ?? 1);
   const { t } = await getT();
   // The language the client booked in; later texts go out in it. A barber booking on someone's behalf doesn't set it.
   const clientLanguage = source !== "barber" && isLocale(body.language) ? body.language : null;
-  const storedConsent = recordedConsentText(consentText, clientLanguage);
 
   if (!userId || !serviceId || !bookingTime || (!customerPhone && !sessionToken)) {
     return NextResponse.json({ error: t("book.err_missing") }, { status: 400 });
@@ -50,92 +49,44 @@ export async function POST(request: Request) {
   const firstName: string | undefined =
     body.firstName?.trim() || (sameClient ? session?.display_name ?? undefined : undefined);
 
-  // Check vip_clients for consent
   const { data: vipClient } = await supabase
     .from("vip_clients")
-    .select("id, is_opted_in, opted_out_at, opted_in_at, consent_text, first_name, client_language")
+    .select("id, is_opted_in, opted_out_at, first_name, client_language")
     .eq("user_id", userId)
     .eq("phone_number", normalized)
-    .single();
+    .maybeSingle();
 
-  // Opted-out clients can still book — just no SMS
-  if (vipClient?.opted_out_at) {
-    if (firstName && !vipClient.first_name) {
-      await supabase
-        .from("vip_clients")
-        .update({ first_name: firstName })
-        .eq("id", vipClient.id);
-    }
-  } else if (!vipClient) {
-    // No row exists — create one
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const userAgent = request.headers.get("user-agent") || "unknown";
-
-    if (consentText) {
-      const { error: insertError } = await supabase.from("vip_clients").insert({
-        user_id: userId,
-        phone_number: normalized,
-        opted_in_at: new Date().toISOString(),
+  // Booking agrees to appointment texts (the line under the Book button). Recorded only when the
+  // client books themselves; that record is also who gets broadcasts. STOP always wins.
+  const selfBooked = source !== "barber";
+  const consent = selfBooked
+    ? {
         is_opted_in: true,
+        opted_in_at: new Date().toISOString(),
         opt_in_source: "booking_form",
-        opt_in_ip: ip,
-        opt_in_user_agent: userAgent,
-        consent_text: storedConsent,
-        first_name: firstName || null,
-        ...(clientLanguage ? { client_language: clientLanguage } : {}),
-      });
-
-      if (insertError) {
-        console.error("VIP client creation error:", insertError);
-        return NextResponse.json({ error: t("book.err_record_client") }, { status: 500 });
+        opt_in_ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown",
+        opt_in_user_agent: request.headers.get("user-agent") || "unknown",
+        consent_text: consentText(clientLanguage),
       }
-    } else {
-      const { error: insertError } = await supabase.from("vip_clients").insert({
-        user_id: userId,
-        phone_number: normalized,
-        is_opted_in: false,
-        opt_in_source: "booking_form",
-        first_name: firstName || null,
-        ...(clientLanguage ? { client_language: clientLanguage } : {}),
-      });
+    : null;
 
-      if (insertError) {
-        console.error("VIP client creation error:", insertError);
-        return NextResponse.json({ error: t("book.err_record_client") }, { status: 500 });
-      }
-    }
-  } else if (!vipClient.is_opted_in) {
-    // Row exists but not opted in
-    if (consentText) {
-      const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-      const userAgent = request.headers.get("user-agent") || "unknown";
-
-      await supabase
-        .from("vip_clients")
-        .update({
-          is_opted_in: true,
-          opted_in_at: new Date().toISOString(),
-          opt_in_source: "booking_form",
-          opt_in_ip: ip,
-          opt_in_user_agent: userAgent,
-          consent_text: storedConsent,
-          first_name: firstName || vipClient.first_name || null,
-        })
-        .eq("id", vipClient.id);
-    } else if (firstName && !vipClient.first_name) {
-      await supabase
-        .from("vip_clients")
-        .update({ first_name: firstName })
-        .eq("id", vipClient.id);
+  if (!vipClient) {
+    const { error: insertError } = await supabase.from("vip_clients").insert({
+      user_id: userId,
+      phone_number: normalized,
+      ...(consent ?? { is_opted_in: false, opt_in_source: "booking_form" }),
+      first_name: firstName || null,
+      ...(clientLanguage ? { client_language: clientLanguage } : {}),
+    });
+    if (insertError) {
+      console.error("Client creation error:", insertError);
+      return NextResponse.json({ error: t("book.err_record_client") }, { status: 500 });
     }
   } else {
-    // Already opted in — update first_name if provided but don't overwrite consent fields
-    if (firstName && !vipClient.first_name) {
-      await supabase
-        .from("vip_clients")
-        .update({ first_name: firstName })
-        .eq("id", vipClient.id);
-    }
+    const update: Record<string, unknown> = {};
+    if (firstName && !vipClient.first_name) update.first_name = firstName;
+    if (consent && !vipClient.is_opted_in && !vipClient.opted_out_at) Object.assign(update, consent);
+    if (Object.keys(update).length) await supabase.from("vip_clients").update(update).eq("id", vipClient.id);
   }
 
   // Existing client: remember the language they just booked in.
@@ -144,11 +95,6 @@ export async function POST(request: Request) {
   }
   const smsLanguage = clientLanguage || vipClient?.client_language || "en";
 
-  // Determine if this client is opted in for SMS (used later for confirmation)
-  const clientOptedIn =
-    (vipClient?.is_opted_in === true && !vipClient?.opted_out_at) ||
-    (!vipClient && !!consentText) ||
-    (vipClient && !vipClient.is_opted_in && !vipClient.opted_out_at && !!consentText);
 
   // Verify service exists
   const { data: service } = await supabase
@@ -260,7 +206,8 @@ export async function POST(request: Request) {
   const loyalty = await projectVisit(supabase, booking.id);
   const rewardDue = !!loyalty?.due;
 
-  if (barber?.phone_number && clientOptedIn) {
+  // Confirmation text (sendSMS skips anyone who replied STOP).
+  if (barber?.phone_number) {
     const tz = barber.timezone || DEFAULT_TZ;
     // The weekday must match the template's language ("viernes", not "Friday", in a Spanish text).
     const dateStr = smsLanguage === "es" ? bTime.toLocaleDateString("es-US", { weekday: "long", timeZone: tz }) : formatCasualDate(bTime, tz);

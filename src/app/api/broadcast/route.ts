@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendSMS } from "@/lib/twilio";
-import { getMarketingState, MARKETING_BLOCKED } from "@/lib/marketing";
 
 async function broadcastRecipients(admin: ReturnType<typeof createAdminClient>, userId: string) {
   const [{ data: vips }, { data: optOuts }] = await Promise.all([
@@ -19,9 +18,8 @@ export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  const admin = createAdminClient();
-  const [recipients, marketing] = await Promise.all([broadcastRecipients(admin, user.id), getMarketingState(admin, user.id)]);
-  return NextResponse.json({ total: recipients.length, marketing, blockedReason: marketing === "on" ? null : MARKETING_BLOCKED.off });
+  const recipients = await broadcastRecipients(createAdminClient(), user.id);
+  return NextResponse.json({ total: recipients.length });
 }
 
 export async function POST(request: Request) {
@@ -54,13 +52,7 @@ export async function POST(request: Request) {
   if (barber.is_locked_out) {
     return NextResponse.json({ error: "Texting is paused on your account. Contact support." }, { status: 402 });
   }
-  // A broadcast is marketing.
-  const marketing = await getMarketingState(admin, user.id);
-  if (marketing !== "on") {
-    return NextResponse.json({ error: MARKETING_BLOCKED.off.en, errorEs: MARKETING_BLOCKED.off.es, marketing }, { status: 403 });
-  }
-
-  // Marketing texts go only to people who opted in. Callers who never signed up are not recipients.
+  // Clients who booked themselves (and agreed to texts doing it). Callers who never booked aren't recipients.
   const recipients = await broadcastRecipients(admin, user.id);
   let sent = 0;
   for (const r of recipients) {

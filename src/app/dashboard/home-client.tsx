@@ -37,10 +37,10 @@ const EVENTS: Record<string, { icon: React.ReactNode; tone: string; tag?: string
   cron_reengagement: { icon: I.bolt, tone: "var(--app-warn)", tag: "home.tag_reengage" },
   loyalty_claimed: { icon: I.gift, tone: "var(--app-warn)", tag: "home.tag_reward" },
   review_sent: { icon: I.star, tone: "var(--app-warn)", tag: "home.tag_review" },
-  qr_scan: { icon: I.qr, tone: "var(--app-ok)", tag: "home.tag_vip" },
+  qr_scan: { icon: I.qr, tone: "var(--app-ok)" },
   referral_qualified: { icon: I.gift, tone: "var(--app-ok)", tag: "home.tag_referral" },
   sticker_request: { icon: I.qr, tone: "var(--accent-color)" },
-  sticker_activated: { icon: I.qr, tone: "var(--app-ok)", tag: "home.tag_vip" },
+  sticker_activated: { icon: I.qr, tone: "var(--app-ok)" },
   number_assigned: { icon: I.phone, tone: "var(--app-ok)" },
 };
 
@@ -86,10 +86,8 @@ export function HomeClient(props: {
   shopName: string;
   coverUrl: string | null;
   revenue: Revenue;
-  vips: number;
   callsCaught: number;
   autotextOn: boolean;
-  marketing: "off" | "on";
   feed: FeedEvent[];
   suppressed: Suppressed[];
   timezone: string;
@@ -201,17 +199,15 @@ export function HomeClient(props: {
 
       {/* Tiles */}
       <div className="grid grid-cols-2 gap-2.5">
-        <Tile href="/dashboard/clients?filter=vip" label={t("home.vips")} value={props.vips} sub={t("home.opted_in")} accent />
         <Tile
           href="/dashboard/messages"
           label={t("home.calls_caught")}
           icon={I.phone}
           value={props.callsCaught}
           sub={props.autotextOn ? t("home.calls_sub") : t("home.autotext_off")}
+          accent
         />
-        <div className="col-span-2">
-          <Tile href="/dashboard/schedule" label={t("home.bookings")} value={revenue.cuts} sub={t("home.bookings_sub")} />
-        </div>
+        <Tile href="/dashboard/schedule" label={t("home.bookings")} value={revenue.cuts} sub={t("home.bookings_sub")} />
       </div>
 
       <ShareCard pageUrl={props.pageUrl} shopName={props.shopName} coverUrl={props.coverUrl} />

@@ -28,7 +28,7 @@ export const TEXT_CATALOG: CatalogText[] = [
   { key: "barber_booking_notify", title: "Barber: new booking today", to: "barber", when: "Same-day booking, after 9am. A link to the booking is added on its own line.", stop: "never", needs: ["customer_name", "time"], can: ["customer_name", "service", "time"] },
   { key: "barber_cancel_notify", title: "Barber: client cancelled", to: "barber", when: "Client cancels from their link. A link to that day is added.", stop: "never", needs: ["customer_name"], can: ["customer_name", "date", "time"] },
   { key: "barber_reschedule_notify", title: "Barber: client rescheduled", to: "barber", when: "Client moves their appointment. A link to the new day is added.", stop: "never", needs: ["customer_name", "time"], can: ["customer_name", "old_date", "old_time", "time", "date"] },
-  { key: "weekly_report", title: "Barber: weekly recap", to: "barber", when: "Sundays 9am.", stop: "never", needs: [], can: ["barber_name", "cuts", "revenue", "new_vips", "missed_caught"] },
+  { key: "weekly_report", title: "Barber: weekly recap", to: "barber", when: "Sundays 9am.", stop: "never", needs: [], can: ["barber_name", "cuts", "revenue", "missed_caught"] },
 ];
 
 /** Example values for the preview and the character count. */
@@ -49,7 +49,6 @@ export const EXAMPLES: Record<string, string> = {
   amount: "$5",
   offer: "$5 off",
   revenue: "1,240",
-  new_vips: "6",
   missed_caught: "11",
   party: "",
   reward: "",

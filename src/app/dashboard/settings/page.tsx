@@ -44,8 +44,6 @@ type Settings = {
   slug: string | null;
   cover_url: string | null;
   is_locked_out: boolean;
-  feature_marketing: boolean;
-  marketing: "off" | "on";
   isAdmin: boolean;
   appUrl: string;
 };
@@ -188,11 +186,6 @@ export default function SettingsPage() {
             <p className="text-[12px] text-white/40 mt-0.5">{t("settings.service_hint")}</p>
           </Card>
         </div>
-      </section>
-
-      <section id="marketing">
-        <SectionLabel>{t("settings.marketing")}</SectionLabel>
-        <MarketingCard s={s} onChange={async () => setS(await fetch("/api/settings").then((r) => r.json()))} />
       </section>
 
       <BillingSection s={pay} />
@@ -749,43 +742,6 @@ function HoursEditor({ initial, timezone, onSaved }: { initial: Hours | null; ti
     </Card>
   );
 }
-
-function MarketingCard({ s, onChange }: { s: Settings; onChange: () => Promise<void> }) {
-  const t = useT();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const on = s.feature_marketing;
-  return (
-    <Card className="p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] text-white/85">{t("settings.marketing")}</p>
-          <p className="text-[12px] text-white/40 mt-0.5 leading-snug">{t("settings.marketing_desc")}</p>
-          <p className="text-[12px] mt-1.5 leading-snug" style={{ color: on ? "var(--app-ok)" : "color-mix(in srgb, var(--app-fg) 40%, transparent)" }}>{on ? t("settings.marketing_on") : t("settings.marketing_off")}</p>
-        </div>
-        <button
-          role="switch"
-          aria-checked={on}
-          aria-label={t("settings.marketing")}
-          disabled={busy}
-          onClick={async () => {
-            setBusy(true);
-            setErr("");
-            const er = await patch({ feature_marketing: !on });
-            if (er) setErr(er);
-            else await onChange();
-            setBusy(false);
-          }}
-          className={`relative w-[46px] h-[26px] rounded-full shrink-0 transition-colors disabled:opacity-40 ${on ? "bg-[var(--accent-color)]" : "bg-white/[0.14]"}`}
-        >
-          <span className={`absolute top-[3px] w-5 h-5 rounded-full bg-[var(--app-fg)] shadow transition-[left] duration-200 ${on ? "left-[23px]" : "left-[3px]"}`} />
-        </button>
-      </div>
-      {err && <p className="text-[12px] text-[var(--app-danger)] mt-2" role="alert">{t(err)}</p>}
-    </Card>
-  );
-}
-
 
 type Referral = { code: string; link: string; signedUp: number; qualified: number; freeMonths: number; discountPercent: number | null; rewards: { referredPercentOff: number } };
 

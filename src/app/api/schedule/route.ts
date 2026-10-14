@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       .order("booking_time", { ascending: true })
       .limit(400),
     supabase.from("services").select("id, name, price, duration_minutes").eq("user_id", user.id),
-    supabase.from("vip_clients").select("phone_number, first_name, is_opted_in, opted_out_at").eq("user_id", user.id),
+    supabase.from("vip_clients").select("phone_number, first_name").eq("user_id", user.id),
     supabase.from("contacts").select("caller_phone, name").eq("user_id", user.id),
   ]);
 
@@ -60,7 +60,6 @@ export async function GET(request: Request) {
   const names = new Map<string, string>();
   for (const v of vips || []) if (v.first_name?.trim()) names.set(v.phone_number, v.first_name.trim());
   for (const c of contacts || []) if (c.name?.trim()) names.set(c.caller_phone, c.name.trim());
-  const vipSet = new Set((vips || []).filter((v) => v.is_opted_in && !v.opted_out_at).map((v) => v.phone_number));
 
   const items = (bookings || []).map((b) => {
     const s = svc.get(b.service_id);
@@ -72,7 +71,6 @@ export async function GET(request: Request) {
       status: b.status as "confirmed" | "completed" | "no_show",
       phone: b.customer_phone,
       name: names.get(b.customer_phone) || null,
-      isVip: vipSet.has(b.customer_phone),
       service: s?.name ?? "Service",
       price: Number(s?.price ?? 0),
       minutes: s?.duration_minutes ?? 30,

@@ -103,7 +103,6 @@ function BookingContent() {
   const [slotsFor, setSlotsFor] = useState("");
   const [firstName, setFirstName] = useState(() => (forBarber ? (searchParams.get("name") || "").slice(0, 40) : ""));
   const [phone, setPhone] = useState(() => (forBarber ? (searchParams.get("phone") || "").replace(/[^\d]/g, "").slice(0, 11) : ""));
-  const [consentChecked, setConsentChecked] = useState(false);
   const [shopName, setShopName] = useState("");
   const [openDays, setOpenDays] = useState<string[]>(DAY_NAMES);
   const [timezone, setTimezone] = useState(DEFAULT_TZ);
@@ -135,7 +134,7 @@ function BookingContent() {
     async function load() {
       const [servicesRes, barberRes] = await Promise.all([
         fetch(`/api/services/${barberId}`),
-        fetch(`/api/vip-optin?barberId=${barberId}`),
+        fetch(`/api/shop?barberId=${barberId}`),
       ]);
       if (servicesRes.ok) {
         const data = await servicesRes.json();
@@ -196,7 +195,6 @@ function BookingContent() {
     forget();
     setFirstName("");
     setPhone("");
-    setConsentChecked(false);
     setService(null);
   }
 
@@ -251,7 +249,6 @@ function BookingContent() {
           sessionToken: known?.token,
           bookingTime: bookingDate.toISOString(),
           firstName: known ? undefined : firstName.trim() || undefined,
-          consentText: consentChecked && !forBarber ? shownConsent : undefined,
           // The client's language for later texts. Not when the barber books for them.
           language: forBarber ? undefined : locale,
           source: bookingSource,
@@ -282,7 +279,7 @@ function BookingContent() {
     }
   }
 
-  const getsTexts = consentChecked || !!known?.client.smsOptedIn;
+  const getsTexts = !forBarber;
 
   if (loading || session.status === "checking") {
     return (
@@ -650,37 +647,13 @@ function BookingContent() {
                 </div>
                 )}
 
-                {!known?.client.smsOptedIn && !forBarber && (
-                <>
-                <label className="mt-4 flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={consentChecked}
-                    onChange={(e) => setConsentChecked(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <span
-                    className={`mt-0.5 w-5 h-5 rounded-[5px] border-2 shrink-0 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent-color)]/40 ${
-                      consentChecked ? "bg-[var(--accent-color)] border-[var(--accent-color)]" : "border-white/15"
-                    }`}
-                  >
-                    {consentChecked && <Check className="w-3 h-3 text-[var(--app-bg-deep,#0C0B0A)]" strokeWidth={3} />}
-                  </span>
-                  <span className="text-xs text-white/30 leading-relaxed">
+                {!forBarber && (
+                  <p className="mt-4 text-[11px] text-white/30 leading-relaxed">
                     {shownConsent}{" "}
                     <Link href="/privacy" className="text-[var(--accent-color)]/70 hover:underline">{t("common.privacy")}</Link>
                     {" & "}
                     <Link href="/terms" className="text-[var(--accent-color)]/70 hover:underline">{t("common.terms")}</Link>
-                  </span>
-                </label>
-
-                {consentChecked && (
-                  <div className="mt-4 rounded-xl px-3.5 py-3 flex items-start gap-2 text-xs text-white/35 bg-[var(--accent-color)]/[0.03] border border-[var(--accent-color)]/[0.08]">
-                    <Check className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0 mt-px" />
-                    {t("book.reminder_note")}
-                  </div>
-                )}
-                </>
+                  </p>
                 )}
 
                 {error && <div className="mt-4"><ErrorBox>{error}</ErrorBox></div>}
@@ -689,7 +662,7 @@ function BookingContent() {
             <BottomCta
               disabled={(!known && !phone.trim()) || submitting}
               onClick={handleBook}
-              note={forBarber ? t("book.note_barber") : getsTexts ? t("book.note_gets_texts") : t("book.note_optional")}
+              note={forBarber ? t("book.note_barber") : t("book.note_gets_texts")}
             >
               {submitting ? t("book.booking") : <><Check className="w-4 h-4" strokeWidth={2.5} /> {t("book.confirm")}</>}
             </BottomCta>

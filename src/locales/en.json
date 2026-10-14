@@ -458,7 +458,7 @@
     "load_error": "Couldn't load settings.",
     "save_error": "Couldn't save",
     "language": "Language",
-    "language_hint": "The app, your alerts and texts to you use this language.",
+    "language_hint": "Changes the app only. Texts to clients go out in English, or Spanish if they booked in Spanish.",
     "profile": "Profile",
     "your_name": "Your name",
     "add_your_name": "Add your name",

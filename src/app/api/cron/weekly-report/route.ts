@@ -53,13 +53,6 @@ export async function GET(request: Request) {
     const prices = new Map((services || []).map((sv) => [sv.id, Number(sv.price)]));
     const revenue = String(Math.round((done || []).reduce((sum, b) => sum + (prices.get(b.service_id) ?? barber.avg_booking_value ?? 35), 0)));
 
-    const { count: newVips } = await supabase
-      .from("vip_clients")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", barber.user_id)
-      .gte("opted_in_at", weekStart.toISOString())
-      .lt("opted_in_at", weekEnd.toISOString());
-
     const { count: missedCaught } = await supabase
       .from("missed_calls_log")
       .select("call_id", { count: "exact", head: true })
@@ -82,10 +75,9 @@ export async function GET(request: Request) {
           barber_name: barberName,
           cuts: String(cuts),
           revenue,
-          new_vips: String(newVips || 0),
           missed_caught: String(missedCaught || 0),
         })
-      : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, ${newVips || 0} new VIPs, and ${missedCaught || 0} missed calls caught.`;
+      : `Weekly recap for ${barberName}: ${cuts} cuts, $${revenue} earned, and ${missedCaught || 0} missed calls caught.`;
 
     try {
       if (!barber.forwarding_number) continue;

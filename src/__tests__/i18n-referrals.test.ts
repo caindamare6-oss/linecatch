@@ -4,7 +4,7 @@ import es from "@/locales/es.json";
 import { translate, translateError, fromAcceptLanguage } from "@/lib/i18n-shared";
 import { normalizeCode, makeCode } from "@/lib/referrals";
 import { money } from "@/lib/config";
-import { consentText, recordedConsentText, CONSENT_TEXT, CONSENT_TEXT_ES } from "@/lib/consent";
+import { consentText, CONSENT_TEXT, CONSENT_TEXT_ES } from "@/lib/consent";
 
 function keys(o: unknown, prefix = ""): string[] {
   if (typeof o !== "object" || o === null) return [prefix];
@@ -51,8 +51,7 @@ describe("locales", () => {
     expect(money(500, "en")).toBe("$5");
     expect(money(750, "en")).toBe("$7.50");
     expect(consentText("es")).toBe(CONSENT_TEXT_ES);
-    expect(recordedConsentText("anything the client sent", "es")).toBe(CONSENT_TEXT_ES);
-    expect(recordedConsentText(CONSENT_TEXT, "es")).toBe(CONSENT_TEXT);
+    expect(consentText("en")).toBe(CONSENT_TEXT);
   });
 });
 

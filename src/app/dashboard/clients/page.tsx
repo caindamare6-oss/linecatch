@@ -3,19 +3,17 @@
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PageHeader, Card, Badge, Avatar, EmptyState, SERIF } from "../ui";
+import { PageHeader, Badge, Avatar, EmptyState, SERIF } from "../ui";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { formatPhone, shortAgo, clientPathId, type ClientSummary } from "@/lib/clients";
 import { useT, useFormat, useLocale } from "@/lib/i18n";
 import { money } from "@/lib/config";
 import { DEFAULT_LOYALTY, rewardLabel, type Loyalty } from "@/lib/loyalty-rules";
 
-type Filter = "all" | "vip" | "due" | "notexts";
+type Filter = "all" | "due";
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "clients.f_all" },
-  { value: "vip", label: "clients.f_vip" },
   { value: "due", label: "clients.f_due" },
-  { value: "notexts", label: "clients.f_notexts" },
 ];
 
 type T = ReturnType<typeof useT>;
@@ -51,17 +49,14 @@ function Clients() {
   const [filter, setFilter] = useState<Filter>(initial);
   const [query, setQuery] = useState("");
   const [clients, setClients] = useState<ClientSummary[] | null>(null);
-  const [vipLink, setVipLink] = useState("");
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch("/api/clients")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => {
         setClients(d.clients);
-        setVipLink(d.vipLink);
         if (d.loyalty) setLoyalty(d.loyalty);
       })
       .catch(() => setError(t("clients.load_error")));
@@ -72,23 +67,12 @@ function Clients() {
     const q = query.trim().toLowerCase();
     const digits = q.replace(/\D/g, "");
     return clients.filter((c) => {
-      if (filter === "vip" && !c.isVip) return false;
       if (filter === "due" && !(c.rewardDue && c.visits > 0)) return false;
-      if (filter === "notexts" && c.isVip) return false;
       if (!q) return true;
       return (c.name || "").toLowerCase().includes(q) || (digits.length >= 3 && c.phone.includes(digits));
     });
   }, [clients, filter, query]);
 
-  const vipCount = clients?.filter((c) => c.isVip).length ?? 0;
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(vipLink);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {}
-  }
 
   return (
     <>
@@ -98,7 +82,7 @@ function Clients() {
           <div className="flex items-center gap-3">
             {clients && (
               <span className="text-[13px] text-white/40">
-                {t("clients.total", { n: clients.length })} · <span className="text-[var(--app-ok)] font-semibold">{t("clients.vip_count", { n: vipCount })}</span>
+                {t("clients.total", { n: clients.length })}
               </span>
             )}
             <button
@@ -143,18 +127,6 @@ function Clients() {
         ))}
       </div>
 
-      {vipLink && (filter === "vip" || filter === "notexts") && (
-        <Card className="mt-3 px-4 py-3.5 flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[12px] text-white/45">{filter === "notexts" ? t("clients.get_on_list") : t("clients.vip_link")}</p>
-            <p className={`${SERIF} text-[14px] truncate mt-0.5`}>{vipLink.replace(/^https?:\/\//, "")}</p>
-          </div>
-          <button onClick={copyLink} className="h-9 px-3 rounded-[10px] border border-[var(--accent-color)]/35 text-[var(--accent-color)] text-[13px] font-semibold shrink-0">
-            {copied ? t("common.copied") : t("common.copy")}
-          </button>
-        </Card>
-      )}
-
       <div className="mt-4">
         {error ? (
           <EmptyState title={error} />
@@ -173,9 +145,8 @@ function Clients() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-[15px] font-semibold truncate">{c.name || formatPhone(c.phone)}</span>
-                      {c.isVip && <Badge tone="vip">{t("clients.badge_vip")}</Badge>}
                       {c.rewardDue && c.visits > 0 && <Badge tone="due">{t("clients.badge_due", { reward })}</Badge>}
-                      {c.optedOut ? <Badge tone="danger">{t("clients.badge_optout")}</Badge> : !c.isVip && <Badge tone="muted">{t("clients.badge_notexts")}</Badge>}
+                      {c.optedOut && <Badge tone="danger">{t("clients.badge_optout")}</Badge>}
                     </div>
                     <p className="text-[12px] text-white/40 mt-0.5 truncate">
                       {c.visits === 1 ? t("clients.visits_one") : t("clients.visits", { n: c.visits })} · {money(Math.round(c.spent) * 100, locale)}

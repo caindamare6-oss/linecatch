@@ -153,7 +153,7 @@ export async function PATCH(
   const shopName = barber?.business_name?.trim() || barber?.first_name?.trim() || "your barber";
   const link = barber?.booking_link || `${appUrl()}/book/${booking.user_id}`;
   const tz = barber?.timezone || DEFAULT_TZ;
-  // Texts to the client (loyalty, cancel, reschedule) only go to someone who agreed to get texts.
+  // Texts to the client (loyalty, cancel, reschedule) skip anyone who replied STOP.
   const clientConsented = await hasTextConsent(supabase as unknown as Parameters<typeof hasTextConsent>[0], booking.user_id, booking.customer_phone);
 
   if (action === "complete") {
