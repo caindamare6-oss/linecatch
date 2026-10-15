@@ -1249,8 +1249,8 @@
   },
   "quick": {
     "eyebrow": "Live in 60 seconds",
-    "title": "Your shop name and cell. That's it.",
-    "subtitle": "LineCatch gives you a texting number right away. Then one tap sends your missed calls to it, and every caller gets your booking link.",
+    "title": "Let’s set up your shop.",
+    "subtitle": "Your name, your shop, your cell. LineCatch gives you a texting number right away, and every missed caller gets your booking link.",
     "shop_label": "Shop name",
     "shop_placeholder": "e.g. Kings Cuts",
     "phone_label": "Your cell number",
@@ -1259,10 +1259,13 @@
     "code_label": "Invite code",
     "cta": "Get my LineCatch number",
     "saving": "Setting up…",
-    "fine_print": "14 days free. No card, no SSN or EIN. You can change your services and hours anytime in Settings.",
+    "fine_print": "14 days free. No card, no SSN or EIN. Next: your services, hours and rewards.",
     "err_shop": "Add your shop name.",
     "err_phone": "Add your cell number.",
-    "err_generic": "Something went wrong. Please try again."
+    "err_generic": "Something went wrong. Please try again.",
+    "name_label": "Your first name",
+    "name_placeholder": "e.g. Damare",
+    "err_name": "Add your first name."
   },
   "billing": {
     "ref_placeholder": "Friend's referral code",
@@ -1345,5 +1348,31 @@
     "err_not_debit": "Use a debit card. Credit cards can't receive payouts.",
     "not_ready": "Finish your Stripe setup first.",
     "nothing": "Nothing to cash out yet."
+  },
+  "ob": {
+    "step": "Step {n} of {total}",
+    "back": "Back",
+    "continue": "Continue"
+  },
+  "ob_services": {
+    "title": "Your services",
+    "subtitle": "We started you with the usual cuts. Change the names, prices and times, switch off what you don’t do, or add your own.",
+    "add": "Add a service",
+    "remove": "Remove",
+    "offer": "Offer {name}",
+    "a_service": "a service",
+    "err_none": "Keep at least one service on.",
+    "err_row": "Check the name, price and minutes for {name}."
+  },
+  "ob_hours": {
+    "title": "Your hours",
+    "subtitle": "Clients can only book when you’re open. Switch off your days off.",
+    "err_none": "Turn on at least one day."
+  },
+  "ob_loyalty": {
+    "title": "Loyalty rewards",
+    "subtitle": "Bring regulars back: every client’s {n}th cut gets a reward, added automatically. You can change this anytime in Settings.",
+    "on": "On. They get one text after their 9th cut so they know it’s coming.",
+    "off": "Off. No rewards and no reward texts."
   }
 }

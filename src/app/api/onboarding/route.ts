@@ -20,9 +20,11 @@ export async function POST(request: Request) {
   const data = body.data && typeof body.data === "object" ? body.data : {};
   const admin = createAdminClient();
 
-  // The 60-second sign-up: shop name and cell. Services and hours start with defaults they can edit
-  // later; setup is finished and their LineCatch number is assigned right away.
+  // Step 1 of sign-up: name, shop and cell. Services and hours start with defaults they edit on the
+  // next two screens; setup is finished and their LineCatch number is assigned right away.
   if (step === "quick") {
+    const firstName = cleanText(data.firstName, 40);
+    if (!firstName) return NextResponse.json({ error: "Add your name", field: "firstName" }, { status: 400 });
     const businessName = cleanText(data.businessName, 60);
     if (!businessName) return NextResponse.json({ error: "Add your shop name", field: "businessName" }, { status: 400 });
     const phone = cleanOptionalPhone(data.phone);
@@ -33,6 +35,7 @@ export async function POST(request: Request) {
     }
     const language = data.language === "es" ? "es" : "en";
     const update: Record<string, unknown> = {
+      first_name: firstName,
       business_name: businessName,
       forwarding_number: phone.value,
       email: user.email || null,

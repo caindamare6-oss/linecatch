@@ -1308,8 +1308,8 @@
   },
   "quick": {
     "eyebrow": "Listo en 60 segundos",
-    "title": "El nombre de tu barbería y tu celular. Nada más.",
-    "subtitle": "LineCatch te da un número para textos al instante. Luego, con un toque, tus llamadas perdidas van a ese número y cada cliente recibe tu enlace para reservar.",
+    "title": "Vamos a armar tu barbería.",
+    "subtitle": "Tu nombre, tu barbería y tu celular. LineCatch te da un número para textos al instante, y cada llamada perdida recibe tu enlace para reservar.",
     "shop_label": "Nombre de la barbería",
     "shop_placeholder": "p. ej. Kings Cuts",
     "phone_label": "Tu número de celular",
@@ -1318,10 +1318,13 @@
     "code_label": "Código de invitación",
     "cta": "Obtener mi número de LineCatch",
     "saving": "Configurando…",
-    "fine_print": "14 días gratis. Sin tarjeta, sin SSN ni EIN. Puedes cambiar tus servicios y horario cuando quieras en Ajustes.",
+    "fine_print": "14 días gratis. Sin tarjeta, sin SSN ni EIN. Después: tus servicios, horario y recompensas.",
     "err_shop": "Añade el nombre de tu barbería.",
     "err_phone": "Añade tu número de celular.",
-    "err_generic": "Algo salió mal. Inténtalo de nuevo."
+    "err_generic": "Algo salió mal. Inténtalo de nuevo.",
+    "name_label": "Tu nombre",
+    "name_placeholder": "ej. Damare",
+    "err_name": "Agrega tu nombre."
   },
   "billing": {
     "ref_placeholder": "Código de referido",
@@ -1404,5 +1407,31 @@
     "err_not_debit": "Usa una tarjeta de débito. Las de crédito no pueden recibir pagos.",
     "not_ready": "Primero termina tu configuración de Stripe.",
     "nothing": "Aún no hay nada para retirar."
+  },
+  "ob": {
+    "step": "Paso {n} de {total}",
+    "back": "Atrás",
+    "continue": "Continuar"
+  },
+  "ob_services": {
+    "title": "Tus servicios",
+    "subtitle": "Te pusimos los cortes de siempre. Cambia nombres, precios y tiempos, apaga lo que no haces o agrega los tuyos.",
+    "add": "Agregar un servicio",
+    "remove": "Quitar",
+    "offer": "Ofrecer {name}",
+    "a_service": "un servicio",
+    "err_none": "Deja al menos un servicio encendido.",
+    "err_row": "Revisa el nombre, precio y minutos de {name}."
+  },
+  "ob_hours": {
+    "title": "Tu horario",
+    "subtitle": "Los clientes solo pueden reservar cuando estás abierto. Apaga tus días libres.",
+    "err_none": "Enciende al menos un día."
+  },
+  "ob_loyalty": {
+    "title": "Recompensas",
+    "subtitle": "Haz que tus clientes regresen: el corte número {n} de cada cliente tiene una recompensa, aplicada automáticamente. Puedes cambiarlo cuando quieras en Ajustes.",
+    "on": "Encendido. Reciben un texto después de su 9º corte para que sepan que viene.",
+    "off": "Apagado. Sin recompensas ni textos de recompensa."
   }
 }
