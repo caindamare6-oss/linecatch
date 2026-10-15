@@ -41,7 +41,8 @@ export async function ensureCustomer(db: Admin, userId: string): Promise<string>
   const customer = await getStripeClient().customers.create(
     {
       email: u.email || undefined,
-      name: u.business_name || u.first_name || undefined,
+      // The barber's own name on Stripe receipts and the dashboard; the shop name only if we have no name.
+      name: u.first_name || u.business_name || undefined,
       phone: u.forwarding_number || undefined,
       metadata: { user_id: userId },
     },
