@@ -14,15 +14,12 @@ export function normalizeCode(raw: unknown): string | null {
   return c.length >= 4 && c.length <= 12 ? c : null;
 }
 
-/** A readable code from the shop or first name: "FRESHC" + 3 digits. */
-export function makeCode(name: string | null | undefined, rand: () => number = Math.random): string {
-  const base = (name || "")
-    .normalize("NFKD")
-    .replace(/[^A-Za-z0-9]/g, "")
-    .toUpperCase()
-    .slice(0, 6);
-  const prefix = base.length >= 2 ? base : "LC";
-  return prefix + String(Math.floor(rand() * 1000)).padStart(3, "0");
+/**
+ * Every barber's code is "LC" + 4 random digits ("LC4821"). Codes are unique in the database, so a
+ * taken one is just rolled again (see ensureReferralCode). Older codes (LC070, DAMARE612) keep working.
+ */
+export function makeCode(rand: () => number = Math.random): string {
+  return "LC" + String(Math.floor(rand() * 10000)).padStart(4, "0");
 }
 
 export const referralLink = (code: string) => `${appUrl()}/join/${code}`;
@@ -34,10 +31,10 @@ export function referrerName(r: { first_name?: string | null; business_name?: st
 
 /** Every barber gets a code the first time it's needed. */
 export async function ensureReferralCode(db: Admin, userId: string): Promise<string> {
-  const { data: u } = await db.from("users").select("referral_code, business_name, first_name").eq("user_id", userId).single();
+  const { data: u } = await db.from("users").select("referral_code").eq("user_id", userId).single();
   if (u?.referral_code) return u.referral_code;
   for (let i = 0; i < 8; i++) {
-    const code = makeCode(u?.business_name || u?.first_name);
+    const code = makeCode();
     const { error } = await db.from("users").update({ referral_code: code }).eq("user_id", userId).is("referral_code", null);
     if (!error) {
       const { data } = await db.from("users").select("referral_code").eq("user_id", userId).single();
