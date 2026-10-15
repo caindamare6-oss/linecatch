@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { cookies } from "next/headers";
-import { applyReferral, ensureReferralCode, HEARD_FROM, nameReferralCode, REF_COOKIE, normalizeCode, referrerName } from "@/lib/referrals";
+import { applyReferral, ensureReferralCode, HEARD_FROM, REF_COOKIE, normalizeCode, referrerName } from "@/lib/referrals";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
@@ -62,8 +62,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }
     await ensureReferralCode(admin, user.id);
-    // Now we know their name: "LC123" becomes "MARCUS482".
-    await nameReferralCode(admin, user.id);
     assignNumberSoon(user.id);
     // Newsletter list (Resend), after the response so sign-up never waits on it.
     after(() => addBarberToNewsletter({ email: user.email }));

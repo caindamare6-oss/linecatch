@@ -14,18 +14,13 @@ export function normalizeCode(raw: unknown): string | null {
   return c.length >= 4 && c.length <= 12 ? c : null;
 }
 
-/**
- * A readable code from the barber's first name plus 3 random digits ("MARCUS482"), so two Marcuses
- * still get different codes. No name yet: "LC" + digits, swapped for a name code at setup.
- */
+/** A readable code from the shop or first name: "FRESHC" + 3 digits. */
 export function makeCode(name: string | null | undefined, rand: () => number = Math.random): string {
   const base = (name || "")
-    .trim()
-    .split(/\s+/)[0]
     .normalize("NFKD")
     .replace(/[^A-Za-z0-9]/g, "")
     .toUpperCase()
-    .slice(0, 8);
+    .slice(0, 6);
   const prefix = base.length >= 2 ? base : "LC";
   return prefix + String(Math.floor(rand() * 1000)).padStart(3, "0");
 }
@@ -42,7 +37,7 @@ export async function ensureReferralCode(db: Admin, userId: string): Promise<str
   const { data: u } = await db.from("users").select("referral_code, business_name, first_name").eq("user_id", userId).single();
   if (u?.referral_code) return u.referral_code;
   for (let i = 0; i < 8; i++) {
-    const code = makeCode(u?.first_name || u?.business_name);
+    const code = makeCode(u?.business_name || u?.first_name);
     const { error } = await db.from("users").update({ referral_code: code }).eq("user_id", userId).is("referral_code", null);
     if (!error) {
       const { data } = await db.from("users").select("referral_code").eq("user_id", userId).single();
@@ -50,27 +45,6 @@ export async function ensureReferralCode(db: Admin, userId: string): Promise<str
     }
   }
   throw new Error("Couldn't create a referral code");
-}
-
-/** The placeholder a barber gets at sign-up, before we know their name. */
-export const isPlaceholderCode = (code: string | null | undefined) => !!code && /^LC\d{3}$/.test(code);
-
-/**
- * Once setup gives us their first name, swap the "LC123" placeholder for a name code ("MARCUS482").
- * Only while nobody has used the old code, so a link they already shared never breaks.
- */
-export async function nameReferralCode(db: Admin, userId: string): Promise<string | null> {
-  const { data: u } = await db.from("users").select("referral_code, first_name").eq("user_id", userId).single();
-  if (!u?.first_name?.trim() || !isPlaceholderCode(u.referral_code)) return u?.referral_code ?? null;
-  const { count } = await db.from("referrals").select("id", { count: "exact", head: true }).eq("referrer_user_id", userId);
-  if (count) return u.referral_code;
-  for (let i = 0; i < 8; i++) {
-    // Codes are unique, so a taken one just fails and we roll new digits.
-    const { error } = await db.from("users").update({ referral_code: makeCode(u.first_name) }).eq("user_id", userId).eq("referral_code", u.referral_code!);
-    if (!error) break;
-  }
-  const { data } = await db.from("users").select("referral_code").eq("user_id", userId).single();
-  return data?.referral_code ?? null;
 }
 
 export async function findReferrer(db: Admin, code: string) {
