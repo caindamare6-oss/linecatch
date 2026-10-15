@@ -53,11 +53,13 @@ export default function HoursStep({ onBack, onNext }: { onBack: () => void; onNe
         <div className="h-72 rounded-xl animate-pulse" style={obCard} />
       ) : (
         <div className="rounded-xl p-3.5" style={obCard}>
-          <ul className="space-y-3">
+          <ul className="space-y-3.5">
             {DAY_KEYS.map((day) => {
               const v = hours[day];
               return (
-                <li key={day} className="flex items-center gap-2.5 min-h-10">
+                // Open days put their times on a second line: side by side they're too narrow on a
+                // phone and AM/PM gets cut off.
+                <li key={day} className="flex flex-wrap items-center gap-x-2.5 gap-y-2 min-h-10">
                   <button
                     role="switch"
                     aria-checked={!!v}
@@ -69,7 +71,7 @@ export default function HoursStep({ onBack, onNext }: { onBack: () => void; onNe
                   </button>
                   <span className="w-10 text-[14px] font-semibold" style={{ color: "var(--ob-text)" }}>{t(`days.${day}`)}</span>
                   {v ? (
-                    <span className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span className="flex items-center gap-2 basis-full pl-[52px]">
                       <input aria-label={t("settings.day_open", { day: t(`days.${day}`) })} type="time" value={v.open} onChange={(e) => update(day, { ...v, open: e.target.value })} className={time} style={timeStyle} />
                       <span className="text-[12px]" style={{ color: "var(--ob-text-muted)" }}>{t("settings.to")}</span>
                       <input aria-label={t("settings.day_close", { day: t(`days.${day}`) })} type="time" value={v.close} onChange={(e) => update(day, { ...v, close: e.target.value })} className={time} style={timeStyle} />
