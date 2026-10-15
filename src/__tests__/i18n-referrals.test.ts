@@ -63,9 +63,10 @@ describe("referral codes", () => {
     expect(normalizeCode(42)).toBeNull();
   });
 
-  it("builds readable codes from the shop name", () => {
-    expect(makeCode("Fresh Cuts", () => 0.851)).toBe("FRESHC851");
-    expect(makeCode("Peluquería Ñandú", () => 0.007)).toBe("PELUQU007");
-    expect(makeCode("", () => 0.5)).toBe("LC500");
+  it("makes codes as LC + 4 random digits", () => {
+    expect(makeCode(() => 0.4821)).toBe("LC4821");
+    expect(makeCode(() => 0.0007)).toBe("LC0007");
+    expect(makeCode(() => 0.99999)).toBe("LC9999");
+    expect(normalizeCode(makeCode())).toMatch(/^LC\d{4}$/);
   });
 });
