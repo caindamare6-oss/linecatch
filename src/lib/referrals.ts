@@ -27,6 +27,11 @@ export function makeCode(name: string | null | undefined, rand: () => number = M
 
 export const referralLink = (code: string) => `${appUrl()}/join/${code}`;
 
+/** Who "sent you": the referring barber's first name ("Damare sent you"), the shop name only if we have no name. */
+export function referrerName(r: { first_name?: string | null; business_name?: string | null } | null | undefined): string | null {
+  return r?.first_name?.trim().split(/\s+/)[0] || r?.business_name?.trim() || null;
+}
+
 /** Every barber gets a code the first time it's needed. */
 export async function ensureReferralCode(db: Admin, userId: string): Promise<string> {
   const { data: u } = await db.from("users").select("referral_code, business_name, first_name").eq("user_id", userId).single();

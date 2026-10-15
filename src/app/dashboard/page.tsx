@@ -70,10 +70,10 @@ export default async function DashboardPage() {
       paused={!!barber?.is_locked_out}
       billing={
         barber
-          ? (({ banner, daysLeft }) => ({ banner, daysLeft }))(
+          ? (({ banner, daysLeft, status }) => ({ banner, daysLeft, trialing: status === "trialing" }))(
               billingState({ billing_status: (barber.billing_status || "trialing") as BillingStatus, trial_ends_at: barber.trial_ends_at, billing_grace_until: barber.billing_grace_until, stripe_subscription_id: barber.stripe_subscription_id })
             )
-          : { banner: null, daysLeft: null }
+          : { banner: null, daysLeft: null, trialing: false }
       }
       pageUrl={slug ? `${appUrl()}/${slug}` : `${appUrl()}/book/${user.id}`}
       shopName={barber?.business_name?.trim() || barber?.first_name?.trim() || "LineCatch"}

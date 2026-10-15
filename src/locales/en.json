@@ -253,7 +253,9 @@
     "tag_reward": "Reward",
     "tag_review": "Review",
     "tag_vip": "VIP",
-    "tag_referral": "Referral"
+    "tag_referral": "Referral",
+    "status_trial": "Trial · {n} days left",
+    "status_trial_one": "Trial · 1 day left"
   },
   "activity": {
     "booking_created": "{name} booked {service}",
@@ -269,7 +271,7 @@
     "client": "Client",
     "new_client": "New client",
     "sticker_activated": "QR sticker {code} connected.",
-    "number_assigned": "Your LineCatch number is ready: {phone}. Set up call forwarding in Settings."
+    "number_assigned": "Your LineCatch number is ready: {phone}. You can change call forwarding anytime in Settings → Missed calls."
   },
   "messages": {
     "title": "Messages",
@@ -602,7 +604,8 @@
     "sticker_banner_shop": "QR sticker {code} for {shop} is ready",
     "sticker_sub": "Sign up and it connects to your shop. No address needed.",
     "sticker_sub_in": "Sign in and it connects to your shop.",
-    "stay_in": "You’ll stay logged in on this phone."
+    "stay_in": "You’ll stay logged in on this phone.",
+    "link_failed": "That link didn’t work. It may have expired or been used already. Send yourself a new one below."
   },
   "book": {
     "morning": "Morning",

@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { cookies } from "next/headers";
-import { applyReferral, ensureReferralCode, HEARD_FROM, REF_COOKIE, normalizeCode } from "@/lib/referrals";
+import { applyReferral, ensureReferralCode, HEARD_FROM, REF_COOKIE, normalizeCode, referrerName } from "@/lib/referrals";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
@@ -290,7 +290,7 @@ export async function GET() {
       admin.from("referrals").select("code").eq("referred_user_id", user.id).maybeSingle(),
       admin.from("users").select("business_name, first_name").eq("user_id", profile.referred_by).maybeSingle(),
     ]);
-    if (ref) referral = { code: ref.code, name: who?.business_name || who?.first_name || null };
+    if (ref) referral = { code: ref.code, name: referrerName(who) };
   }
 
   return NextResponse.json({

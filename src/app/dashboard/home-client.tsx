@@ -81,7 +81,7 @@ export function HomeClient(props: {
   greeting: string;
   dateLine: string;
   paused: boolean;
-  billing: { banner: "trial" | "add_card" | "past_due" | "paused" | null; daysLeft: number | null };
+  billing: { banner: "trial" | "add_card" | "past_due" | "paused" | null; daysLeft: number | null; trialing: boolean };
   pageUrl: string;
   shopName: string;
   coverUrl: string | null;
@@ -132,7 +132,11 @@ export function HomeClient(props: {
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${props.paused ? "bg-[var(--app-warn)]" : "bg-[var(--accent-color)]"}`} />
-            {props.paused ? t("home.status_paused") : t("home.status_active")}
+            {props.paused
+              ? t("home.status_paused")
+              : props.billing.trialing && (props.billing.daysLeft ?? 0) > 0
+                ? t(props.billing.daysLeft === 1 ? "home.status_trial_one" : "home.status_trial", { n: props.billing.daysLeft ?? 0 })
+                : t("home.status_active")}
           </span>
           <Link
             href="/dashboard/settings"

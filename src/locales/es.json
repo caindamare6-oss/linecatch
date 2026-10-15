@@ -253,7 +253,9 @@
     "tag_reward": "Premio",
     "tag_review": "Reseña",
     "tag_vip": "VIP",
-    "tag_referral": "Referido"
+    "tag_referral": "Referido",
+    "status_trial": "Prueba · quedan {n} días",
+    "status_trial_one": "Prueba · queda 1 día"
   },
   "activity": {
     "booking_created": "{name} reservó {service}",
@@ -269,7 +271,7 @@
     "client": "Cliente",
     "new_client": "Cliente nuevo",
     "sticker_activated": "Sticker QR {code} conectado.",
-    "number_assigned": "Tu número de LineCatch está listo: {phone}. Configura el desvío de llamadas en Ajustes."
+    "number_assigned": "Tu número de LineCatch está listo: {phone}. Puedes cambiar el desvío de llamadas cuando quieras en Ajustes → Llamadas perdidas."
   },
   "messages": {
     "title": "Mensajes",
@@ -602,7 +604,8 @@
     "sticker_banner_shop": "El sticker QR {code} para {shop} está listo",
     "sticker_sub": "Regístrate y se conecta a tu barbería. No necesitas dirección.",
     "sticker_sub_in": "Inicia sesión y se conecta a tu barbería.",
-    "stay_in": "Tu sesión se queda abierta en este teléfono."
+    "stay_in": "Tu sesión se queda abierta en este teléfono.",
+    "link_failed": "Ese enlace no funcionó. Puede que haya vencido o ya se usó. Envíate uno nuevo abajo."
   },
   "book": {
     "morning": "Mañana",

@@ -34,7 +34,8 @@ function Login() {
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"input" | "verify">("input");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  // Back from an email link that didn't work (used already, expired): say so instead of a blank form.
+  const [error, setError] = useState(() => (params.get("error") === "auth" ? "login.link_failed" : ""));
   const [message, setMessage] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -53,6 +54,8 @@ function Login() {
   // being opened in another browser (mail apps often use their own).
   function callbackUrl() {
     const u = new URL("/auth/callback", window.location.origin);
+    // Always at least one parameter: the email templates add "&token_hash=…" straight after this URL.
+    u.searchParams.set("via", "link");
     if (invite?.code) u.searchParams.set("ref", invite.code);
     const next = params.get("next");
     if (next) u.searchParams.set("next", safeNext(next));
