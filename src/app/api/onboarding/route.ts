@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { cookies } from "next/headers";
-import { applyReferral, ensureReferralCode, HEARD_FROM, REF_COOKIE, normalizeCode } from "@/lib/referrals";
+import { applyReferral, ensureReferralCode, HEARD_FROM, REF_COOKIE, normalizeCode, referrerName } from "@/lib/referrals";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cleanAccent, cleanHours, cleanOptionalPhone, cleanService, cleanText, cleanUrl } from "@/lib/validate";
@@ -20,9 +20,11 @@ export async function POST(request: Request) {
   const data = body.data && typeof body.data === "object" ? body.data : {};
   const admin = createAdminClient();
 
-  // The 60-second sign-up: shop name and cell. Services and hours start with defaults they can edit
-  // later; setup is finished and their LineCatch number is assigned right away.
+  // Step 1 of sign-up: name, shop and cell. Services and hours start with defaults they edit on the
+  // next two screens; setup is finished and their LineCatch number is assigned right away.
   if (step === "quick") {
+    const firstName = cleanText(data.firstName, 40);
+    if (!firstName) return NextResponse.json({ error: "Add your name", field: "firstName" }, { status: 400 });
     const businessName = cleanText(data.businessName, 60);
     if (!businessName) return NextResponse.json({ error: "Add your shop name", field: "businessName" }, { status: 400 });
     const phone = cleanOptionalPhone(data.phone);
@@ -33,6 +35,7 @@ export async function POST(request: Request) {
     }
     const language = data.language === "es" ? "es" : "en";
     const update: Record<string, unknown> = {
+      first_name: firstName,
       business_name: businessName,
       forwarding_number: phone.value,
       email: user.email || null,
@@ -287,7 +290,7 @@ export async function GET() {
       admin.from("referrals").select("code").eq("referred_user_id", user.id).maybeSingle(),
       admin.from("users").select("business_name, first_name").eq("user_id", profile.referred_by).maybeSingle(),
     ]);
-    if (ref) referral = { code: ref.code, name: who?.business_name || who?.first_name || null };
+    if (ref) referral = { code: ref.code, name: referrerName(who) };
   }
 
   return NextResponse.json({

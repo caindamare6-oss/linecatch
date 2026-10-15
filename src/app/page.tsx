@@ -4,7 +4,7 @@ import { Bebas_Neue } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import Landing from "./landing";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { findReferrer, normalizeCode } from "@/lib/referrals";
+import { findReferrer, normalizeCode, referrerName } from "@/lib/referrals";
 
 const poster = Bebas_Neue({ subsets: ["latin"], weight: "400", variable: "--font-poster", display: "swap" });
 
@@ -25,7 +25,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
   return (
     <div className={poster.variable}>
-      <Landing referredBy={referrer ? referrer.business_name || referrer.first_name || "A barber" : null} />
+      <Landing referredBy={referrer ? referrerName(referrer) || "A barber" : null} />
     </div>
   );
 }

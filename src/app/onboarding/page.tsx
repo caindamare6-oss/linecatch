@@ -6,6 +6,10 @@ import { useT, useLocale, useSetLocale, type Locale } from "@/lib/i18n";
 import { REFERRAL_PERCENT_OFF, DEFAULT_TZ } from "@/lib/config";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import ForwardCallsStep from "./forward-calls-step";
+import ServicesStep from "./services-step";
+import HoursStep from "./hours-step";
+import LoyaltyStep from "./loyalty-step";
+import { SetupProgress } from "./step-shell";
 
 const LANGUAGES = [
   { code: "en" as const, label: "English" },
@@ -14,13 +18,15 @@ const LANGUAGES = [
 
 type Initial = {
   profile: Record<string, unknown>;
+  googleName?: string;
   pendingCode?: string | null;
   referral?: { code: string; name: string | null } | null;
 };
 
 /**
- * The 60-second sign-up: shop name and cell number. LineCatch fills in starter services and hours
- * (editable later), assigns their texting number, then shows the one-tap call forwarding.
+ * Sign-up in five short steps: (1) name, shop and cell, which assigns their texting number and fills
+ * in starter services and hours; (2) services; (3) hours; (4) loyalty rewards; (5) the one-tap call
+ * forwarding for missed calls.
  */
 export default function OnboardingPage() {
   const language = useLocale();
@@ -61,17 +67,20 @@ function QuickSetup({ language, setLanguage, initial }: { language: Locale; setL
   const router = useRouter();
   const p = initial?.profile || {};
   const applied = initial?.referral ?? null;
+  // A Google sign-up already gave us a name: just the first word ("Damare", not "Damare Cain").
+  const [firstName, setFirstName] = useState((p.first_name as string) || initial?.googleName?.trim().split(/\s+/)[0] || "");
   const [shopName, setShopName] = useState((p.business_name as string) || "");
   const [phone, setPhone] = useState((p.forwarding_number as string) || "");
   const [code, setCode] = useState(initial?.pendingCode || "");
   const [showCode, setShowCode] = useState(!!initial?.pendingCode);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<{ field?: string; text: string } | null>(null);
-  const [done, setDone] = useState(false);
+  const [step, setStep] = useState<"start" | "services" | "hours" | "loyalty" | "forward">("start");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!firstName.trim()) return setError({ field: "firstName", text: t("quick.err_name") });
     if (!shopName.trim()) return setError({ field: "businessName", text: t("quick.err_shop") });
     if (!phone.trim()) return setError({ field: "phone", text: t("quick.err_phone") });
     setSaving(true);
@@ -84,7 +93,7 @@ function QuickSetup({ language, setLanguage, initial }: { language: Locale; setL
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         step: "quick",
-        data: { businessName: shopName, phone, language, timezone, ...(!applied && code.trim() ? { referralCode: code.trim() } : {}) },
+        data: { firstName, businessName: shopName, phone, language, timezone, ...(!applied && code.trim() ? { referralCode: code.trim() } : {}) },
       }),
     }).catch(() => null);
     const body = res ? await res.json().catch(() => ({})) : {};
@@ -93,11 +102,14 @@ function QuickSetup({ language, setLanguage, initial }: { language: Locale; setL
       const text = body.field === "referralCode" ? t(`step1.err_${body.error}`) : t(body.error || "quick.err_generic");
       return setError({ field: body.field, text });
     }
-    setDone(true);
+    setStep("services");
   }
 
-  // Their LineCatch number is being assigned now: next, forward calls to it.
-  if (done) return <ForwardCallsStep onDone={() => router.push("/dashboard")} />;
+  // Their LineCatch number is being assigned in the background while they do services and hours.
+  if (step === "services") return <ServicesStep onBack={() => setStep("start")} onNext={() => setStep("hours")} />;
+  if (step === "hours") return <HoursStep onBack={() => setStep("services")} onNext={() => setStep("loyalty")} />;
+  if (step === "loyalty") return <LoyaltyStep onBack={() => setStep("hours")} onNext={() => setStep("forward")} />;
+  if (step === "forward") return <ForwardCallsStep onDone={() => router.push("/dashboard")} />;
 
   const field = (name: string) => (error?.field === name ? "var(--ob-danger)" : "var(--ob-border)");
 
@@ -129,8 +141,8 @@ function QuickSetup({ language, setLanguage, initial }: { language: Locale; setL
       <main className="flex-1 px-5">
         <form onSubmit={submit} className="max-w-md mx-auto pt-8 pb-10 space-y-6" style={{ animation: "ob-fade-up 400ms ease-out" }} noValidate>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--ob-accent)" }}>{t("quick.eyebrow")}</p>
-            <h1 className="mt-2 text-[34px] leading-[1.05] font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("quick.title")}</h1>
+            <SetupProgress step={1} />
+            <h1 className="mt-4 text-[34px] leading-[1.05] font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("quick.title")}</h1>
             <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--ob-text-secondary)" }}>{t("quick.subtitle")}</p>
           </div>
 
@@ -139,6 +151,21 @@ function QuickSetup({ language, setLanguage, initial }: { language: Locale; setL
               ✓ {t("step1.ref_applied", { code: applied.code, percent: REFERRAL_PERCENT_OFF })}
             </p>
           )}
+
+          <label className="block">
+            <span className="text-xs uppercase tracking-wider font-medium block mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("quick.name_label")}</span>
+            <input
+              id="quick-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder={t("quick.name_placeholder")}
+              autoComplete="given-name"
+              maxLength={40}
+              aria-invalid={error?.field === "firstName"}
+              className="w-full h-12 rounded-xl px-3.5 text-base focus:outline-none"
+              style={{ backgroundColor: "var(--ob-input-bg)", border: `1px solid ${field("firstName")}`, color: "var(--ob-text)" }}
+            />
+          </label>
 
           <label className="block">
             <span className="text-xs uppercase tracking-wider font-medium block mb-2" style={{ color: "var(--ob-text-muted)" }}>{t("quick.shop_label")}</span>

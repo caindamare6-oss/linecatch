@@ -5,6 +5,7 @@ import { useT } from "@/lib/i18n";
 import ForwardSetup, { type ForwardInfo } from "@/app/dashboard/settings/forward-setup";
 import { formatPhone } from "@/lib/clients";
 import { type Carrier } from "@/lib/call-mode";
+import { SetupProgress } from "./step-shell";
 
 type ForwardState = (ForwardInfo & { numberMissing: string[] }) | null;
 
@@ -59,7 +60,8 @@ export default function ForwardCallsStep({ onDone }: { onDone: () => void }) {
       <main className="flex-1 overflow-y-auto px-4">
         <div className="max-w-md mx-auto py-8 space-y-5" style={{ animation: "ob-fade-up 400ms ease-out" }}>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("fwd_step.title")}</h2>
+            <SetupProgress step={5} />
+            <h2 className="mt-4 text-2xl font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("fwd_step.title")}</h2>
             <p className="text-sm mt-1" style={{ color: "var(--ob-text-muted)" }}>{t("fwd_step.subtitle")}</p>
           </div>
 

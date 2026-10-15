@@ -7,13 +7,23 @@ import { cookies } from "next/headers";
 import { LANG_COOKIE } from "@/lib/i18n-shared";
 import { ensureReferralCode, normalizeCode, REF_COOKIE } from "@/lib/referrals";
 
+const OTP_TYPES = ["email", "magiclink", "signup", "invite", "recovery", "email_change"] as const;
+type OtpType = (typeof OTP_TYPES)[number];
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  // Email links carry a token_hash (see the Supabase email templates), which works in any browser.
+  // A ?code= link only works in the browser that asked for it, so a barber who signs up on a laptop
+  // and taps the email on their phone would bounce back to sign-in.
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type") as OtpType | null;
 
-  if (code) {
+  if (code || (tokenHash && type && OTP_TYPES.includes(type))) {
     const supabase = await createClient();
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = code
+      ? await supabase.auth.exchangeCodeForSession(code)
+      : await supabase.auth.verifyOtp({ token_hash: tokenHash!, type: type! });
 
     if (!error && data.user) {
       const admin = createAdminClient();

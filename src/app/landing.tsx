@@ -104,7 +104,7 @@ function Hero() {
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-24 h-[520px] w-[820px] max-w-full -translate-x-1/2 rounded-full bg-mint/10 blur-[120px]" />
       <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pb-24 pt-14 sm:px-6 md:grid-cols-[1.1fr_1fr] md:pt-24">
         <div>
-          <p className={`pf2-rise ${EYEBROW}`}>Booking and payments for barbers</p>
+          <p className={`pf2-rise ${EYEBROW}`}>Missed calls into booked cuts</p>
           <h1 className="mt-5 font-heading text-[clamp(2.75rem,7vw,5rem)] font-semibold leading-[0.98] tracking-tight">
             {words("You're cutting.", 0.1)}
             <br />
