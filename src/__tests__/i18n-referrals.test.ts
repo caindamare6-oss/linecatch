@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import en from "@/locales/en.json";
 import es from "@/locales/es.json";
 import { translate, translateError, fromAcceptLanguage } from "@/lib/i18n-shared";
-import { normalizeCode, makeCode } from "@/lib/referrals";
+import { normalizeCode, makeCode, isPlaceholderCode } from "@/lib/referrals";
 import { money } from "@/lib/config";
 import { consentText, CONSENT_TEXT, CONSENT_TEXT_ES } from "@/lib/consent";
 
@@ -64,8 +64,12 @@ describe("referral codes", () => {
   });
 
   it("builds readable codes from the shop name", () => {
-    expect(makeCode("Fresh Cuts", () => 0.851)).toBe("FRESHC851");
-    expect(makeCode("Peluquería Ñandú", () => 0.007)).toBe("PELUQU007");
+    // First name + 3 random digits; only the first word, accents dropped, up to 8 letters.
+    expect(makeCode("Marcus Lee", () => 0.851)).toBe("MARCUS851");
+    expect(makeCode("José", () => 0.007)).toBe("JOSE007");
+    expect(makeCode("Christopher", () => 0.42)).toBe("CHRISTOP420");
     expect(makeCode("", () => 0.5)).toBe("LC500");
+    expect(isPlaceholderCode("LC500")).toBe(true);
+    expect(isPlaceholderCode("MARCUS851")).toBe(false);
   });
 });
