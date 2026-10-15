@@ -25,7 +25,9 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "LineCatch", statusBarStyle: "black" },
 };
 
-export const viewport: Viewport = { themeColor: "#121110" };
+// viewportFit "cover" makes iPhone report the home-bar area (env(safe-area-inset-bottom)),
+// so bottom bars sit above it when LineCatch is added to the home screen.
+export const viewport: Viewport = { themeColor: "#121110", viewportFit: "cover" };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Saved choice wins; otherwise follow the browser (Spanish phones open in Spanish).
