@@ -142,7 +142,7 @@ function QuickSetup({ language, setLanguage, initial }: { language: Locale; setL
         <form onSubmit={submit} className="max-w-md mx-auto pt-8 pb-10 space-y-6" style={{ animation: "ob-fade-up 400ms ease-out" }} noValidate>
           <div>
             <SetupProgress step={1} />
-            <h1 className="mt-4text-[34px] leading-[1.05] font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("quick.title")}</h1>
+            <h1 className="mt-4 text-[34px] leading-[1.05] font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("quick.title")}</h1>
             <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--ob-text-secondary)" }}>{t("quick.subtitle")}</p>
           </div>
 
