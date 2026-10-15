@@ -11,7 +11,11 @@ function twiml(body: string) {
   });
 }
 
-const say = (lang: CallLang, text: string) => `  <Say language="${lang === "es" ? "es-MX" : "en-US"}">${text}</Say>`;
+const say = (lang: CallLang, text: string, voice?: string) =>
+  `  <Say language="${lang === "es" ? "es-MX" : "en-US"}"${voice ? ` voice="${voice}"` : ""}>${text}</Say>`;
+
+// The booking-link line callers hear: a natural male voice (Amazon Polly neural, ~0.3¢ a call).
+const BOOKING_LINK_VOICE = "Polly.Matthew-Neural";
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -50,7 +54,7 @@ export async function POST(request: Request) {
     // cooldown: the link was texted to them minutes ago, so it's already on their phone.
     const line = outcome === "texted" ? "texted" : outcome === "cooldown" ? "already" : "none";
     const spoken = forwardedCallLine(lang, line);
-    return twiml(`${spoken ? `${say(lang, spoken)}\n` : ""}  <Hangup/>`);
+    return twiml(`${spoken ? `${say(lang, spoken, lang === "en" ? BOOKING_LINK_VOICE : undefined)}\n` : ""}  <Hangup/>`);
   }
 
   // Direct mode: clients call the LineCatch number, which rings the barber's cell first.
