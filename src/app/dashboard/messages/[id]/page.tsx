@@ -108,7 +108,7 @@ export default function ThreadPage() {
         <div ref={endRef} />
       </div>
 
-      <div className="sticky bottom-[calc(76px+env(safe-area-inset-bottom))] mt-4 pt-3 bg-[var(--app-bg)]">
+      <div className="sticky bottom-0 mt-4 pt-3 bg-[var(--app-bg)]">
         {thread.canText ? (
           <form
             onSubmit={(e) => {

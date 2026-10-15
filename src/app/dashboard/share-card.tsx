@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Bebas_Neue } from "next/font/google";
 import { Check, Copy, Download, Share2 } from "lucide-react";
 import { useT } from "@/lib/i18n";
@@ -21,6 +21,9 @@ export default function ShareCard({ pageUrl, shopName, coverUrl, compact = false
   const [story, setStory] = useState<{ url: string; file: File } | null>(null);
   const [making, setMaking] = useState(false);
   const [error, setError] = useState("");
+  // The story's photo: undefined = their saved photo, null = none, or one picked just for this story.
+  const [pick, setPick] = useState<string | null | undefined>(undefined);
+  const photoInput = useRef<HTMLInputElement>(null);
   const shown = pageUrl.replace(/^https?:\/\//, "");
   const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
@@ -42,11 +45,11 @@ export default function ShareCard({ pageUrl, shopName, coverUrl, compact = false
     }
   }
 
-  async function makeStory() {
+  async function makeStory(photo: string | null = pick === undefined ? coverUrl : pick) {
     setError("");
     setMaking(true);
     try {
-      const file = await drawStory({ shopName, coverUrl, link: shown, font: poster.style.fontFamily, labels: { book: t("share.story_book"), tap: t("share.story_tap") } });
+      const file = await drawStory({ shopName, coverUrl: photo, link: shown, font: poster.style.fontFamily, labels: { book: t("share.story_book"), tap: t("share.story_tap") } });
       setStory((old) => {
         if (old) URL.revokeObjectURL(old.url);
         return { url: URL.createObjectURL(file), file };
@@ -56,6 +59,27 @@ export default function ShareCard({ pageUrl, shopName, coverUrl, compact = false
     } finally {
       setMaking(false);
     }
+  }
+
+  /** A photo from the phone, just for this story (never uploaded). */
+  function choosePhoto(files: FileList | null) {
+    const f = files?.[0];
+    if (photoInput.current) photoInput.current.value = "";
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    setPick((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return url;
+    });
+    makeStory(url);
+  }
+
+  function noPhoto() {
+    setPick((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return null;
+    });
+    makeStory(null);
   }
 
   async function shareStory() {
@@ -99,12 +123,27 @@ export default function ShareCard({ pageUrl, shopName, coverUrl, compact = false
         )}
         <button
           type="button"
-          onClick={makeStory}
+          onClick={() => makeStory()}
           disabled={making}
           className={`min-h-11 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50 ${canShare ? "border border-white/[0.12] text-white/85" : "bg-[var(--accent-color)] text-[var(--accent-fg)]"}`}
         >
           {making ? t("share.story_making") : t("share.story")}
         </button>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 text-[12px] text-white/50">
+        <span>{t(pick === null ? "share.photo_none" : pick ? "share.photo_picked" : coverUrl ? "share.photo_saved" : "share.photo_none")}</span>
+        <span className="flex gap-1">
+          <button type="button" onClick={() => photoInput.current?.click()} disabled={making} className="min-h-10 px-2.5 rounded-lg font-semibold text-[var(--accent-color)] disabled:opacity-40">
+            {t("share.photo_choose")}
+          </button>
+          {(pick || (pick === undefined && coverUrl)) && (
+            <button type="button" onClick={noPhoto} disabled={making} className="min-h-10 px-2.5 rounded-lg text-white/55 disabled:opacity-40">
+              {t("share.photo_remove")}
+            </button>
+          )}
+        </span>
+        <input ref={photoInput} type="file" accept="image/*" className="hidden" onChange={(e) => choosePhoto(e.target.files)} />
       </div>
 
       {story && (

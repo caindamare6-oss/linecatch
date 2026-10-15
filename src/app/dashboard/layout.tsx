@@ -59,14 +59,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const activeTab = tabs.find((x) => (x.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(x.href)));
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)] text-white">
-      <main className="relative max-w-md mx-auto px-5 pt-[max(20px,env(safe-area-inset-top))] pb-[calc(112px+env(safe-area-inset-bottom))]">{children}</main>
+    // App shell: the page scrolls inside <main>, and the tab bar is the last row of a full-height
+    // column. Nothing is position:fixed, so iPhone home-screen apps can't leave it floating mid-screen.
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-[var(--app-bg)] text-white">
+      <main className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="relative max-w-md mx-auto px-5 pt-[max(20px,env(safe-area-inset-top))] pb-6">{children}</div>
+      </main>
 
-      <nav
-        aria-label={t("nav.main")}
-        className="fixed inset-x-0 z-30 px-4 bottom-[max(12px,calc(env(safe-area-inset-bottom)+6px))]"
-      >
-        {/* A floating bar raised off the screen edge, so the home swipe line never sits on the buttons. */}
+      <nav aria-label={t("nav.main")} className="shrink-0 px-4 pt-2 pb-[max(12px,calc(env(safe-area-inset-bottom)+6px))]">
+        {/* Raised off the screen edge with big tap targets, clear of the home swipe line. */}
         <ul className="max-w-md mx-auto grid grid-cols-4 rounded-[22px] border border-white/[0.08] bg-[var(--app-card)]/95 backdrop-blur-md p-1.5">
           {tabs.map((tab) => {
             const active = activeTab?.href === tab.href;
