@@ -18,4 +18,10 @@ describe("weekly summary email", () => {
     expect(e.html).toContain("Kings &lt;Cuts&gt;");
     expect(e.html).toContain("Turn it off in Settings");
   });
+
+  it("shows only the caught count on a week with nothing booked", () => {
+    const e = weeklySummaryEmail({ caught: 3, booked: 0, savedCents: 0 }, null);
+    expect(e.html).toContain("missed calls caught");
+    expect(e.html).not.toContain("you would have lost");
+  });
 });
