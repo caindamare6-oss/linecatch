@@ -60,13 +60,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-[var(--app-bg)] text-white">
-      <main className="relative max-w-md mx-auto px-5 pt-5 pb-[calc(96px+env(safe-area-inset-bottom))]">{children}</main>
+      <main className="relative max-w-md mx-auto px-5 pt-[max(20px,env(safe-area-inset-top))] pb-[calc(112px+env(safe-area-inset-bottom))]">{children}</main>
 
       <nav
         aria-label={t("nav.main")}
-        className="fixed bottom-0 inset-x-0 z-30 border-t border-white/[0.06] bg-[var(--app-bg)]/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
+        className="fixed inset-x-0 z-30 px-4 bottom-[max(12px,calc(env(safe-area-inset-bottom)+6px))]"
       >
-        <ul className="max-w-md mx-auto grid grid-cols-4">
+        {/* A floating bar raised off the screen edge, so the home swipe line never sits on the buttons. */}
+        <ul className="max-w-md mx-auto grid grid-cols-4 rounded-[22px] border border-white/[0.08] bg-[var(--app-card)]/95 backdrop-blur-md p-1.5">
           {tabs.map((tab) => {
             const active = activeTab?.href === tab.href;
             return (
@@ -74,11 +75,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link
                   href={tab.href}
                   aria-current={active ? "page" : undefined}
-                  className={`flex flex-col items-center gap-1 pt-2.5 pb-2 text-[11px] transition-colors ${
-                    active ? "text-[var(--accent-color)] font-semibold" : "text-white/35 hover:text-white/70"
+                  className={`flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-[16px] text-[11px] transition-colors active:scale-[0.97] ${
+                    active ? "bg-[var(--accent-color)]/[0.12] text-[var(--accent-color)] font-semibold" : "text-white/45 hover:text-white/75"
                   }`}
                 >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     {tab.icon}
                   </svg>
                   {t(tab.label)}
