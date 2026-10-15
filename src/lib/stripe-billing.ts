@@ -33,16 +33,23 @@ async function referralCouponId(stripe: Stripe = getStripeClient()): Promise<str
   }
 }
 
-/** The barber's Stripe customer, made once and saved. */
-export async function ensureCustomer(db: Admin, userId: string): Promise<string> {
+/**
+ * The barber's Stripe customer, made once and saved. With `syncName`, an existing customer's name is
+ * brought in line with the barber's name in Settings (it shows on Stripe's billing page).
+ */
+export async function ensureCustomer(db: Admin, userId: string, { syncName = false } = {}): Promise<string> {
   const { data: u } = await db.from("users").select("stripe_customer_id, email, business_name, first_name, forwarding_number").eq("user_id", userId).single();
   if (!u) throw new Error("Barber not found");
-  if (u.stripe_customer_id) return u.stripe_customer_id;
+  // The barber's own name on Stripe receipts and the billing page; the shop name only if we have no name.
+  const name = u.first_name || u.business_name || undefined;
+  if (u.stripe_customer_id) {
+    if (syncName && name) await getStripeClient().customers.update(u.stripe_customer_id, { name });
+    return u.stripe_customer_id;
+  }
   const customer = await getStripeClient().customers.create(
     {
       email: u.email || undefined,
-      // The barber's own name on Stripe receipts and the dashboard; the shop name only if we have no name.
-      name: u.first_name || u.business_name || undefined,
+      name,
       phone: u.forwarding_number || undefined,
       metadata: { user_id: userId },
     },
@@ -58,7 +65,7 @@ export async function ensureCustomer(db: Admin, userId: string): Promise<string>
  */
 export async function checkoutUrl(db: Admin, userId: string): Promise<string> {
   const { data: u } = await db.from("users").select("trial_ends_at, billing_status").eq("user_id", userId).single();
-  const customer = await ensureCustomer(db, userId);
+  const customer = await ensureCustomer(db, userId, { syncName: true });
   // Referred and not paid yet: their first month is discounted right on Stripe's page.
   const { data: ref } = await db.from("referrals").select("id").eq("referred_user_id", userId).eq("status", "signed_up").maybeSingle();
   const trialEnd = u?.trial_ends_at ? Math.floor(new Date(u.trial_ends_at).getTime() / 1000) : 0;
@@ -81,7 +88,7 @@ export async function checkoutUrl(db: Admin, userId: string): Promise<string> {
 
 /** Stripe's customer portal: update card, see invoices, cancel. */
 export async function portalUrl(db: Admin, userId: string): Promise<string> {
-  const customer = await ensureCustomer(db, userId);
+  const customer = await ensureCustomer(db, userId, { syncName: true });
   const session = await getStripeClient().billingPortal.sessions.create({ customer, return_url: `${appUrl()}/dashboard/settings#billing` });
   return session.url;
 }
