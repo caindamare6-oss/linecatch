@@ -27,8 +27,7 @@ export function weeklySummaryEmail(n: WeeklyNumbers, shopName: string | null): {
   <h1 style="font-size:22px;line-height:1.35;font-weight:600;margin:0 0 24px">${esc(headline(n))}</h1>
   <table role="presentation" width="100%" cellspacing="8" cellpadding="0" style="border-collapse:separate"><tr>
     ${stat(String(n.caught), "missed calls caught")}
-    ${stat(String(n.booked), "booked from the text")}
-    ${stat(money(n.savedCents), "you would have lost")}
+    ${n.booked > 0 ? stat(String(n.booked), "booked from the text") + stat(money(n.savedCents), "you would have lost") : ""}
   </tr></table>
   <p style="margin:28px 0"><a href="${appUrl()}/dashboard" style="display:inline-block;background:#D4AF7A;color:#121110;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px">Open your dashboard</a></p>
   <p style="font-size:12px;color:#7d776f;line-height:1.6">You get this every Monday when LineCatch caught missed calls for you. Turn it off in Settings → Account → Weekly summary email. Questions? Just reply.</p>
