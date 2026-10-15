@@ -1409,7 +1409,7 @@
     "nothing": "Aún no hay nada para retirar."
   },
   "ob": {
-    "step": "Paso {n} de {total}",
+    "percent": "{pct}% listo",
     "back": "Atrás",
     "continue": "Continuar"
   },

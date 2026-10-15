@@ -9,7 +9,7 @@ import ForwardCallsStep from "./forward-calls-step";
 import ServicesStep from "./services-step";
 import HoursStep from "./hours-step";
 import LoyaltyStep from "./loyalty-step";
-import { TOTAL_STEPS } from "./step-shell";
+import { SetupProgress } from "./step-shell";
 
 const LANGUAGES = [
   { code: "en" as const, label: "English" },
@@ -141,8 +141,8 @@ function QuickSetup({ language, setLanguage, initial }: { language: Locale; setL
       <main className="flex-1 px-5">
         <form onSubmit={submit} className="max-w-md mx-auto pt-8 pb-10 space-y-6" style={{ animation: "ob-fade-up 400ms ease-out" }} noValidate>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--ob-accent)" }}>{t("ob.step", { n: 1, total: TOTAL_STEPS })}</p>
-            <h1 className="mt-2 text-[34px] leading-[1.05] font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("quick.title")}</h1>
+            <SetupProgress step={1} />
+            <h1 className="mt-4text-[34px] leading-[1.05] font-bold tracking-tight" style={{ fontFamily: "var(--ob-font-heading)", color: "var(--ob-text)" }}>{t("quick.title")}</h1>
             <p className="mt-3 text-[15px] leading-relaxed" style={{ color: "var(--ob-text-secondary)" }}>{t("quick.subtitle")}</p>
           </div>
 

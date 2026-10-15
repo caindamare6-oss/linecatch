@@ -1350,7 +1350,7 @@
     "nothing": "Nothing to cash out yet."
   },
   "ob": {
-    "step": "Step {n} of {total}",
+    "percent": "{pct}% done",
     "back": "Back",
     "continue": "Continue"
   },
